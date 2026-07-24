@@ -11,6 +11,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   if (user && !loading) return <Navigate to="/app" replace />;
 
@@ -29,7 +30,8 @@ export default function Signup() {
       setError(err.message || 'Could not create account. Please try again.');
       setSubmitting(false);
     } else {
-      navigate('/app');
+      setEmailSent(true);
+      setSubmitting(false);
     }
   }
 
@@ -66,6 +68,42 @@ export default function Signup() {
         padding: '36px 32px',
         width: '100%', maxWidth: 420,
       }}>
+        {emailSent ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: 'var(--color-gold-100, #FEF3C7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+              fontSize: 28,
+            }}>&#9993;</div>
+            <h1 style={{
+              fontFamily: 'var(--font-display)', fontSize: 22,
+              fontWeight: 700, margin: '0 0 12px',
+            }}>Check your inbox</h1>
+            <p style={{
+              fontSize: 14, color: 'var(--text-secondary)',
+              lineHeight: 1.6, margin: '0 0 8px',
+            }}>
+              We've sent a confirmation link to<br />
+              <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>
+            </p>
+            <p style={{
+              fontSize: 13, color: 'var(--text-tertiary)',
+              lineHeight: 1.5, margin: '0 0 24px',
+            }}>
+              Click the link in the email to verify your account. If you don't see it, check your spam folder.
+            </p>
+            <Link to="/login" style={{
+              display: 'inline-block',
+              padding: '10px 24px', fontSize: 14, fontWeight: 600,
+              color: 'var(--color-navy-900)',
+              background: 'var(--color-gold-500)',
+              border: 'none', borderRadius: 'var(--radius-md)',
+              textDecoration: 'none',
+            }}>Go to Sign in</Link>
+          </div>
+        ) : (<>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontSize: 24,
           fontWeight: 700, margin: 0,
@@ -174,6 +212,7 @@ export default function Signup() {
             Sign in
           </Link>
         </div>
+        </>)}
       </div>
     </div>
   );
