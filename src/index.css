@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
 
 :root {
   --color-navy-900: #002B54;
@@ -27,6 +27,7 @@
   --text-on-primary: var(--color-white);
   --border-default: var(--color-border);
 
+  --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-display: 'Merriweather', Georgia, 'Times New Roman', serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'Consolas', monospace;

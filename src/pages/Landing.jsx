@@ -16,7 +16,7 @@ export default function Landing() {
         .landing-nav-links { display: flex; align-items: center; gap: 32px; }
         .landing-hero { padding-top: 148px; padding-bottom: 100px; }
         .landing-hero-inner { max-width: 1200px; margin: 0 auto; padding: 0 40px; position: relative; }
-        .landing-hero-text { max-width: 680px; }
+        .landing-hero-text { max-width: 560px; }
         .landing-hero h1 { font-size: 56px; }
         .landing-hero-cta { display: flex; gap: 14px; margin-top: 40px; align-items: center; }
         .landing-mockup { position: absolute; top: 20px; right: -20px; width: 520px; }
@@ -82,7 +82,7 @@ export default function Landing() {
           height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24, color: '#002B54' }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 24, color: '#002B54' }}>
               LexAMS
             </span>
             <span style={{ fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#7A8699', fontWeight: 600 }}>
@@ -144,7 +144,7 @@ export default function Landing() {
             </div>
 
             <h1 style={{
-              fontFamily: 'var(--font-display)', fontSize: 56, fontWeight: 700,
+              fontFamily: 'var(--font-heading)', fontSize: 56, fontWeight: 700,
               color: '#002B54', lineHeight: 1.1, margin: 0, letterSpacing: '-0.02em',
             }}>
               The smarter way to{' '}
@@ -283,7 +283,7 @@ export default function Landing() {
           ].map(s => (
             <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <s.icon size={18} style={{ color: '#B0B8C4', marginBottom: 4 }} />
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: '#002B54' }}>{s.value}</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 700, color: '#002B54' }}>{s.value}</div>
               <div style={{ fontSize: 13, color: '#7A8699' }}>{s.label}</div>
             </div>
           ))}
@@ -302,7 +302,7 @@ export default function Landing() {
               <Sparkles size={13} /> Features
             </div>
             <h2 style={{
-              fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700,
+              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
               color: '#002B54', lineHeight: 1.15, letterSpacing: '-0.01em',
             }}>
               Everything you need,<br />nothing you don't
@@ -328,7 +328,7 @@ export default function Landing() {
                 borderRadius: '50%', background: 'rgba(250,183,45,0.1)',
               }} />
               <CalendarRange size={28} style={{ color: '#FAB72D' }} />
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginTop: 20, lineHeight: 1.3 }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginTop: 20, lineHeight: 1.3 }}>
                 Activity management that actually works
               </h3>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.65, marginTop: 12, maxWidth: 440 }}>
@@ -390,7 +390,7 @@ export default function Landing() {
               <Zap size={13} /> Simple setup
             </div>
             <h2 style={{
-              fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700,
+              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
               color: '#002B54', letterSpacing: '-0.01em',
             }}>Up and running in minutes</h2>
           </div>
@@ -434,7 +434,7 @@ export default function Landing() {
               <Star size={13} /> Testimonials
             </div>
             <h2 style={{
-              fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700,
+              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
               color: '#002B54', letterSpacing: '-0.01em',
             }}>Loved by organizations</h2>
           </div>
@@ -484,7 +484,7 @@ export default function Landing() {
         }} />
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center', position: 'relative' }}>
           <h2 style={{
-            fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700,
+            fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 700,
             color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em',
           }}>
             Ready to transform how you<br />manage activities?
