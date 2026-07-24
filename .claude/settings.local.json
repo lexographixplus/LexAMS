@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(cd:*)",
+      "Bash(npx vite:*)",
+      "Bash(mv app/src .)",
+      "Bash(rm -rf app)",
+      "Bash(cp -r app/src .)",
+      "Bash(rm -rf app/src app/.env.example app/.gitignore app/.oxlintrc.json)",
+      "Bash(rmdir app:*)",
+      "Bash(rm -f .thumbnail)",
+      "Bash(rm -f src/assets/hero.png src/assets/react.svg src/assets/vite.svg .thumbnail)",
+      "Bash(rmdir src/assets)",
+      "Bash(supabase --version)",
+      "Bash(npx supabase:*)"
+    ]
+  }
+}
