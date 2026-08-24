@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refreshProfile(); }, [refreshProfile]);
 
-  async function requestMagicLink(email, callbackUrl = '/app', { hideAccessDenied = false } = {}) {
+  async function requestMagicLink(email, callbackUrl = '/app') {
     try {
       const csrfToken = await getCsrfToken();
       const absoluteCallback = callbackUrl.startsWith('http') ? callbackUrl : `${window.location.origin}${callbackUrl}`;
@@ -84,20 +84,20 @@ export function AuthProvider({ children }) {
       const data = await response.json().catch(() => ({}));
       const authError = authErrorFromResponse(data);
 
-      if (hideAccessDenied && authError === 'AccessDenied') {
-        return { error: null, emailSent: true };
-      }
       if (!response.ok || authError) {
-        throw new Error(authError || 'Could not send sign-in link.');
+        const error = new Error(authError === 'AccessDenied'
+          ? 'No LexAMS account found.'
+          : (authError || 'Could not send sign-in link.'));
+        return { error, errorCode: authError || 'AuthError', emailSent: false };
       }
-      return { error: null, emailSent: true };
+      return { error: null, errorCode: null, emailSent: true };
     } catch (error) {
       return { error };
     }
   }
 
   async function signIn(email, callbackUrl) {
-    return requestMagicLink(email, callbackUrl, { hideAccessDenied: true });
+    return requestMagicLink(email, callbackUrl);
   }
 
   async function signUp(email, _password, fullName, orgName, callbackUrl) {
@@ -160,3 +160,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+
