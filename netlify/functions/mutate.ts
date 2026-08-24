@@ -211,7 +211,19 @@ export default async (request: Request) => {
         return result.rowCount ? Response.json(result.rows[0]) : Response.json({ error: 'Not found' }, { status: 404 });
       }
       case 'delete_participant': {
-        if (!isAdmin) return Response.json({ error: 'Admin approval required' }, { status: 403 });
+        const participant = await db.query(
+          'select id, name, email from participants where id = $1 and organization_id = $2',
+          [payload.id, orgId]
+        );
+        if (!participant.rowCount) return Response.json({ error: 'Participant not found' }, { status: 404 });
+        if (!isAdmin) {
+          await db.query(
+            `insert into pending_approvals (organization_id, requested_by, action_type, payload)
+             values ($1,$2,'delete_participant',$3::jsonb)`,
+            [orgId, userId, JSON.stringify(participant.rows[0])]
+          );
+          return Response.json({ pending: true });
+        }
         await db.query('delete from participants where id = $1 and organization_id = $2', [payload.id, orgId]);
         return Response.json({ ok: true });
       }
