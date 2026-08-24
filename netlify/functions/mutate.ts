@@ -62,7 +62,26 @@ export default async (request: Request) => {
                  values ($1,$2,$3,$4,$5,$6) returning *`,
                 [orgId, p.name, String(p.email).toLowerCase(), p.phone || '', p.org || '', p.category || 'Community member']
               );
-              executed = result.rows[0];
+              const participant = result.rows[0];
+              const activityIds = Array.isArray(p.activity_ids)
+                ? [...new Set(p.activity_ids.map((id: unknown) => Number(id)).filter(Number.isSafeInteger))]
+                : [];
+              if (activityIds.length) {
+                const validActivities = await client.query(
+                  `select id from activities where organization_id = $1 and id = any($2::bigint[])`,
+                  [orgId, activityIds]
+                );
+                if (validActivities.rowCount !== activityIds.length) throw new Error('Approval references an invalid activity');
+                for (const activityId of activityIds) {
+                  await client.query(
+                    `insert into registrations (organization_id, activity_id, participant_id)
+                     values ($1,$2,$3)
+                     on conflict (activity_id, participant_id) do nothing`,
+                    [orgId, activityId, participant.id]
+                  );
+                }
+              }
+              executed = { ...participant, activity_ids: activityIds };
             } else if (approval.action_type === 'issue_certificate') {
               const context = await client.query(
                 `select a.id as activity_id, p.id as participant_id
@@ -153,10 +172,22 @@ export default async (request: Request) => {
       case 'add_participant': {
         const p = payload.participant || {};
         if (!isAdmin) {
+          const requestedActivityIds = Array.isArray(payload.activityIds)
+            ? [...new Set(payload.activityIds.map((id: unknown) => Number(id)).filter(Number.isSafeInteger))]
+            : [];
+          if (requestedActivityIds.length) {
+            const validActivities = await db.query(
+              `select id from activities where organization_id = $1 and id = any($2::bigint[])`,
+              [orgId, requestedActivityIds]
+            );
+            if (validActivities.rowCount !== requestedActivityIds.length) {
+              return Response.json({ error: 'Invalid activity selection' }, { status: 400 });
+            }
+          }
           await db.query(
             `insert into pending_approvals (organization_id, requested_by, action_type, payload)
              values ($1,$2,'add_participant',$3::jsonb)`,
-            [orgId, userId, JSON.stringify(p)]
+            [orgId, userId, JSON.stringify({ ...p, activity_ids: requestedActivityIds })]
           );
           return Response.json({ pending: true });
         }
