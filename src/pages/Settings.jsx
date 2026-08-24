@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Upload, X } from 'lucide-react';
 
 export default function Settings() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [orgName, setOrgName] = useState(profile?.org_name || '');
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
@@ -30,44 +30,64 @@ export default function Settings() {
     }
 
     setUploading(true);
-    const ext = file.name.split('.').pop();
-    const path = `${profile.id}/logo.${ext}`;
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${profile.id}/logo.${ext}`;
 
-    const { error: uploadErr } = await supabase.storage
-      .from('logos')
-      .upload(path, file, { upsert: true });
+      const { error: uploadErr } = await supabase.storage
+        .from('logos')
+        .upload(path, file, { upsert: true });
 
-    if (uploadErr) {
-      showToast('Upload failed: ' + uploadErr.message);
+      if (uploadErr) {
+        showToast('Upload failed: ' + uploadErr.message);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
+      const url = urlData.publicUrl + '?t=' + Date.now();
+      const { error: profileError } = await supabase.from('profiles').update({ logo_url: url }).eq('id', profile.id);
+      if (profileError) {
+        showToast('Could not save logo: ' + profileError.message);
+        return;
+      }
+
+      setLogoUrl(url);
+      await refreshProfile();
+      showToast('Logo uploaded');
+    } finally {
       setUploading(false);
-      return;
+      if (fileRef.current) fileRef.current.value = '';
     }
-
-    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
-    const url = urlData.publicUrl + '?t=' + Date.now();
-
-    await supabase.from('profiles').update({ logo_url: url }).eq('id', profile.id);
-    setLogoUrl(url);
-    setUploading(false);
-    showToast('Logo uploaded');
   }
 
   async function removeLogo() {
-    await supabase.from('profiles').update({ logo_url: null }).eq('id', profile.id);
+    const { error } = await supabase.from('profiles').update({ logo_url: null }).eq('id', profile.id);
+    if (error) {
+      showToast('Could not remove logo: ' + error.message);
+      return;
+    }
     setLogoUrl('');
+    await refreshProfile();
     showToast('Logo removed');
   }
 
   async function saveProfile(e) {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('profiles').update({
-      full_name: fullName.trim(),
-      org_name: orgName.trim(),
-    }).eq('id', profile.id);
-    if (error) showToast('Error: ' + error.message);
-    else showToast('Settings saved');
-    setSaving(false);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        full_name: fullName.trim(),
+        org_name: orgName.trim(),
+      }).eq('id', profile.id);
+      if (error) {
+        showToast('Error: ' + error.message);
+        return;
+      }
+      await refreshProfile();
+      showToast('Settings saved');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const inputStyle = {
