@@ -1,11 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import Landing from './pages/LandingV2';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Activities from './pages/Activities';
-import ActivityDetail from './pages/ActivityDetail';
+import ActivityDetailFrame from './pages/ActivityDetailFrame';
 import Participants from './pages/Participants';
 import Certificates from './pages/Certificates';
 import Reports from './pages/Reports';
@@ -61,7 +61,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="activities" element={<Activities />} />
-        <Route path="activities/:id" element={<ActivityDetail />} />
+        <Route path="activities/:id" element={<ActivityDetailFrame />} />
         <Route path="participants" element={<Participants />} />
         <Route path="certificates" element={<Certificates />} />
         <Route path="reports" element={<Reports />} />
