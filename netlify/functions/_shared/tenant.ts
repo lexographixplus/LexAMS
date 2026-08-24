@@ -21,35 +21,34 @@ export async function requireTenant(request: Request) {
     [user.id]
   );
 
-  if (membership.rowCount) {
-    return { user, ...membership.rows[0] };
-  }
+  if (membership.rowCount) return { user, ...membership.rows[0] };
 
   const baseName = user.name?.trim() || user.email?.split('@')[0] || 'My Organization';
   const suffix = String(user.id).slice(0, 8);
   const slug = `${slugify(baseName)}-${suffix}`;
+  const client = await db.connect();
 
-  await db.query('begin');
   try {
-    const org = await db.query(
+    await client.query('begin');
+    const org = await client.query(
       `insert into organizations (name, slug) values ($1, $2)
        returning id, name, slug`,
       [`${baseName}'s Workspace`, slug]
     );
     const organization = org.rows[0];
 
-    await db.query(
+    await client.query(
       `insert into organization_members (organization_id, user_id, role)
        values ($1, $2, 'owner')`,
       [organization.id, user.id]
     );
-    await db.query(
+    await client.query(
       `insert into profiles (user_id, full_name, active_organization_id)
        values ($1, $2, $3)
        on conflict (user_id) do update set active_organization_id = excluded.active_organization_id`,
       [user.id, user.name || baseName, organization.id]
     );
-    await db.query('commit');
+    await client.query('commit');
 
     return {
       user,
@@ -59,7 +58,9 @@ export async function requireTenant(request: Request) {
       role: 'owner',
     };
   } catch (error) {
-    await db.query('rollback');
+    await client.query('rollback');
     throw error;
+  } finally {
+    client.release();
   }
 }
