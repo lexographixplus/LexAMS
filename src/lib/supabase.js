@@ -57,10 +57,36 @@ class QueryBuilder {
   then(resolve, reject) { return this.execute().then(resolve, reject); }
 }
 
+function makeStorage(state) {
+  return {
+    from() {
+      return {
+        async upload(path, file) {
+          try {
+            const form = new FormData();
+            form.append('file', file);
+            const response = await fetch('/api/logo', { method: 'POST', credentials: 'include', body: form });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) return { data: null, error: normalizeError(body.error || body.message) };
+            state.storageUrls[path] = body.publicUrl;
+            return { data: { path: body.key }, error: null };
+          } catch (error) {
+            return { data: null, error: normalizeError(error) };
+          }
+        },
+        getPublicUrl(path) {
+          return { data: { publicUrl: state.storageUrls[path] || '' } };
+        },
+      };
+    },
+  };
+}
+
 function makeClient(mode = 'authenticated') {
-  const state = { scopeToken: null };
+  const state = { scopeToken: null, storageUrls: {} };
   return {
     from(table) { return new QueryBuilder(table, mode, state); },
+    storage: makeStorage(state),
     async rpc(name) {
       try {
         const response = await fetch('/api/rpc', {
