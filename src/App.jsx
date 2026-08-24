@@ -37,6 +37,10 @@ function LoadingScreen() {
   );
 }
 
+function UiPage({ name, children }) {
+  return <div className={`lexams-ui-page lexams-ui-${name}`}>{children}</div>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -59,16 +63,16 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
-        <Route path="activities" element={<Activities />} />
-        <Route path="activities/:id" element={<ActivityDetailFrame />} />
-        <Route path="participants" element={<Participants />} />
-        <Route path="certificates" element={<Certificates />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="surveys" element={<Surveys />} />
-        <Route path="assessments" element={<Assessments />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="team" element={<Team />} />
+        <Route index element={<UiPage name="dashboard"><Dashboard /></UiPage>} />
+        <Route path="activities" element={<UiPage name="activities"><Activities /></UiPage>} />
+        <Route path="activities/:id" element={<UiPage name="activity-detail"><ActivityDetailFrame /></UiPage>} />
+        <Route path="participants" element={<UiPage name="participants"><Participants /></UiPage>} />
+        <Route path="certificates" element={<UiPage name="certificates"><Certificates /></UiPage>} />
+        <Route path="reports" element={<UiPage name="reports"><Reports /></UiPage>} />
+        <Route path="surveys" element={<UiPage name="surveys"><Surveys /></UiPage>} />
+        <Route path="assessments" element={<UiPage name="assessments"><Assessments /></UiPage>} />
+        <Route path="settings" element={<UiPage name="settings"><Settings /></UiPage>} />
+        <Route path="team" element={<UiPage name="team"><Team /></UiPage>} />
       </Route>
     </Routes>
   );
