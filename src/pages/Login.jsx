@@ -47,17 +47,17 @@ export default function Login() {
             <div style={{ fontSize: 30, marginBottom: 16 }}>&#9993;</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Check your inbox</h1>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.6 }}>
-              We sent a secure LexAMS sign-in link to <strong style={{ color: 'var(--text-primary)' }}>{email || 'your email address'}</strong>.
+              If <strong style={{ color: 'var(--text-primary)' }}>{email || 'this email address'}</strong> is linked to a LexAMS account or invitation, a secure sign-in link will arrive shortly.
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12, lineHeight: 1.5 }}>
-              The link signs you in without a password. You can close this page after opening the email.
+              New users should create a workspace or use the invitation link sent by their organization.
             </p>
           </div>
         ) : (
           <>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, margin: 0 }}>Welcome back</h1>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5 }}>
-              Enter your email and we’ll send you a secure sign-in link.
+              Enter the email linked to your LexAMS account and we’ll send you a secure sign-in link.
             </p>
 
             {error && (
