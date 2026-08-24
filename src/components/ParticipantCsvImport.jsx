@@ -74,7 +74,6 @@ export default function ParticipantCsvImport() {
       const col = mapping[key];
       data[key] = col === '' || col == null ? '' : String(cells[Number(col)] || '').trim();
     });
-    if (!data.category) data.category = 'Community member';
     const problems = [];
     if (!data.name) problems.push('Missing name');
     if (!data.email) problems.push('Missing email');
@@ -112,9 +111,27 @@ export default function ParticipantCsvImport() {
     const a = document.createElement('a'); a.href = url; a.download = 'lexams-participant-import-template.csv'; a.click(); URL.revokeObjectURL(url);
   }
 
+  function participantForCreate(data) {
+    return {
+      name: data.name,
+      email: data.email,
+      phone: data.phone || null,
+      org: data.org || null,
+      category: data.category || 'Community member',
+    };
+  }
+
+  function participantUpdates(data) {
+    const updates = { name: data.name, email: data.email };
+    for (const key of ['phone', 'org', 'category']) {
+      if (mapping[key] !== '' && mapping[key] != null && data[key]) updates[key] = data[key];
+    }
+    return updates;
+  }
+
   async function runImport() {
     setError(''); setResult(null);
-    if (!mapping.name || !mapping.email) { setError('Map both Name and Email before importing.'); return; }
+    if (mapping.name === '' || mapping.email === '' || mapping.name == null || mapping.email == null) { setError('Map both Name and Email before importing.'); return; }
     if (!validRows.length) { setError('There are no valid rows to import.'); return; }
     setImporting(true);
     let created = 0, updated = 0, skipped = 0, failed = 0;
@@ -125,11 +142,11 @@ export default function ParticipantCsvImport() {
       try {
         if (existing) {
           if (duplicateMode === 'skip') { skipped += 1; continue; }
-          await updateParticipant(existing.id, row.data);
+          await updateParticipant(existing.id, participantUpdates(row.data));
           if (activityId) await addRegistration(Number(activityId), existing.id);
           updated += 1;
         } else {
-          const createdParticipant = await addParticipant(row.data);
+          const createdParticipant = await addParticipant(participantForCreate(row.data));
           if (createdParticipant?.pending) { failed += 1; continue; }
           if (activityId) await addRegistration(Number(activityId), createdParticipant.id);
           byEmail.set(emailKey, createdParticipant);
@@ -185,7 +202,7 @@ export default function ParticipantCsvImport() {
                   <div><strong>{mappedRows.length}</strong><span>Rows</span></div><div><strong>{validRows.length}</strong><span>Valid</span></div><div><strong>{duplicateCount}</strong><span>Existing</span></div><div><strong>{invalidCount}</strong><span>Needs fixing</span></div>
                 </div>
 
-                <div className="lexams-import-preview table-scroll"><div style={{ minWidth: 720 }}><div className="lexams-import-row lexams-import-row-head"><span>Row</span><span>Name</span><span>Email</span><span>Organization</span><span>Category</span><span>Status</span></div>{mappedRows.slice(0, 8).map(r => <div className="lexams-import-row" key={r.index}><span>{r.index}</span><span>{r.data.name || '—'}</span><span>{r.data.email || '—'}</span><span>{r.data.org || '—'}</span><span>{r.data.category}</span><span className={r.problems.length ? 'lexams-row-bad' : 'lexams-row-good'}>{r.problems.length ? r.problems.join(', ') : duplicateEmails.has(r.data.email.toLowerCase()) ? 'Existing' : 'Ready'}</span></div>)}</div></div>
+                <div className="lexams-import-preview table-scroll"><div style={{ minWidth: 720 }}><div className="lexams-import-row lexams-import-row-head"><span>Row</span><span>Name</span><span>Email</span><span>Organization</span><span>Category</span><span>Status</span></div>{mappedRows.slice(0, 8).map(r => <div className="lexams-import-row" key={r.index}><span>{r.index}</span><span>{r.data.name || '—'}</span><span>{r.data.email || '—'}</span><span>{r.data.org || '—'}</span><span>{r.data.category || 'Community member'}</span><span className={r.problems.length ? 'lexams-row-bad' : 'lexams-row-good'}>{r.problems.length ? r.problems.join(', ') : duplicateEmails.has(r.data.email.toLowerCase()) ? 'Existing' : 'Ready'}</span></div>)}</div></div>
                 {mappedRows.length > 8 && <div className="lexams-import-more">Showing 8 of {mappedRows.length} rows</div>}
               </>
             )}
