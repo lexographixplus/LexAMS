@@ -108,10 +108,24 @@ export default async (request: Request) => {
       }
       case 'issue_certificate': {
         if (!isAdmin) {
+          const context = await db.query(
+            `select a.title as activity_title, p.name as participant_name
+             from activities a, participants p
+             where a.id = $1 and a.organization_id = $3 and p.id = $2 and p.organization_id = $3`,
+            [payload.activityId, payload.participantId, orgId]
+          );
+          if (!context.rowCount) return Response.json({ error: 'Invalid activity or participant' }, { status: 400 });
+          const pendingPayload = {
+            activity_id: payload.activityId,
+            participant_id: payload.participantId,
+            certificate_type: payload.certificateType || 'completion',
+            activity_title: context.rows[0].activity_title,
+            participant_name: context.rows[0].participant_name,
+          };
           await db.query(
             `insert into pending_approvals (organization_id, requested_by, action_type, payload)
              values ($1,$2,'issue_certificate',$3::jsonb)`,
-            [orgId, userId, JSON.stringify(payload)]
+            [orgId, userId, JSON.stringify(pendingPayload)]
           );
           return Response.json({ pending: true });
         }
