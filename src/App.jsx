@@ -6,7 +6,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Activities from './pages/Activities';
 import ActivityDetailFrame from './pages/ActivityDetailFrame';
-import Participants from './pages/Participants';
+import ParticipantsFrame from './pages/ParticipantsFrame';
 import Certificates from './pages/Certificates';
 import Reports from './pages/Reports';
 import Surveys from './pages/Surveys';
@@ -66,7 +66,7 @@ export default function App() {
         <Route index element={<UiPage name="dashboard"><Dashboard /></UiPage>} />
         <Route path="activities" element={<UiPage name="activities"><Activities /></UiPage>} />
         <Route path="activities/:id" element={<UiPage name="activity-detail"><ActivityDetailFrame /></UiPage>} />
-        <Route path="participants" element={<UiPage name="participants"><Participants /></UiPage>} />
+        <Route path="participants" element={<UiPage name="participants"><ParticipantsFrame /></UiPage>} />
         <Route path="certificates" element={<UiPage name="certificates"><Certificates /></UiPage>} />
         <Route path="reports" element={<UiPage name="reports"><Reports /></UiPage>} />
         <Route path="surveys" element={<UiPage name="surveys"><Surveys /></UiPage>} />
