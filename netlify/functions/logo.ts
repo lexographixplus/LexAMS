@@ -6,6 +6,12 @@ function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 }
 
+const allowedTypes = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/webp', 'webp'],
+]);
+
 export default async (request: Request) => {
   const url = new URL(request.url);
   const store = getStore({ name: 'lexams-branding', consistency: 'strong' });
@@ -20,6 +26,7 @@ export default async (request: Request) => {
       headers: {
         'content-type': String(result.metadata?.contentType || 'application/octet-stream'),
         'cache-control': 'public, max-age=3600, stale-while-revalidate=86400',
+        'x-content-type-options': 'nosniff',
       },
     });
   }
@@ -32,10 +39,11 @@ export default async (request: Request) => {
   const form = await request.formData();
   const file = form.get('file');
   if (!(file instanceof File)) return json({ error: 'Image file is required' }, 400);
-  if (!file.type.startsWith('image/')) return json({ error: 'Only image files are allowed' }, 400);
+
+  const safeExt = allowedTypes.get(file.type);
+  if (!safeExt) return json({ error: 'Only PNG, JPEG, and WebP logos are allowed' }, 400);
   if (file.size > 2 * 1024 * 1024) return json({ error: 'Logo must be under 2MB' }, 400);
 
-  const safeExt = (file.name.split('.').pop() || 'img').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   const key = `organizations/${tenant.organization_id}/logo.${safeExt}`;
   const buffer = await file.arrayBuffer();
   await store.set(key, buffer, { metadata: { contentType: file.type, uploadedAt: new Date().toISOString() } });
