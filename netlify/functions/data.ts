@@ -1,4 +1,5 @@
 import type { Config } from '@netlify/functions';
+import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 import { requireTenant } from './_shared/tenant';
 
@@ -25,9 +26,7 @@ function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 }
 
-function quoteIdent(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
+function quoteIdent(value: string) { return `"${value.replace(/"/g, '""')}"`; }
 
 function validateColumns(table: string, values: string[]) {
   const allowed = directTables[table] || childTables[table]?.columns;
@@ -35,9 +34,7 @@ function validateColumns(table: string, values: string[]) {
   for (const value of values) if (!allowed.has(value)) throw new Error(`Unsupported column: ${value}`);
 }
 
-function normalizePayload(payload: any) {
-  return Array.isArray(payload) ? payload : [payload];
-}
+function normalizePayload(payload: any) { return Array.isArray(payload) ? payload : [payload]; }
 
 async function parentOwned(db: ReturnType<typeof getPool>, table: string, payload: any, organizationId: string) {
   const child = childTables[table];
@@ -48,6 +45,80 @@ async function parentOwned(db: ReturnType<typeof getPool>, table: string, payloa
   return Boolean(result.rowCount);
 }
 
+async function handleProfiles(request: Request, body: any, tenant: any, db: ReturnType<typeof getPool>) {
+  const filters = Object.fromEntries((body.filters || []).map((f: any) => [f.column, f.value]));
+  if (body.operation === 'select') {
+    const values: any[] = [tenant.organization_id];
+    let sql = `
+      select u.id,
+             coalesce(p.full_name, u.name, u.email) as full_name,
+             o.name as org_name,
+             case when om.role in ('owner','admin') then 'Institution Administrator'
+                  when om.role = 'programme_manager' then 'Activity Manager'
+                  else 'Facilitator' end as role,
+             case when om.role in ('owner','admin') then 'admin' else 'member' end as team_role,
+             om.organization_id as team_id,
+             p.avatar_url,
+             o.logo_url
+      from organization_members om
+      join users u on u.id = om.user_id
+      join organizations o on o.id = om.organization_id
+      left join profiles p on p.user_id = u.id
+      where om.organization_id = $1`;
+    if (filters.id) { values.push(filters.id); sql += ` and u.id = $${values.length}`; }
+    sql += ' order by om.created_at asc';
+    const result = await db.query(sql, values);
+    return json({ data: body.single ? (result.rows[0] || null) : result.rows });
+  }
+
+  if (body.operation === 'update' && filters.id) {
+    const targetUserId = String(filters.id);
+    const updates = body.payload || {};
+
+    // Legacy Team UI expresses member removal by resetting team_id to that member.
+    if (updates.team_id === targetUserId && updates.team_role === 'admin' && targetUserId !== tenant.user.id) {
+      if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+      const membership = await db.query('select role from organization_members where organization_id = $1 and user_id = $2', [tenant.organization_id, targetUserId]);
+      if (!membership.rowCount) return json({ error: 'Member not found' }, 404);
+      if (membership.rows[0].role === 'owner') return json({ error: 'The workspace owner cannot be removed' }, 403);
+      await db.query('delete from organization_members where organization_id = $1 and user_id = $2', [tenant.organization_id, targetUserId]);
+      return json({ data: [] });
+    }
+
+    if (targetUserId !== tenant.user.id) return json({ error: 'You can only edit your own profile' }, 403);
+    if (updates.full_name !== undefined) {
+      await db.query('update users set name = $1 where id = $2', [updates.full_name, tenant.user.id]);
+      await db.query(`insert into profiles (user_id, full_name, active_organization_id) values ($1,$2,$3)
+        on conflict (user_id) do update set full_name = excluded.full_name, updated_at = now()`, [tenant.user.id, updates.full_name, tenant.organization_id]);
+    }
+    if (updates.org_name !== undefined) {
+      if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+      await db.query('update organizations set name = $1, updated_at = now() where id = $2', [updates.org_name, tenant.organization_id]);
+    }
+    if (updates.logo_url !== undefined) {
+      if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+      await db.query('update organizations set logo_url = $1, updated_at = now() where id = $2', [updates.logo_url, tenant.organization_id]);
+    }
+    return json({ data: [] });
+  }
+  return json({ error: 'Unsupported profile operation' }, 400);
+}
+
+async function sendTeamInvite(request: Request, tenant: any, invite: any) {
+  const apiKey = Netlify.env.get('RESEND_API_KEY');
+  if (!apiKey) return;
+  const from = Netlify.env.get('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
+  const appUrl = Netlify.env.get('APP_URL') || new URL(request.url).origin;
+  const resend = new Resend(apiKey);
+  const inviteUrl = `${appUrl}/join/${invite.token}`;
+  await resend.emails.send({
+    from,
+    to: invite.email,
+    subject: `You're invited to ${tenant.organization_name} on LexAMS`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#0F1B2B"><h2 style="color:#002B54">Join ${tenant.organization_name} on LexAMS</h2><p>You've been invited to collaborate in the ${tenant.organization_name} workspace.</p><p><a href="${inviteUrl}" style="display:inline-block;padding:12px 18px;background:#FAB72D;color:#002B54;text-decoration:none;border-radius:8px;font-weight:600">Accept invitation</a></p><p style="font-size:12px;color:#7A8699">If you weren't expecting this invitation, you can ignore this email.</p></div>`,
+  });
+}
+
 export default async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const tenant = await requireTenant(request);
@@ -56,15 +127,23 @@ export default async (request: Request) => {
   const body = await request.json().catch(() => null) as any;
   if (!body?.table || !body?.operation) return json({ error: 'Invalid request' }, 400);
   const table = String(body.table);
+  const db = getPool();
+
+  if (table === 'profiles') return handleProfiles(request, body, tenant, db);
+
   const isDirect = Boolean(directTables[table]);
   const isChild = Boolean(childTables[table]);
   if (!isDirect && !isChild) return json({ error: 'Unsupported table' }, 400);
 
-  const filters = Array.isArray(body.filters) ? body.filters : [];
+  const rawFilters = Array.isArray(body.filters) ? body.filters : [];
+  const filters = rawFilters.map((f: any) => {
+    if (table === 'pending_approvals' && f.column === 'team_id') return { ...f, column: 'organization_id', value: tenant.organization_id };
+    if (table === 'team_invites' && f.column === 'invited_by' && f.value === tenant.organization_id) return { ...f, column: 'organization_id', value: tenant.organization_id };
+    return f;
+  });
   try { validateColumns(table, filters.map((f: any) => String(f.column))); }
   catch (error: any) { return json({ error: error.message }, 400); }
 
-  const db = getPool();
   const params: any[] = [];
   const where: string[] = [];
   if (isDirect) {
@@ -99,36 +178,43 @@ export default async (request: Request) => {
       const inserted = [];
       for (const original of rows) {
         const row = { ...original };
+        delete row.team_id;
         if (isDirect) row.organization_id = tenant.organization_id;
         if (['activities','surveys','assessments'].includes(table) && !row.created_by) row.created_by = tenant.user.id;
-        if (table === 'team_invites' && !row.invited_by) row.invited_by = tenant.user.id;
-        if (table === 'pending_approvals' && !row.requested_by) row.requested_by = tenant.user.id;
+        if (table === 'team_invites') {
+          row.invited_by = tenant.user.id;
+          if (row.role === 'member') row.role = 'viewer';
+          if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+        }
+        if (table === 'pending_approvals') row.requested_by = tenant.user.id;
         validateColumns(table, Object.keys(row));
         if (isChild && !(await parentOwned(db, table, row, tenant.organization_id))) return json({ error: 'Parent record not found' }, 404);
         const keys = Object.keys(row);
         const values = Object.values(row);
         const placeholders = values.map((_, i) => `$${i + 1}`);
         const result = await db.query(
-          `insert into ${quoteIdent(table)} (${keys.map(quoteIdent).join(',')}) values (${placeholders.join(',')}) returning *`,
-          values
+          `insert into ${quoteIdent(table)} (${keys.map(quoteIdent).join(',')}) values (${placeholders.join(',')}) returning *`, values
         );
         inserted.push(result.rows[0]);
+        if (table === 'team_invites') await sendTeamInvite(request, tenant, result.rows[0]).catch(error => console.error('invite email failed', error));
       }
       return json({ data: body.single ? inserted[0] : (Array.isArray(body.payload) ? inserted : inserted[0]) });
     }
 
     if (body.operation === 'update') {
+      if (table === 'team_invites' && !['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+      if (table === 'pending_approvals' && body.payload?.status && !['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
       const updates = { ...(body.payload || {}) };
       delete updates.organization_id;
       delete updates.id;
+      delete updates.team_id;
       validateColumns(table, Object.keys(updates));
       if (!Object.keys(updates).length) return json({ error: 'Missing updates' }, 400);
       const setParams: any[] = [];
       const setSql = Object.entries(updates).map(([key, value], index) => { setParams.push(value); return `${quoteIdent(key)} = $${index + 1}`; });
       const shiftedWhere = where.map(clause => clause.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + setParams.length}`));
       const result = await db.query(
-        `update ${quoteIdent(table)} set ${setSql.join(', ')} where ${shiftedWhere.join(' and ')} returning *`,
-        [...setParams, ...params]
+        `update ${quoteIdent(table)} set ${setSql.join(', ')} where ${shiftedWhere.join(' and ')} returning *`, [...setParams, ...params]
       );
       return json({ data: body.single ? (result.rows[0] || null) : result.rows });
     }
