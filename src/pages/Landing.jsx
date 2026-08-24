@@ -1,560 +1,441 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  CalendarRange, Users, Award, BarChart3, QrCode, ClipboardCheck,
-  ArrowRight, CheckCircle2, Sparkles, Shield, Globe, Zap,
-  ChevronRight, Star, UsersRound, FileCheck,
+  Activity,
+  ArrowRight,
+  Award,
+  BarChart3,
+  CalendarRange,
+  CheckCircle2,
+  ClipboardCheck,
+  FileCheck2,
+  Globe2,
+  Layers3,
+  QrCode,
+  ShieldCheck,
+  Sparkles,
+  Users,
 } from 'lucide-react';
+
+const capabilities = [
+  {
+    icon: CalendarRange,
+    eyebrow: 'Plan',
+    title: 'Run activities with structure',
+    text: 'Create programmes, trainings, workshops and events with dates, venues, facilitators, registration controls and clear ownership.',
+  },
+  {
+    icon: Users,
+    eyebrow: 'People',
+    title: 'Keep participation in one place',
+    text: 'Manage participant profiles, registrations and activity assignments without rebuilding the same records for every programme.',
+  },
+  {
+    icon: QrCode,
+    eyebrow: 'Attendance',
+    title: 'Make check-in simple',
+    text: 'Use shareable registration and attendance links so field teams can record participation without complicated setup.',
+  },
+  {
+    icon: ClipboardCheck,
+    eyebrow: 'Learning',
+    title: 'Measure more than attendance',
+    text: 'Collect survey feedback and assessment results alongside activity records so outcomes stay connected to delivery.',
+  },
+  {
+    icon: Award,
+    eyebrow: 'Recognition',
+    title: 'Issue branded certificates',
+    text: 'Generate completion, attendance and appreciation certificates using your organization name, logo and activity details.',
+  },
+  {
+    icon: BarChart3,
+    eyebrow: 'Reporting',
+    title: 'Turn delivery into evidence',
+    text: 'Bring programme activity, participation and outcome records together for clearer reporting and operational review.',
+  },
+];
+
+const workflow = [
+  ['01', 'Set up the activity', 'Define the programme, schedule, venue, facilitator and registration settings.'],
+  ['02', 'Register participants', 'Use public registration links or add participants directly from the workspace.'],
+  ['03', 'Track delivery', 'Record attendance, manage participant activity and capture operational updates.'],
+  ['04', 'Measure outcomes', 'Run surveys and assessments connected to the activity.'],
+  ['05', 'Close the loop', 'Issue certificates and use the resulting records for reporting and follow-up.'],
+];
 
 export default function Landing() {
   const { user } = useAuth();
   if (user) return <Navigate to="/app" replace />;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8', fontFamily: "var(--font-body)" }}>
+    <div className="lexams-site">
       <style>{`
-        .landing-nav-links { display: flex; align-items: center; gap: 32px; }
-        .landing-hero { padding-top: 148px; padding-bottom: 100px; }
-        .landing-hero-inner { max-width: 1200px; margin: 0 auto; padding: 0 40px; position: relative; }
-        .landing-hero-text { max-width: 560px; }
-        .landing-hero h1 { font-size: 56px; }
-        .landing-hero-cta { display: flex; gap: 14px; margin-top: 40px; align-items: center; }
-        .landing-mockup { position: absolute; top: 20px; right: -20px; width: 520px; }
-        .landing-section { padding: 96px 40px; }
-        .landing-section-inner { max-width: 1200px; margin: 0 auto; }
-        .landing-bento { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto; gap: 20px; }
-        .landing-bento-large { grid-column: 1 / 3; }
-        .landing-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
-        .landing-testimonials { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .landing-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
-        .landing-cta h2 { font-size: 40px; }
-        .landing-footer-inner { display: flex; justify-content: space-between; align-items: flex-start; }
-        .landing-footer-links { display: flex; gap: 48px; }
-        .landing-nav-divider { width: 1px; height: 20px; background: #E0E4E9; }
-        .landing-hero-proof { display: flex; align-items: center; gap: 14px; margin-top: 36px; }
-
-        @media (max-width: 768px) {
-          .landing-nav-links a[href^="#"], .landing-nav-divider { display: none !important; }
-          .landing-nav-links { gap: 10px !important; }
-          .landing-hero { padding-top: 90px !important; padding-bottom: 48px !important; }
-          .landing-hero-inner { padding: 0 20px !important; }
-          .landing-hero-text { max-width: 100% !important; }
-          .landing-hero h1 { font-size: 30px !important; letter-spacing: -0.01em !important; }
-          .landing-hero h1 br { display: none; }
-          .landing-hero p { font-size: 16px !important; }
-          .landing-hero-cta { flex-direction: column !important; align-items: stretch !important; }
-          .landing-hero-cta a { text-align: center; justify-content: center; }
-          .landing-mockup { display: none !important; }
-          .landing-section { padding: 48px 20px !important; }
-          .landing-bento { grid-template-columns: 1fr !important; }
-          .landing-bento-large { grid-column: 1 !important; }
-          .landing-steps { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
-          .landing-testimonials { grid-template-columns: 1fr !important; }
-          .landing-stats-grid { grid-template-columns: 1fr 1fr !important; gap: 16px !important; }
-          .landing-cta h2 { font-size: 26px !important; }
-          .landing-cta h2 br { display: none; }
-          .landing-footer-inner { flex-direction: column !important; gap: 28px !important; }
-          .landing-footer-links { gap: 28px !important; }
-          .landing-hero-proof { flex-direction: column; gap: 8px; align-items: flex-start; }
-          .landing-section h2 { font-size: 26px !important; }
-          header > div { padding: 0 20px !important; }
-          footer { padding: 32px 20px 24px !important; }
+        .lexams-site {
+          --navy: #002B54;
+          --navy-deep: #001C37;
+          --navy-soft: #0E4C8F;
+          --gold: #FAB72D;
+          --paper: #F7F5EF;
+          --paper-2: #FBFAF7;
+          --ink: #122033;
+          --muted: #647184;
+          --line: #DDE2E8;
+          min-height: 100vh;
+          background: var(--paper-2);
+          color: var(--ink);
+          font-family: var(--font-body);
         }
-        @media (min-width: 769px) and (max-width: 1024px) {
-          .landing-hero h1 { font-size: 40px !important; }
-          .landing-mockup { display: none !important; }
-          .landing-hero-text { max-width: 100% !important; }
-          .landing-bento { grid-template-columns: 1fr 1fr !important; }
-          .landing-bento-large { grid-column: 1 / 3 !important; }
-          .landing-steps { grid-template-columns: 1fr 1fr !important; }
-          .landing-testimonials { grid-template-columns: 1fr 1fr !important; }
-          .landing-section { padding: 64px 32px !important; }
+        .lexams-site * { box-sizing: border-box; }
+        .lexams-container { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+        .lexams-nav {
+          position: fixed; inset: 0 0 auto 0; z-index: 50;
+          border-bottom: 1px solid rgba(221,226,232,.72);
+          background: rgba(251,250,247,.9);
+          backdrop-filter: blur(18px);
+        }
+        .lexams-nav-inner { height: 70px; display: flex; align-items: center; justify-content: space-between; }
+        .lexams-wordmark { font-family: var(--font-heading); color: var(--navy); font-size: 25px; font-weight: 700; letter-spacing: -.02em; }
+        .lexams-nav-links { display: flex; align-items: center; gap: 28px; }
+        .lexams-nav-links a { color: #536174; text-decoration: none; font-size: 13px; font-weight: 600; }
+        .lexams-nav-links a:hover { color: var(--navy); }
+        .lexams-login { padding-left: 26px; border-left: 1px solid var(--line); }
+        .lexams-primary-link {
+          display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+          padding: 11px 18px; border-radius: 8px; background: var(--navy); color: #fff !important;
+          box-shadow: 0 8px 22px rgba(0,43,84,.14);
+        }
+        .lexams-primary-link:hover { background: var(--navy-deep); }
+        .lexams-hero {
+          padding: 148px 0 84px;
+          position: relative;
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 88% 18%, rgba(250,183,45,.13), transparent 24%),
+            linear-gradient(180deg, #FBFAF7 0%, #F7F5EF 100%);
+        }
+        .lexams-hero:after {
+          content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(0,43,84,.15), transparent);
+        }
+        .lexams-hero-grid { display: grid; grid-template-columns: 1.02fr .98fr; gap: 72px; align-items: center; }
+        .lexams-kicker {
+          display: inline-flex; align-items: center; gap: 8px; color: var(--navy-soft);
+          font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+        }
+        .lexams-kicker-line { width: 34px; height: 2px; background: var(--gold); }
+        .lexams-hero h1 {
+          margin: 22px 0 0; max-width: 700px; font-family: var(--font-heading); color: var(--navy);
+          font-size: clamp(46px, 5.2vw, 72px); line-height: 1.02; letter-spacing: -.035em;
+        }
+        .lexams-hero h1 em { color: var(--navy-soft); font-style: normal; }
+        .lexams-hero-copy { margin: 26px 0 0; max-width: 620px; color: #5F6D80; font-size: 18px; line-height: 1.75; }
+        .lexams-hero-actions { display: flex; gap: 12px; margin-top: 34px; }
+        .lexams-btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px;
+          padding: 0 22px; border-radius: 9px; text-decoration: none; font-size: 14px; font-weight: 700;
+        }
+        .lexams-btn-primary { background: var(--navy); color: white; box-shadow: 0 10px 28px rgba(0,43,84,.18); }
+        .lexams-btn-primary:hover { background: var(--navy-deep); }
+        .lexams-btn-secondary { border: 1px solid #D7DDE5; color: var(--navy); background: rgba(255,255,255,.68); }
+        .lexams-note { margin-top: 24px; color: #748194; font-size: 12px; line-height: 1.6; }
+        .lexams-product-frame {
+          position: relative; border: 1px solid rgba(0,43,84,.16); border-radius: 20px;
+          background: #fff; box-shadow: 0 32px 80px rgba(0,43,84,.13); overflow: hidden;
+          transform: rotate(.5deg);
+        }
+        .lexams-frame-top { height: 46px; background: var(--navy); display: flex; align-items: center; padding: 0 16px; gap: 7px; }
+        .lexams-frame-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.34); }
+        .lexams-frame-title { margin-left: 8px; font-size: 10px; color: rgba(255,255,255,.62); letter-spacing: .06em; text-transform: uppercase; }
+        .lexams-frame-body { display: grid; grid-template-columns: 118px 1fr; min-height: 420px; }
+        .lexams-frame-side { background: #F5F7F9; border-right: 1px solid #E2E6EB; padding: 18px 12px; }
+        .lexams-frame-brand { font-family: var(--font-heading); font-weight: 700; color: var(--navy); font-size: 15px; margin-bottom: 22px; }
+        .lexams-frame-nav { display: grid; gap: 8px; }
+        .lexams-frame-nav div { height: 8px; border-radius: 6px; background: #DDE3E9; }
+        .lexams-frame-nav div:first-child { width: 82%; background: rgba(14,76,143,.32); }
+        .lexams-frame-main { padding: 26px; }
+        .lexams-frame-heading { width: 46%; height: 14px; border-radius: 7px; background: var(--navy); opacity: .9; }
+        .lexams-frame-sub { width: 66%; height: 8px; border-radius: 5px; background: #D8DEE5; margin-top: 10px; }
+        .lexams-flow-board { margin-top: 30px; display: grid; gap: 12px; }
+        .lexams-flow-row {
+          display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 13px;
+          padding: 14px; border: 1px solid #E0E5EA; border-radius: 11px; background: #FCFCFB;
+        }
+        .lexams-flow-icon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #EEF3F8; color: var(--navy-soft); }
+        .lexams-flow-text { height: 9px; border-radius: 5px; background: #CBD4DE; width: 72%; }
+        .lexams-flow-text:after { content: ''; display: block; width: 46%; height: 6px; margin-top: 8px; border-radius: 5px; background: #E2E6EA; }
+        .lexams-flow-check { color: #2E7D4F; }
+        .lexams-small-pill {
+          position: absolute; right: -18px; bottom: 36px; display: flex; align-items: center; gap: 8px;
+          padding: 10px 14px; background: #fff; border: 1px solid #E0E5EA; border-radius: 999px;
+          box-shadow: 0 12px 30px rgba(0,43,84,.12); color: var(--navy); font-size: 11px; font-weight: 700;
+        }
+        .lexams-trust-strip { border-bottom: 1px solid var(--line); background: #fff; }
+        .lexams-trust-inner { min-height: 84px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        .lexams-trust-label { color: #748194; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+        .lexams-trust-items { display: flex; align-items: center; gap: 26px; color: #46566B; font-size: 12px; font-weight: 600; flex-wrap: wrap; justify-content: flex-end; }
+        .lexams-trust-item { display: flex; align-items: center; gap: 8px; }
+        .lexams-section { padding: 104px 0; }
+        .lexams-section-alt { background: var(--paper); border-top: 1px solid rgba(221,226,232,.72); border-bottom: 1px solid rgba(221,226,232,.72); }
+        .lexams-section-head { display: grid; grid-template-columns: .72fr 1.28fr; gap: 80px; align-items: end; margin-bottom: 48px; }
+        .lexams-section-label { color: var(--navy-soft); font-size: 11px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+        .lexams-section h2 { margin: 10px 0 0; font-family: var(--font-heading); font-size: clamp(34px, 4vw, 51px); line-height: 1.08; letter-spacing: -.025em; color: var(--navy); }
+        .lexams-section-lede { color: #667488; font-size: 16px; line-height: 1.75; max-width: 610px; margin: 0; }
+        .lexams-cap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #DDE2E8; border: 1px solid #DDE2E8; border-radius: 16px; overflow: hidden; }
+        .lexams-cap-card { min-height: 270px; padding: 30px; background: #fff; }
+        .lexams-cap-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 11px; background: #EEF3F8; color: var(--navy-soft); }
+        .lexams-cap-eyebrow { margin-top: 24px; color: #8A7441; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+        .lexams-cap-card h3 { margin: 8px 0 0; font-family: var(--font-heading); font-size: 21px; color: var(--navy); line-height: 1.3; }
+        .lexams-cap-card p { margin: 12px 0 0; color: #687587; font-size: 13px; line-height: 1.7; }
+        .lexams-workflow { display: grid; grid-template-columns: .8fr 1.2fr; gap: 84px; align-items: start; }
+        .lexams-workflow-copy { position: sticky; top: 110px; }
+        .lexams-workflow-copy p { color: #657386; font-size: 15px; line-height: 1.8; margin: 22px 0 0; }
+        .lexams-step-list { border-top: 1px solid #CBD2DA; }
+        .lexams-step { display: grid; grid-template-columns: 64px .82fr 1.18fr; gap: 24px; padding: 27px 0; border-bottom: 1px solid #CBD2DA; }
+        .lexams-step-num { font-family: var(--font-mono); color: #9A844F; font-size: 12px; padding-top: 4px; }
+        .lexams-step-title { color: var(--navy); font-weight: 700; font-size: 14px; }
+        .lexams-step-text { color: #687587; font-size: 13px; line-height: 1.65; }
+        .lexams-principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .lexams-principle { border-top: 2px solid var(--gold); padding: 22px 4px 0; }
+        .lexams-principle h3 { margin: 14px 0 0; color: var(--navy); font-family: var(--font-heading); font-size: 20px; }
+        .lexams-principle p { margin: 10px 0 0; color: #697688; font-size: 13px; line-height: 1.75; }
+        .lexams-cta { padding: 92px 0; background: var(--navy); color: white; position: relative; overflow: hidden; }
+        .lexams-cta:before { content: ''; position: absolute; width: 480px; height: 480px; border-radius: 50%; right: -170px; top: -190px; background: rgba(250,183,45,.1); }
+        .lexams-cta-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 60px; align-items: end; position: relative; }
+        .lexams-cta h2 { margin: 0; font-family: var(--font-heading); font-size: clamp(38px, 4vw, 54px); line-height: 1.06; letter-spacing: -.025em; }
+        .lexams-cta p { color: rgba(255,255,255,.7); font-size: 15px; line-height: 1.75; margin: 18px 0 0; max-width: 660px; }
+        .lexams-cta-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .lexams-cta .lexams-btn-primary { background: var(--gold); color: var(--navy); box-shadow: none; }
+        .lexams-cta .lexams-btn-secondary { color: white; border-color: rgba(255,255,255,.26); background: rgba(255,255,255,.06); }
+        .lexams-footer { background: #001A32; color: rgba(255,255,255,.7); padding: 34px 0 28px; }
+        .lexams-footer-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        .lexams-footer-brand { color: white; font-family: var(--font-heading); font-size: 21px; font-weight: 700; }
+        .lexams-footer-parent { margin-top: 5px; font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: .04em; }
+        .lexams-footer-links { display: flex; gap: 24px; }
+        .lexams-footer-links a { color: rgba(255,255,255,.68); text-decoration: none; font-size: 12px; }
+        .lexams-footer-bottom { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.1); font-size: 10px; color: rgba(255,255,255,.4); }
+
+        @media (max-width: 920px) {
+          .lexams-nav-links a[href^='#'] { display: none; }
+          .lexams-hero-grid, .lexams-section-head, .lexams-workflow, .lexams-cta-grid { grid-template-columns: 1fr; }
+          .lexams-hero-grid { gap: 52px; }
+          .lexams-product-frame { max-width: 680px; }
+          .lexams-small-pill { right: 12px; }
+          .lexams-section-head { gap: 18px; }
+          .lexams-cap-grid { grid-template-columns: repeat(2, 1fr); }
+          .lexams-workflow-copy { position: static; }
+          .lexams-principles { grid-template-columns: 1fr; }
+          .lexams-cta-actions { justify-content: flex-start; }
+        }
+        @media (max-width: 640px) {
+          .lexams-container { width: min(100% - 32px, 1180px); }
+          .lexams-nav-inner { height: 64px; }
+          .lexams-nav-links { gap: 12px; }
+          .lexams-login { border: 0; padding-left: 0; }
+          .lexams-primary-link { padding: 9px 13px; font-size: 12px !important; }
+          .lexams-hero { padding: 112px 0 62px; }
+          .lexams-hero h1 { font-size: 42px; }
+          .lexams-hero-copy { font-size: 16px; }
+          .lexams-hero-actions { flex-direction: column; align-items: stretch; }
+          .lexams-frame-body { grid-template-columns: 82px 1fr; min-height: 350px; }
+          .lexams-frame-main { padding: 18px; }
+          .lexams-trust-inner { padding: 20px 0; align-items: flex-start; flex-direction: column; }
+          .lexams-trust-items { justify-content: flex-start; gap: 14px; }
+          .lexams-section { padding: 72px 0; }
+          .lexams-cap-grid { grid-template-columns: 1fr; }
+          .lexams-cap-card { min-height: auto; }
+          .lexams-step { grid-template-columns: 42px 1fr; gap: 12px; }
+          .lexams-step-text { grid-column: 2; }
+          .lexams-cta { padding: 72px 0; }
+          .lexams-cta-actions { flex-direction: column; }
+          .lexams-footer-top { align-items: flex-start; flex-direction: column; }
         }
       `}</style>
-      {/* ─── NAVBAR ─── */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        background: 'rgba(250,250,248,0.8)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(224,228,233,0.6)',
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto', padding: '0 40px',
-          height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 24, color: '#002B54' }}>
-              LexAMS
-            </span>
-            <span style={{ fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#7A8699', fontWeight: 600 }}>
-              by LexoStudio
-            </span>
-          </div>
-          <nav className="landing-nav-links">
-            <a href="#features" style={{ fontSize: 14, fontWeight: 500, color: '#5B6B80', textDecoration: 'none' }}>Features</a>
-            <a href="#how" style={{ fontSize: 14, fontWeight: 500, color: '#5B6B80', textDecoration: 'none' }}>How it works</a>
-            <a href="#testimonials" style={{ fontSize: 14, fontWeight: 500, color: '#5B6B80', textDecoration: 'none' }}>Testimonials</a>
-            <div className="landing-nav-divider" />
-            <Link to="/login" style={{ fontSize: 14, fontWeight: 600, color: '#002B54', textDecoration: 'none' }}>
-              Log in
-            </Link>
-            <Link to="/signup" style={{
-              padding: '9px 22px', fontSize: 14, fontWeight: 600, borderRadius: 999,
-              color: '#002B54', background: '#FAB72D', textDecoration: 'none',
-              boxShadow: '0 1px 3px rgba(250,183,45,0.3)',
-              transition: 'transform 150ms, box-shadow 150ms',
-            }}>Get started free</Link>
+
+      <header className="lexams-nav">
+        <div className="lexams-container lexams-nav-inner">
+          <Link to="/" className="lexams-wordmark" style={{ textDecoration: 'none' }}>LexAMS</Link>
+          <nav className="lexams-nav-links" aria-label="Primary navigation">
+            <a href="#capabilities">Capabilities</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#principles">Why LexAMS</a>
+            <Link className="lexams-login" to="/login">Log in</Link>
+            <Link className="lexams-primary-link" to="/signup">Create workspace <ArrowRight size={14} /></Link>
           </nav>
         </div>
       </header>
 
-      {/* ─── HERO ─── */}
-      <section className="landing-hero" style={{
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Gradient orbs */}
-        <div style={{
-          position: 'absolute', top: -120, right: -180, width: 600, height: 600,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(250,183,45,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -200, left: -150, width: 500, height: 500,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,76,143,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
-        <div className="landing-hero-inner">
-          <div className="landing-hero-text">
-            {/* Badge */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '7px 16px 7px 10px', borderRadius: 999,
-              background: '#FFFFFF', border: '1px solid #E0E4E9',
-              boxShadow: '0 1px 3px rgba(0,43,84,0.04)',
-              fontSize: 13, fontWeight: 500, color: '#5B6B80',
-              marginBottom: 28,
-            }}>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '3px 10px', borderRadius: 999,
-                background: '#002B54', color: '#FAB72D', fontSize: 11, fontWeight: 700,
-              }}><Sparkles size={12} /> NEW</span>
-              Team collaboration & approval workflows
-              <ChevronRight size={14} style={{ color: '#B0B8C4' }} />
-            </div>
-
-            <h1 style={{
-              fontFamily: 'var(--font-heading)', fontSize: 56, fontWeight: 700,
-              color: '#002B54', lineHeight: 1.1, margin: 0, letterSpacing: '-0.02em',
-            }}>
-              The smarter way to{' '}
-              <span style={{
-                background: 'linear-gradient(135deg, #FAB72D 0%, #E29F1E 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              }}>manage activities</span>
-            </h1>
-
-            <p style={{
-              fontSize: 20, color: '#5B6B80', lineHeight: 1.65, marginTop: 24,
-              maxWidth: 540,
-            }}>
-              From participant registration to certificate issuance. LexAMS gives NGOs
-              and training institutions one platform to run everything.
-            </p>
-
-            <div className="landing-hero-cta">
-              <Link to="/signup" style={{
-                padding: '16px 36px', fontSize: 16, fontWeight: 600, borderRadius: 12,
-                color: '#002B54', background: '#FAB72D', textDecoration: 'none',
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                boxShadow: '0 4px 14px rgba(250,183,45,0.35)',
-                transition: 'transform 150ms, box-shadow 150ms',
-              }}>
-                Start free trial
-                <ArrowRight size={18} />
-              </Link>
-              <Link to="/login" style={{
-                padding: '16px 36px', fontSize: 16, fontWeight: 600, borderRadius: 12,
-                color: '#002B54', background: '#FFFFFF', textDecoration: 'none',
-                border: '1.5px solid #E0E4E9',
-                display: 'inline-flex', alignItems: 'center',
-                transition: 'border-color 150ms',
-              }}>Sign in</Link>
-            </div>
-
-            {/* Social proof */}
-            <div className="landing-hero-proof">
-              <div style={{ display: 'flex' }}>
-                {['#0E4C8F', '#2E7D4F', '#B45309', '#C0362C'].map((bg, i) => (
-                  <div key={i} style={{
-                    width: 32, height: 32, borderRadius: 999, background: bg,
-                    border: '2px solid #FAFAF8', marginLeft: i > 0 ? -8 : 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#FFF', fontSize: 10, fontWeight: 700,
-                  }}>{['AK', 'JN', 'SM', 'FW'][i]}</div>
-                ))}
-              </div>
-              <div>
-                <div style={{ display: 'flex', gap: 2 }}>
-                  {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="#FAB72D" color="#FAB72D" />)}
-                </div>
-                <span style={{ fontSize: 12, color: '#7A8699' }}>Trusted by 500+ organizations</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dashboard mockup */}
-          <div className="landing-mockup" style={{
-            background: '#FFFFFF', borderRadius: 16, border: '1px solid #E0E4E9',
-            boxShadow: '0 8px 40px rgba(0,43,84,0.08), 0 1px 3px rgba(0,43,84,0.04)',
-            overflow: 'hidden', transform: 'perspective(1200px) rotateY(-6deg) rotateX(2deg)',
-          }}>
-            {/* Title bar */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '12px 16px',
-              background: '#002B54',
-            }}>
-              <div style={{ width: 8, height: 8, borderRadius: 999, background: '#FF6058' }} />
-              <div style={{ width: 8, height: 8, borderRadius: 999, background: '#FFBD2E' }} />
-              <div style={{ width: 8, height: 8, borderRadius: 999, background: '#28C840' }} />
-              <span style={{ marginLeft: 12, fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>LexAMS Dashboard</span>
-            </div>
-            {/* Mock content */}
-            <div style={{ padding: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-                {[{ l: 'Activities', v: '24' }, { l: 'Participants', v: '186' }, { l: 'Certificates', v: '93' }].map(k => (
-                  <div key={k.l} style={{
-                    padding: '14px 12px', borderRadius: 10, background: '#F7F8FA',
-                    border: '1px solid #ECEEF2',
-                  }}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A8699', fontWeight: 600 }}>{k.l}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#002B54', marginTop: 4 }}>{k.v}</div>
-                  </div>
-                ))}
-              </div>
-              {/* Mock chart */}
-              <div style={{
-                padding: '14px 16px', borderRadius: 10, background: '#F7F8FA',
-                border: '1px solid #ECEEF2',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#5B6B80', marginBottom: 12 }}>Activities by month</div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 60 }}>
-                  {[35, 55, 25, 70, 45, 80, 60].map((h, i) => (
-                    <div key={i} style={{
-                      flex: 1, height: `${h}%`, borderRadius: '4px 4px 0 0',
-                      background: i === 5 ? '#FAB72D' : '#0E4C8F', opacity: i === 5 ? 1 : 0.7,
-                    }} />
-                  ))}
-                </div>
-              </div>
-              {/* Mock rows */}
-              <div style={{ marginTop: 12 }}>
-                {['Community Health Training', 'Youth Digital Bootcamp', 'WASH Workshop'].map((t, i) => (
-                  <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '10px 0', borderBottom: i < 2 ? '1px solid #ECEEF2' : 'none',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#002B54' }}>{t}</span>
-                    <span style={{
-                      fontSize: 9, padding: '2px 8px', borderRadius: 999,
-                      background: i === 0 ? '#E4F3E9' : i === 1 ? '#FDF3DC' : '#E9EDF2',
-                      color: i === 0 ? '#2E7D4F' : i === 1 ? '#8A6210' : '#5B6B80',
-                      fontWeight: 600,
-                    }}>{['Completed', 'Ongoing', 'Upcoming'][i]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── LOGOS / STATS BAR ─── */}
-      <section style={{
-        borderTop: '1px solid #E0E4E9', borderBottom: '1px solid #E0E4E9',
-        background: '#FFFFFF', padding: '32px 40px',
-      }}>
-        <div className="landing-stats-grid" style={{ maxWidth: 1200, margin: '0 auto' }}>
-          {[
-            { value: '500+', label: 'Organizations', icon: Globe },
-            { value: '10k+', label: 'Activities managed', icon: CalendarRange },
-            { value: '50k+', label: 'Certificates issued', icon: Award },
-            { value: '99.9%', label: 'Uptime reliability', icon: Zap },
-          ].map(s => (
-            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <s.icon size={18} style={{ color: '#B0B8C4', marginBottom: 4 }} />
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 700, color: '#002B54' }}>{s.value}</div>
-              <div style={{ fontSize: 13, color: '#7A8699' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── FEATURES ─── */}
-      <section id="features" className="landing-section">
-        <div className="landing-section-inner">
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 999, background: '#E9EDF2',
-              fontSize: 12, fontWeight: 600, color: '#0E4C8F', marginBottom: 16,
-            }}>
-              <Sparkles size={13} /> Features
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
-              color: '#002B54', lineHeight: 1.15, letterSpacing: '-0.01em',
-            }}>
-              Everything you need,<br />nothing you don't
-            </h2>
-            <p style={{
-              fontSize: 17, color: '#5B6B80', marginTop: 16,
-              maxWidth: 520, marginInline: 'auto', lineHeight: 1.6,
-            }}>
-              Built specifically for organizations that run trainings, workshops, and community programs.
-            </p>
-          </div>
-
-          {/* Bento grid */}
-          <div className="landing-bento">
-            {/* Large card */}
-            <div className="landing-bento-large" style={{
-              gridRow: '1',
-              background: '#002B54', borderRadius: 20, padding: '40px 44px',
-              color: '#FFFFFF', position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{
-                position: 'absolute', top: -60, right: -60, width: 200, height: 200,
-                borderRadius: '50%', background: 'rgba(250,183,45,0.1)',
-              }} />
-              <CalendarRange size={28} style={{ color: '#FAB72D' }} />
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginTop: 20, lineHeight: 1.3 }}>
-                Activity management that actually works
-              </h3>
-              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.65, marginTop: 12, maxWidth: 440 }}>
-                Create trainings, workshops, meetings, and community events. Track status, manage sessions,
-                and generate shareable registration links — all from one dashboard.
-              </p>
-            </div>
-
-            {/* Right card */}
-            <div style={{
-              background: '#FFFFFF', borderRadius: 20, padding: '32px 28px',
-              border: '1px solid #E0E4E9', boxShadow: '0 2px 8px rgba(0,43,84,0.03)',
-            }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 14, background: '#FDF3DC',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B45309',
-              }}><Award size={24} /></div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#002B54', marginTop: 18 }}>Branded certificates</h3>
-              <p style={{ fontSize: 14, color: '#5B6B80', lineHeight: 1.6, marginTop: 8 }}>
-                Issue completion, attendance, and appreciation certificates with your logo.
-                Download as PDF, verify online.
-              </p>
-            </div>
-
-            {/* Bottom row */}
-            {[
-              { icon: Users, title: 'Participant database', desc: 'Central registry with full engagement history, categories, and activity tracking across your organization.', bg: '#E4F3E9', iconColor: '#2E7D4F' },
-              { icon: ClipboardCheck, title: 'Surveys & assessments', desc: 'Build surveys with ratings and MCQs. Create timed assessments with auto-grading. Share via link.', bg: '#E9EDF2', iconColor: '#0E4C8F' },
-              { icon: UsersRound, title: 'Team & approvals', desc: 'Invite team members to collaborate. Members submit requests, admins approve certificates and participants.', bg: '#FEF2F2', iconColor: '#C0362C' },
-            ].map(f => (
-              <div key={f.title} style={{
-                background: '#FFFFFF', borderRadius: 20, padding: '32px 28px',
-                border: '1px solid #E0E4E9', boxShadow: '0 2px 8px rgba(0,43,84,0.03)',
-              }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 14, background: f.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: f.iconColor,
-                }}><f.icon size={24} /></div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#002B54', marginTop: 18 }}>{f.title}</h3>
-                <p style={{ fontSize: 14, color: '#5B6B80', lineHeight: 1.6, marginTop: 8 }}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── HOW IT WORKS ─── */}
-      <section id="how" className="landing-section" style={{
-        background: '#FFFFFF',
-        borderTop: '1px solid #E0E4E9', borderBottom: '1px solid #E0E4E9',
-      }}>
-        <div className="landing-section-inner">
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 999, background: '#E9EDF2',
-              fontSize: 12, fontWeight: 600, color: '#0E4C8F', marginBottom: 16,
-            }}>
-              <Zap size={13} /> Simple setup
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
-              color: '#002B54', letterSpacing: '-0.01em',
-            }}>Up and running in minutes</h2>
-          </div>
-
-          <div className="landing-steps">
-            {[
-              { step: '01', title: 'Create an activity', desc: 'Set up your training, workshop, or event with dates, venue, and facilitator details.', icon: CalendarRange },
-              { step: '02', title: 'Share registration link', desc: 'Participants register themselves through your branded link. Returning users are auto-recognized.', icon: Globe },
-              { step: '03', title: 'Track attendance', desc: 'Participants check in daily via a unique link. The system auto-detects the correct session day.', icon: FileCheck },
-              { step: '04', title: 'Issue certificates', desc: 'Generate branded PDF certificates for participants who meet your attendance threshold.', icon: Award },
-            ].map(s => (
-              <div key={s.step} style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: 999, margin: '0 auto 20px',
-                  background: s.step === '01' ? '#002B54' : '#F7F8FA',
-                  border: s.step === '01' ? 'none' : '1px solid #E0E4E9',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: s.step === '01' ? '#FAB72D' : '#0E4C8F',
-                }}><s.icon size={22} /></div>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: '#FAB72D',
-                  letterSpacing: '0.1em', marginBottom: 8,
-                }}>STEP {s.step}</div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: '#002B54' }}>{s.title}</h3>
-                <p style={{ fontSize: 14, color: '#5B6B80', lineHeight: 1.6, marginTop: 8 }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── TESTIMONIALS ─── */}
-      <section id="testimonials" className="landing-section">
-        <div className="landing-section-inner">
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 999, background: '#E9EDF2',
-              fontSize: 12, fontWeight: 600, color: '#0E4C8F', marginBottom: 16,
-            }}>
-              <Star size={13} /> Testimonials
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-heading)', fontSize: 38, fontWeight: 700,
-              color: '#002B54', letterSpacing: '-0.01em',
-            }}>Loved by organizations</h2>
-          </div>
-
-          <div className="landing-testimonials">
-            {[
-              { quote: "LexAMS replaced our spreadsheets, manual registers, and WhatsApp groups. Now everything is in one place and our field officers love it.", name: 'Amina Y.', role: 'Program Director', org: 'Horizon Community Foundation' },
-              { quote: "The certificate feature alone saved us weeks of work. Participants get a professional PDF certificate with our logo instantly.", name: 'Brian O.', role: 'Training Lead', org: 'Kenya Red Cross Youth' },
-              { quote: "Being able to share a registration link and have participants self-register is a game changer for our community outreach events.", name: 'Janet M.', role: 'Field Coordinator', org: 'Nakuru County Health' },
-            ].map((t, i) => (
-              <div key={i} style={{
-                background: '#FFFFFF', borderRadius: 20, padding: '32px 28px',
-                border: '1px solid #E0E4E9', boxShadow: '0 2px 8px rgba(0,43,84,0.03)',
-                display: 'flex', flexDirection: 'column',
-              }}>
-                <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>
-                  {[1,2,3,4,5].map(j => <Star key={j} size={14} fill="#FAB72D" color="#FAB72D" />)}
-                </div>
-                <p style={{ fontSize: 15, color: '#5B6B80', lineHeight: 1.65, flex: 1 }}>"{t.quote}"</p>
-                <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 999, background: '#002B54',
-                    color: '#FAB72D', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, fontWeight: 700,
-                  }}>{t.name.split(' ').map(n => n[0]).join('')}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#002B54' }}>{t.name}</div>
-                    <div style={{ fontSize: 12, color: '#7A8699' }}>{t.role}, {t.org}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FINAL CTA ─── */}
-      <section className="landing-section landing-cta" style={{
-        position: 'relative', overflow: 'hidden',
-        background: '#002B54',
-      }}>
-        <div style={{
-          position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)',
-          width: 800, height: 400, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(250,183,45,0.15) 0%, transparent 60%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center', position: 'relative' }}>
-          <h2 style={{
-            fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 700,
-            color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em',
-          }}>
-            Ready to transform how you<br />manage activities?
-          </h2>
-          <p style={{
-            fontSize: 17, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65, marginTop: 20,
-          }}>
-            Join hundreds of organizations already using LexAMS. Free to start, no credit card required.
-          </p>
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginTop: 36 }}>
-            <Link to="/signup" style={{
-              padding: '16px 40px', fontSize: 17, fontWeight: 600, borderRadius: 12,
-              color: '#002B54', background: '#FAB72D', textDecoration: 'none',
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 4px 20px rgba(250,183,45,0.3)',
-            }}>
-              Create your free account
-              <ArrowRight size={18} />
-            </Link>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 28, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><CheckCircle2 size={14} /> Free forever plan</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Shield size={14} /> No credit card</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Zap size={14} /> Setup in 2 minutes</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FOOTER ─── */}
-      <footer style={{ background: '#0F1B2B', padding: '48px 40px 32px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div className="landing-footer-inner">
+      <main>
+        <section className="lexams-hero">
+          <div className="lexams-container lexams-hero-grid">
             <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: '#FFFFFF' }}>LexAMS</span>
-                <span style={{ fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>by LexoStudio</span>
-              </div>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 10, maxWidth: 280, lineHeight: 1.6 }}>
-                Activity management made simple for NGOs and community organizations.
+              <div className="lexams-kicker"><span className="lexams-kicker-line" /> Activity management for programmes & training</div>
+              <h1>Plan activities. Track participation. <em>Measure outcomes.</em></h1>
+              <p className="lexams-hero-copy">
+                LexAMS brings programme delivery into one focused workspace—from registration and attendance to surveys, assessments, certificates and reporting.
               </p>
+              <div className="lexams-hero-actions">
+                <Link className="lexams-btn lexams-btn-primary" to="/signup">Create your workspace <ArrowRight size={16} /></Link>
+                <Link className="lexams-btn lexams-btn-secondary" to="/login">Sign in</Link>
+              </div>
+              <div className="lexams-note">Built for organizations that need reliable operational records without turning programme delivery into an IT project.</div>
             </div>
-            <div className="landing-footer-links">
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Product</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {['Features', 'How it works', 'Pricing'].map(l => (
-                    <a key={l} href={`#${l.toLowerCase().replace(/\s/g, '-')}`} style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>{l}</a>
-                  ))}
+
+            <div style={{ position: 'relative' }} aria-label="LexAMS product workflow preview">
+              <div className="lexams-product-frame">
+                <div className="lexams-frame-top">
+                  <span className="lexams-frame-dot" /><span className="lexams-frame-dot" /><span className="lexams-frame-dot" />
+                  <span className="lexams-frame-title">Programme workspace</span>
+                </div>
+                <div className="lexams-frame-body">
+                  <aside className="lexams-frame-side">
+                    <div className="lexams-frame-brand">LexAMS</div>
+                    <div className="lexams-frame-nav">
+                      <div /><div /><div /><div /><div /><div />
+                    </div>
+                  </aside>
+                  <div className="lexams-frame-main">
+                    <div className="lexams-frame-heading" />
+                    <div className="lexams-frame-sub" />
+                    <div className="lexams-flow-board">
+                      {[
+                        [CalendarRange, 'Activity setup'],
+                        [Users, 'Participant registration'],
+                        [QrCode, 'Attendance'],
+                        [ClipboardCheck, 'Feedback & assessment'],
+                        [Award, 'Certificates'],
+                      ].map(([Icon, label]) => (
+                        <div className="lexams-flow-row" key={label}>
+                          <div className="lexams-flow-icon"><Icon size={16} /></div>
+                          <div className="lexams-flow-text" aria-label={label} />
+                          <CheckCircle2 className="lexams-flow-check" size={17} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Account</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <Link to="/login" style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>Log in</Link>
-                  <Link to="/signup" style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>Sign up</Link>
-                </div>
-              </div>
+              <div className="lexams-small-pill"><Sparkles size={13} color="#E29F1E" /> One connected programme record</div>
             </div>
           </div>
-          <div style={{
-            borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 36, paddingTop: 24,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>&copy; {new Date().getFullYear()} LexoStudio. All rights reserved.</span>
-            <div style={{ display: 'flex', gap: 20 }}>
-              {['Privacy', 'Terms'].map(l => (
-                <a key={l} href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>{l}</a>
+        </section>
+
+        <section className="lexams-trust-strip" aria-label="Product focus">
+          <div className="lexams-container lexams-trust-inner">
+            <div className="lexams-trust-label">Designed around real programme operations</div>
+            <div className="lexams-trust-items">
+              <span className="lexams-trust-item"><Activity size={14} /> Activities</span>
+              <span className="lexams-trust-item"><Users size={14} /> Participation</span>
+              <span className="lexams-trust-item"><ClipboardCheck size={14} /> Outcomes</span>
+              <span className="lexams-trust-item"><FileCheck2 size={14} /> Evidence</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="capabilities" className="lexams-section">
+          <div className="lexams-container">
+            <div className="lexams-section-head">
+              <div>
+                <div className="lexams-section-label">Core capabilities</div>
+                <h2>One workspace across the activity lifecycle.</h2>
+              </div>
+              <p className="lexams-section-lede">
+                LexAMS is structured around the work programme teams already do. Each feature supports the same operational record instead of creating another disconnected tool or spreadsheet.
+              </p>
+            </div>
+            <div className="lexams-cap-grid">
+              {capabilities.map(({ icon: Icon, eyebrow, title, text }) => (
+                <article className="lexams-cap-card" key={title}>
+                  <div className="lexams-cap-icon"><Icon size={20} /></div>
+                  <div className="lexams-cap-eyebrow">{eyebrow}</div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
               ))}
             </div>
           </div>
+        </section>
+
+        <section id="workflow" className="lexams-section lexams-section-alt">
+          <div className="lexams-container lexams-workflow">
+            <div className="lexams-workflow-copy">
+              <div className="lexams-section-label">A clearer operating flow</div>
+              <h2>From planning to proof, without rebuilding the record.</h2>
+              <p>
+                Instead of treating registration, attendance, feedback and certification as separate tasks, LexAMS keeps them tied to the same activity and organization workspace.
+              </p>
+            </div>
+            <div className="lexams-step-list">
+              {workflow.map(([number, title, text]) => (
+                <div className="lexams-step" key={number}>
+                  <div className="lexams-step-num">{number}</div>
+                  <div className="lexams-step-title">{title}</div>
+                  <div className="lexams-step-text">{text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="principles" className="lexams-section">
+          <div className="lexams-container">
+            <div className="lexams-section-head">
+              <div>
+                <div className="lexams-section-label">Why LexAMS</div>
+                <h2>Professional enough for reporting. Simple enough for delivery teams.</h2>
+              </div>
+              <p className="lexams-section-lede">
+                The product is being built around a few practical principles: operational clarity, controlled access, useful public workflows and records that remain connected from start to finish.
+              </p>
+            </div>
+            <div className="lexams-principles">
+              <article className="lexams-principle">
+                <ShieldCheck size={20} color="#0E4C8F" />
+                <h3>Organization-scoped by design</h3>
+                <p>Workspace membership, permissions and operational records are separated by organization so teams work inside the right context.</p>
+              </article>
+              <article className="lexams-principle">
+                <Globe2 size={20} color="#0E4C8F" />
+                <h3>Public where it should be</h3>
+                <p>Registration, check-in, surveys and assessments can be shared through focused public links without opening the management workspace.</p>
+              </article>
+              <article className="lexams-principle">
+                <Layers3 size={20} color="#0E4C8F" />
+                <h3>Connected instead of fragmented</h3>
+                <p>Activities, people, attendance, outcomes and certificates stay related so programme history can be understood as one operational story.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="lexams-cta">
+          <div className="lexams-container lexams-cta-grid">
+            <div>
+              <h2>Build a cleaner record of the work your programmes already do.</h2>
+              <p>Set up a LexAMS workspace and manage the activity lifecycle from one place.</p>
+            </div>
+            <div className="lexams-cta-actions">
+              <Link className="lexams-btn lexams-btn-primary" to="/signup">Create workspace <ArrowRight size={16} /></Link>
+              <Link className="lexams-btn lexams-btn-secondary" to="/login">Sign in</Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="lexams-footer">
+        <div className="lexams-container">
+          <div className="lexams-footer-top">
+            <div>
+              <div className="lexams-footer-brand">LexAMS</div>
+              <div className="lexams-footer-parent">LexAMS by LexoGraphix Plus</div>
+            </div>
+            <div className="lexams-footer-links">
+              <a href="#capabilities">Capabilities</a>
+              <a href="#workflow">Workflow</a>
+              <Link to="/login">Log in</Link>
+            </div>
+          </div>
+          <div className="lexams-footer-bottom">Activity management for programmes, training and participation records.</div>
         </div>
       </footer>
     </div>
