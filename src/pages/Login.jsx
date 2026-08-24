@@ -98,12 +98,12 @@ export default function Login() {
             </p>
 
             {error && (
-              <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: '#F9E4E2', color: 'var(--color-danger)', fontSize: 13, fontWeight: 500 }}>
+              <div role="alert" style={{ marginTop: 16, padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: '#F9E4E2', color: 'var(--color-danger)', fontSize: 13, fontWeight: 500 }}>
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ marginTop: 24 }}>
+            <form noValidate onSubmit={handleSubmit} style={{ marginTop: 24 }}>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Email address</label>
               <input
                 type="email" required value={email} onChange={e => { setEmail(e.target.value); setError(null); }}
