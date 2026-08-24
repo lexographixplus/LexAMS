@@ -1,4 +1,5 @@
 import ParticipantCsvImport from '../components/ParticipantCsvImport';
+import '../components/ParticipantCsvImport.css';
 import Participants from './Participants';
 
 export default function ParticipantsFrame() {
