@@ -5,21 +5,42 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Login() {
   const { signIn, user, loading } = useAuth();
   const [email, setEmail] = useState('');
+  const initialParams = new URLSearchParams(window.location.search);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [emailSent, setEmailSent] = useState(new URLSearchParams(window.location.search).get('sent') === '1');
+  const [emailSent, setEmailSent] = useState(initialParams.get('sent') === '1');
+  const [accountNotFound, setAccountNotFound] = useState(initialParams.get('error') === 'AccessDenied');
 
   if (user && !loading) return <Navigate to="/app" replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setEmailSent(false);
+    setAccountNotFound(false);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Enter a valid email address.');
+      setSubmitting(false);
+      return;
+    }
+
     setSubmitting(true);
 
-    const { error: err } = await signIn(email);
-    if (err) setError(err.message || 'Could not send sign-in link. Please try again.');
+    const { error: err, errorCode } = await signIn(normalizedEmail);
+    if (errorCode === 'AccessDenied') setAccountNotFound(true);
+    else if (err) setError(err.message || 'Could not send sign-in link. Please try again.');
     else setEmailSent(true);
     setSubmitting(false);
+  }
+
+  function useAnotherEmail() {
+    setEmail('');
+    setError(null);
+    setEmailSent(false);
+    setAccountNotFound(false);
+    window.history.replaceState({}, '', '/login');
   }
 
   return (
@@ -42,7 +63,23 @@ export default function Login() {
         borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
         padding: '36px 32px', width: '100%', maxWidth: 420,
       }}>
-        {emailSent ? (
+        {accountNotFound ? (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div style={{ fontSize: 30, marginBottom: 16 }}>?</div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>No LexAMS account found</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.6 }}>
+              We couldn’t find an active LexAMS account for this email address.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
+              <Link to="/signup" style={{ display: 'block', padding: '12px 20px', fontSize: 15, fontWeight: 600, color: 'var(--color-navy-900)', background: 'var(--color-gold-500)', borderRadius: 'var(--radius-md)' }}>
+                Create workspace
+              </Link>
+              <button type="button" onClick={useAnotherEmail} style={{ width: '100%', padding: '11px 20px', fontSize: 14, fontWeight: 600, color: 'var(--color-navy-700)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+                Use another email
+              </button>
+            </div>
+          </div>
+        ) : emailSent ? (
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div style={{ fontSize: 30, marginBottom: 16 }}>&#9993;</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Check your inbox</h1>
@@ -69,7 +106,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} style={{ marginTop: 24 }}>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>Email address</label>
               <input
-                type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                type="email" required value={email} onChange={e => { setEmail(e.target.value); setError(null); }}
                 placeholder="name@example.org" autoComplete="email"
                 style={{ width: '100%', padding: '11px 14px', fontSize: 16, color: 'var(--text-primary)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none' }}
               />
@@ -87,3 +124,4 @@ export default function Login() {
     </div>
   );
 }
+
