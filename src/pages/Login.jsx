@@ -35,7 +35,7 @@ export default function Login() {
       <div style={{
         fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
         color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 32,
-      }}>by LexoStudio</div>
+      }}>by LexoGraphix Plus</div>
 
       <div style={{
         background: 'var(--surface-card)', border: '1px solid var(--border-default)',
