@@ -49,13 +49,12 @@ export default function Participants() {
         phone: form.phone.trim() || null,
         org: form.org.trim() || null,
         category: form.category,
-      });
+      }, { activityIds: form.activityIds });
       if (result?.pending) {
         setShowNew(false);
         setForm({ name: '', email: '', phone: '', org: '', category: 'Volunteer', activityIds: [] });
         showToast('Submitted for admin approval');
       } else {
-        // Register to selected activities
         for (const actId of form.activityIds) {
           try { await addRegistration(actId, result.id); } catch {}
         }
@@ -111,7 +110,6 @@ export default function Participants() {
         }}>Add participant</button>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14, marginTop: 22 }}>
         <input
           placeholder="Search by name, email or organization..."
@@ -123,7 +121,6 @@ export default function Participants() {
         </select>
       </div>
 
-      {/* Table */}
       <div style={{
         background: 'var(--surface-card)', border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
@@ -176,7 +173,6 @@ export default function Participants() {
         </div></div>
       </div>
 
-      {/* Participant Drawer */}
       {selectedP && (
         <>
           <div onClick={() => setSelectedPid(null)} style={{
@@ -226,7 +222,6 @@ export default function Participants() {
                 <span style={{ fontWeight: 600 }}>{selectedActs.filter(a => a.cert).length}</span>
               </div>
             </div>
-            {/* Edit / Delete buttons */}
             <div style={{
               padding: '12px 24px', borderBottom: '1px solid var(--border-default)',
               display: 'flex', gap: 8,
@@ -246,7 +241,6 @@ export default function Participants() {
               }}>Delete</button>
             </div>
 
-            {/* Edit form (inline in drawer) */}
             {editing && editForm && (
               <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Edit participant</div>
@@ -286,7 +280,6 @@ export default function Participants() {
               </div>
             )}
 
-            {/* Delete confirmation */}
             {showDeleteConfirm && (
               <div style={{
                 padding: '20px 24px', borderBottom: '1px solid var(--border-default)',
@@ -344,7 +337,6 @@ export default function Participants() {
         </>
       )}
 
-      {/* Add participant dialog */}
       {showNew && (
         <div onClick={() => setShowNew(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.25)',
@@ -367,7 +359,6 @@ export default function Participants() {
                 )}
               </select>
 
-              {/* Assign to activities */}
               {activities.length > 0 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}>
@@ -423,7 +414,6 @@ export default function Participants() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)',
