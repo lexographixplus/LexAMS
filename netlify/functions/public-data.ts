@@ -261,16 +261,15 @@ export default async (request: Request) => {
         let score = 0;
         let totalPoints = 0;
         for (const q of questionResult.rows) {
+          if (q.question_type !== 'multiple_choice' && q.question_type !== 'true_false') continue;
           const points = Number(q.points || 0);
           totalPoints += points;
-          if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
-            const answer = answers[q.id] ?? answers[String(q.id)];
-            if (q.correct_answer != null && String(answer ?? '').trim() === String(q.correct_answer).trim()) score += points;
-          }
+          const answer = answers[q.id] ?? answers[String(q.id)];
+          if (q.correct_answer != null && String(answer ?? '').trim() === String(q.correct_answer).trim()) score += points;
         }
         const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 10000) / 100 : 0;
         const passingScore = Number(scope.assessment.passing_score ?? 70);
-        const passed = percentage >= passingScore;
+        const passed = totalPoints > 0 && percentage >= passingScore;
 
         const result = await db.query(
           `insert into assessment_submissions
