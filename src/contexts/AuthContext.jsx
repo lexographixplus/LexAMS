@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
           setProfile(next.profile);
         }
       } catch {
-        // Keep the pending onboarding details for a later retry.
+        // Keep pending onboarding details for a later retry.
       }
     }
 
@@ -52,18 +52,13 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  useEffect(() => {
-    refreshProfile();
-  }, [refreshProfile]);
+  useEffect(() => { refreshProfile(); }, [refreshProfile]);
 
-  async function requestMagicLink(email) {
+  async function requestMagicLink(email, callbackUrl = '/app') {
     try {
       const csrfToken = await getCsrfToken();
-      const body = new URLSearchParams({
-        csrfToken,
-        email,
-        callbackUrl: `${window.location.origin}/app`,
-      });
+      const absoluteCallback = callbackUrl.startsWith('http') ? callbackUrl : `${window.location.origin}${callbackUrl}`;
+      const body = new URLSearchParams({ csrfToken, email, callbackUrl: absoluteCallback });
 
       const response = await fetch('/api/auth/signin/resend', {
         method: 'POST',
@@ -82,13 +77,15 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signIn(email) {
-    return requestMagicLink(email);
+  async function signIn(email, callbackUrl) {
+    return requestMagicLink(email, callbackUrl);
   }
 
-  async function signUp(email, _password, fullName, orgName) {
-    localStorage.setItem('lexams_pending_onboarding', JSON.stringify({ fullName, orgName }));
-    return requestMagicLink(email);
+  async function signUp(email, _password, fullName, orgName, callbackUrl) {
+    if (fullName || orgName) {
+      localStorage.setItem('lexams_pending_onboarding', JSON.stringify({ fullName, orgName }));
+    }
+    return requestMagicLink(email, callbackUrl);
   }
 
   async function signOut() {
