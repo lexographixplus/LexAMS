@@ -160,7 +160,7 @@ export default function Dashboard() {
             <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.62)', fontWeight: 700 }}>
               Operations overview
             </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.15, margin: '12px 0 0', maxWidth: 540 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.15, margin: '12px 0 0', maxWidth: 540, color: '#FFFFFF' }}>
               See what is active, what needs attention and what comes next.
             </h2>
             <p style={{ maxWidth: 590, fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.7, marginTop: 14 }}>
@@ -444,3 +444,4 @@ const upcomingStyle = {
   padding: '12px 13px',
   cursor: 'pointer',
 };
+
