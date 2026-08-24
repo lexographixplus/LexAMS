@@ -36,6 +36,12 @@ function validateColumns(table: string, values: string[]) {
 
 function normalizePayload(payload: any) { return Array.isArray(payload) ? payload : [payload]; }
 
+async function ownedRecord(db: ReturnType<typeof getPool>, table: 'activities' | 'participants', id: unknown, organizationId: string) {
+  if (id === undefined || id === null || id === '') return false;
+  const result = await db.query(`select 1 from ${quoteIdent(table)} where id = $1 and organization_id = $2`, [id, organizationId]);
+  return Boolean(result.rowCount);
+}
+
 async function parentOwned(db: ReturnType<typeof getPool>, table: string, payload: any, organizationId: string) {
   const child = childTables[table];
   if (!child) return true;
@@ -43,6 +49,25 @@ async function parentOwned(db: ReturnType<typeof getPool>, table: string, payloa
   if (!parentId) return false;
   const result = await db.query(`select 1 from ${quoteIdent(child.parentTable)} where id = $1 and organization_id = $2`, [parentId, organizationId]);
   return Boolean(result.rowCount);
+}
+
+async function relationshipsOwned(db: ReturnType<typeof getPool>, table: string, payload: any, organizationId: string) {
+  if (!payload || typeof payload !== 'object') return true;
+
+  if (['registrations', 'attendance', 'certificates'].includes(table)) {
+    if (payload.activity_id !== undefined && !(await ownedRecord(db, 'activities', payload.activity_id, organizationId))) return false;
+    if (payload.participant_id !== undefined && !(await ownedRecord(db, 'participants', payload.participant_id, organizationId))) return false;
+  }
+
+  if (['surveys', 'assessments'].includes(table) && payload.activity_id != null) {
+    if (!(await ownedRecord(db, 'activities', payload.activity_id, organizationId))) return false;
+  }
+
+  if (['survey_responses', 'assessment_submissions'].includes(table) && payload.participant_id != null) {
+    if (!(await ownedRecord(db, 'participants', payload.participant_id, organizationId))) return false;
+  }
+
+  return true;
 }
 
 async function handleProfiles(request: Request, body: any, tenant: any, db: ReturnType<typeof getPool>) {
@@ -136,6 +161,9 @@ export default async (request: Request) => {
 
   const canMutate = ['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer'].includes(tenant.role);
   if (body.operation !== 'select' && !canMutate) return json({ error: 'Read-only role' }, 403);
+  if (body.operation !== 'select' && table === 'certificates' && !['owner', 'admin'].includes(tenant.role)) {
+    return json({ error: 'Certificate changes require admin approval' }, 403);
+  }
 
   const rawFilters = Array.isArray(body.filters) ? body.filters : [];
   const filters = rawFilters.map((f: any) => {
@@ -191,6 +219,7 @@ export default async (request: Request) => {
         if (table === 'pending_approvals') row.requested_by = tenant.user.id;
         validateColumns(table, Object.keys(row));
         if (isChild && !(await parentOwned(db, table, row, tenant.organization_id))) return json({ error: 'Parent record not found' }, 404);
+        if (!(await relationshipsOwned(db, table, row, tenant.organization_id))) return json({ error: 'Referenced record belongs to another organization or does not exist' }, 403);
         const keys = Object.keys(row);
         const values = Object.values(row);
         const placeholders = values.map((_, i) => `$${i + 1}`);
@@ -205,13 +234,16 @@ export default async (request: Request) => {
 
     if (body.operation === 'update') {
       if (table === 'team_invites' && !['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
-      if (table === 'pending_approvals' && body.payload?.status && !['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
       const updates = { ...(body.payload || {}) };
       delete updates.organization_id;
       delete updates.id;
       delete updates.team_id;
+      if (table === 'pending_approvals' && ['status','reviewed_by','reviewed_at'].some(key => key in updates)) {
+        return json({ error: 'Approval decisions must use the protected approval transaction' }, 403);
+      }
       validateColumns(table, Object.keys(updates));
       if (!Object.keys(updates).length) return json({ error: 'Missing updates' }, 400);
+      if (!(await relationshipsOwned(db, table, updates, tenant.organization_id))) return json({ error: 'Referenced record belongs to another organization or does not exist' }, 403);
       const setParams: any[] = [];
       const setSql = Object.entries(updates).map(([key, value], index) => { setParams.push(value); return `${quoteIdent(key)} = $${index + 1}`; });
       const shiftedWhere = where.map(clause => clause.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + setParams.length}`));
@@ -229,6 +261,7 @@ export default async (request: Request) => {
     if (body.operation === 'upsert' && table === 'attendance') {
       const row = { ...(body.payload || {}), organization_id: tenant.organization_id };
       validateColumns(table, Object.keys(row));
+      if (!(await relationshipsOwned(db, table, row, tenant.organization_id))) return json({ error: 'Referenced record belongs to another organization or does not exist' }, 403);
       const result = await db.query(
         `insert into attendance (organization_id, activity_id, participant_id, session_label, status)
          values ($1,$2,$3,$4,$5)
