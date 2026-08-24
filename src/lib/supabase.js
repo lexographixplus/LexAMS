@@ -5,9 +5,10 @@ function normalizeError(error) {
 }
 
 class QueryBuilder {
-  constructor(table, mode = 'authenticated') {
+  constructor(table, mode = 'authenticated', state = {}) {
     this.table = table;
     this.mode = mode;
+    this.state = state;
     this.operation = 'select';
     this.payload = null;
     this.filters = [];
@@ -41,9 +42,11 @@ class QueryBuilder {
           single: this.singleRow,
           columns: this.columns,
           onConflict: this.onConflict,
+          scopeToken: this.state.scopeToken || null,
         }),
       });
       const body = await response.json().catch(() => ({}));
+      if (body.scopeToken) this.state.scopeToken = body.scopeToken;
       if (!response.ok) return { data: null, error: normalizeError(body.error || body.message || `Request failed (${response.status})`) };
       return { data: body.data ?? null, error: null };
     } catch (error) {
@@ -55,8 +58,9 @@ class QueryBuilder {
 }
 
 function makeClient(mode = 'authenticated') {
+  const state = { scopeToken: null };
   return {
-    from(table) { return new QueryBuilder(table, mode); },
+    from(table) { return new QueryBuilder(table, mode, state); },
     async rpc(name) {
       try {
         const response = await fetch('/api/rpc', {
