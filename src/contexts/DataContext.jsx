@@ -109,7 +109,10 @@ export function DataProvider({ children }) {
   }, [mutate]);
 
   const addParticipant = useCallback(async (participant, opts = {}) => {
-    const data = await mutate('add_participant', { participant, skipApproval: opts.skipApproval });
+    const data = await mutate('add_participant', {
+      participant,
+      activityIds: Array.isArray(opts.activityIds) ? opts.activityIds : [],
+    });
     if (!data.pending) setParticipants(prev => [...prev, data]);
     return data;
   }, [mutate]);
