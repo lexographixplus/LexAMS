@@ -55,31 +55,44 @@ export default async (request: Request, context: Context) => {
     admin: 'admin',
   };
   const role = roleMap[invite.role] || 'viewer';
+  const client = await db.connect();
 
-  await db.query('begin');
   try {
-    await db.query(
+    await client.query('begin');
+
+    const lockedInvite = await client.query(
+      'select status from team_invites where id = $1 and organization_id = $2 for update',
+      [invite.id, invite.organization_id]
+    );
+    if (!lockedInvite.rowCount || lockedInvite.rows[0].status !== 'pending') {
+      await client.query('rollback');
+      return json({ error: 'This invitation is no longer pending.' }, 409);
+    }
+
+    await client.query(
       `insert into organization_members (organization_id, user_id, role)
        values ($1,$2,$3)
        on conflict (organization_id,user_id) do update set role = excluded.role`,
       [invite.organization_id, user.id, role]
     );
-    await db.query(
+    await client.query(
       `insert into profiles (user_id, full_name, active_organization_id)
        values ($1,$2,$3)
        on conflict (user_id) do update set active_organization_id = excluded.active_organization_id, updated_at = now()`,
       [user.id, user.name || user.email, invite.organization_id]
     );
-    await db.query('update team_invites set status = $1 where id = $2', ['accepted', invite.id]);
-    await db.query(
+    await client.query('update team_invites set status = $1 where id = $2', ['accepted', invite.id]);
+    await client.query(
       `insert into audit_log (organization_id,user_id,action,entity_type,entity_id,metadata)
        values ($1,$2,'team.invite.accepted','organization_member',$3,$4)`,
       [invite.organization_id, user.id, String(user.id), { role }]
     );
-    await db.query('commit');
+    await client.query('commit');
   } catch (error) {
-    await db.query('rollback');
+    await client.query('rollback');
     throw error;
+  } finally {
+    client.release();
   }
 
   return json({ ok: true, organization: { id: invite.organization_id, name: invite.organization_name }, role });
