@@ -11,7 +11,12 @@ export async function requireTenant(request: Request) {
 
   const db = getPool();
   const membership = await db.query(
-    `select om.organization_id, om.role, o.name as organization_name, o.slug
+    `select om.organization_id,
+            om.role,
+            o.name as organization_name,
+            o.slug,
+            o.logo_url as organization_logo_url,
+            p.full_name as profile_full_name
      from organization_members om
      join organizations o on o.id = om.organization_id
      left join profiles p on p.user_id = om.user_id
@@ -54,6 +59,8 @@ export async function requireTenant(request: Request) {
       user,
       organization_id: organization.id,
       organization_name: organization.name,
+      organization_logo_url: null,
+      profile_full_name: user.name || baseName,
       slug: organization.slug,
       role: 'owner',
     };
