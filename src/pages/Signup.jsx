@@ -32,7 +32,7 @@ export default function Signup() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-page)', padding: '40px 20px' }}>
       <Link to="/" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, color: 'var(--color-navy-900)', marginBottom: 8, textDecoration: 'none' }}>LexAMS</Link>
-      <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 32 }}>by LexoStudio</div>
+      <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 32 }}>by LexoGraphix Plus</div>
 
       <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '36px 32px', width: '100%', maxWidth: 420 }}>
         {emailSent ? (
