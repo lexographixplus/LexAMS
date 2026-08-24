@@ -28,6 +28,10 @@ export default async (request: Request) => {
   }
 
   if (orgName) {
+    if (!['owner', 'admin'].includes(tenant.role)) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const slug = `${slugify(orgName)}-${String(tenant.organization_id).slice(0, 8)}`;
     await db.query(
       'update organizations set name = $2, slug = $3, updated_at = now() where id = $1',
