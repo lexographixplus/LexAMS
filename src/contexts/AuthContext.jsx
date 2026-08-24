@@ -1,109 +1,122 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext(null);
+
+async function getCsrfToken() {
+  const response = await fetch('/api/auth/csrf', { credentials: 'include' });
+  if (!response.ok) throw new Error('Could not start authentication.');
+  const data = await response.json();
+  return data.csrfToken;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const isDemo = !isSupabaseConfigured;
 
-  useEffect(() => {
-    if (isDemo) {
+  const refreshProfile = useCallback(async () => {
+    const response = await fetch('/api/me', { credentials: 'include' });
+    if (!response.ok) {
+      setUser(null);
+      setProfile(null);
       setLoading(false);
-      return;
+      return null;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setLoading(false);
-    });
+    const data = await response.json();
+    setUser(data.user);
+    setProfile(data.profile);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else {
-        setProfile(null);
-        setLoading(false);
+    const pending = localStorage.getItem('lexams_pending_onboarding');
+    if (pending) {
+      try {
+        await fetch('/api/onboarding', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: pending,
+        });
+        localStorage.removeItem('lexams_pending_onboarding');
+        const refreshed = await fetch('/api/me', { credentials: 'include' });
+        if (refreshed.ok) {
+          const next = await refreshed.json();
+          setUser(next.user);
+          setProfile(next.profile);
+        }
+      } catch {
+        // Keep pending onboarding details for a later retry.
       }
-    });
+    }
 
-    return () => subscription.unsubscribe();
+    setLoading(false);
+    return data;
   }, []);
 
-  async function fetchProfile(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  useEffect(() => { refreshProfile(); }, [refreshProfile]);
 
-    // Auto-set team_id for admins who don't have one yet
-    if (data && !data.team_id) {
-      await supabase.from('profiles').update({ team_id: userId, team_role: 'admin' }).eq('id', userId);
-      data.team_id = userId;
-      data.team_role = 'admin';
+  async function requestMagicLink(email, callbackUrl = '/app') {
+    try {
+      const csrfToken = await getCsrfToken();
+      const absoluteCallback = callbackUrl.startsWith('http') ? callbackUrl : `${window.location.origin}${callbackUrl}`;
+      const body = new URLSearchParams({ csrfToken, email, callbackUrl: absoluteCallback });
+
+      const response = await fetch('/api/auth/signin/resend', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Auth-Return-Redirect': '1',
+        },
+        body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) throw new Error(data.error || 'Could not send sign-in link.');
+      return { error: null, emailSent: true };
+    } catch (error) {
+      return { error };
     }
-
-    setProfile(data);
-    setLoading(false);
   }
 
-  async function signUp(email, password, fullName, orgName) {
-    if (isDemo) {
-      const demoUser = { id: 'demo', email, user_metadata: { full_name: fullName } };
-      const demoProfile = { id: 'demo', full_name: fullName, org_name: orgName || 'Horizon Community Foundation', role: 'Institution Administrator', team_role: 'admin' };
-      setUser(demoUser);
-      setProfile(demoProfile);
-      return { user: demoUser, error: null };
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName, org_name: orgName } },
-    });
-
-    // After signup, set team_id to self (admin)
-    if (data?.user && !error) {
-      await supabase.from('profiles').update({ team_id: data.user.id, team_role: 'admin' }).eq('id', data.user.id);
-    }
-
-    return { user: data?.user, error };
+  async function signIn(email, callbackUrl) {
+    return requestMagicLink(email, callbackUrl);
   }
 
-  async function signIn(email, password) {
-    if (isDemo) {
-      const demoUser = { id: 'demo', email, user_metadata: { full_name: 'Demo User' } };
-      const demoProfile = { id: 'demo', full_name: 'Demo User', org_name: 'Horizon Community Foundation', role: 'Institution Administrator', team_role: 'admin' };
-      setUser(demoUser);
-      setProfile(demoProfile);
-      return { user: demoUser, error: null };
+  async function signUp(email, _password, fullName, orgName, callbackUrl) {
+    if (fullName || orgName) {
+      localStorage.setItem('lexams_pending_onboarding', JSON.stringify({ fullName, orgName }));
     }
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    return { user: data?.user, error };
+    return requestMagicLink(email, callbackUrl);
   }
 
   async function signOut() {
-    if (isDemo) {
+    try {
+      const csrfToken = await getCsrfToken();
+      await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Auth-Return-Redirect': '1',
+        },
+        body: new URLSearchParams({ csrfToken, callbackUrl: window.location.origin }),
+      });
+    } finally {
       setUser(null);
       setProfile(null);
-      return;
+      window.location.assign('/');
     }
-    await supabase.auth.signOut();
   }
 
   const isAdmin = profile?.team_role === 'admin';
 
-  async function refreshProfile() {
-    if (user) await fetchProfile(user.id);
-  }
-
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, isDemo, isAdmin, refreshProfile }}>
+    <AuthContext.Provider value={{
+      user, profile, loading,
+      signUp, signIn, signOut,
+      isDemo: false,
+      isAdmin,
+      refreshProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );

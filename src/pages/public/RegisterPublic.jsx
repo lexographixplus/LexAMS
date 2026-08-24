@@ -84,17 +84,23 @@ export default function RegisterPublic() {
 
     let pid;
     if (foundParticipant) {
-      await anonClient.from('participants').update({ name: form.name.trim(), phone: form.phone.trim(), org: form.org.trim(), category: form.category }).eq('id', foundParticipant.id);
+      const { error: updateError } = await anonClient.from('participants')
+        .update({ name: form.name.trim(), phone: form.phone.trim(), org: form.org.trim(), category: form.category })
+        .eq('id', foundParticipant.id)
+        .eq('email', email.trim().toLowerCase());
+      if (updateError) { setError(updateError.message); setSubmitting(false); return; }
       pid = foundParticipant.id;
     } else {
-      const { data: p } = await anonClient.from('participants').insert({
+      const { data: p, error: insertError } = await anonClient.from('participants').insert({
         name: form.name.trim(), email: email.trim().toLowerCase(),
         phone: form.phone.trim() || '', org: form.org.trim() || '', category: form.category,
       }).select().single();
+      if (insertError || !p) { setError(insertError?.message || 'Could not create participant.'); setSubmitting(false); return; }
       pid = p.id;
     }
 
-    await anonClient.from('registrations').insert({ activity_id: activity.id, participant_id: pid });
+    const { error: registrationError } = await anonClient.from('registrations').insert({ activity_id: activity.id, participant_id: pid });
+    if (registrationError) { setError(registrationError.message); setSubmitting(false); return; }
     setRegName(form.name.trim());
     setStep('done');
     setSubmitting(false);
@@ -110,7 +116,6 @@ export default function RegisterPublic() {
 
   return (
     <Shell>
-      {/* Activity card */}
       <div style={{
         background: '#FFFFFF', border: '1px solid #E0E4E9', borderRadius: 12,
         boxShadow: '0 1px 2px rgba(0,43,84,0.06), 0 4px 16px rgba(0,43,84,0.06)',
@@ -128,7 +133,6 @@ export default function RegisterPublic() {
         <div style={{ fontSize: 12, color: '#7A8699', marginTop: 14 }}>Organized by {activity.organizer}</div>
       </div>
 
-      {/* Registration flow */}
       <div style={{
         background: '#FFFFFF', border: '1px solid #E0E4E9', borderRadius: 12,
         boxShadow: '0 1px 2px rgba(0,43,84,0.06), 0 4px 16px rgba(0,43,84,0.06)',

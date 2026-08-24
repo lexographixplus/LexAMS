@@ -1,20 +1,26 @@
 {
-  "name": "app",
+  "name": "lexams",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "netlify:dev": "netlify dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.8",
+    "@auth/core": "^0.41.3",
+    "@auth/neon-adapter": "^1.11.3",
+    "@neondatabase/serverless": "^1.1.0",
+    "@netlify/blobs": "^10.0.9",
+    "@netlify/functions": "^4.2.5",
     "lucide-react": "^1.26.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1"
+    "react-router-dom": "^7.18.1",
+    "resend": "^6.21.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

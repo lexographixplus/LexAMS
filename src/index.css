@@ -35,10 +35,11 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --radius-xl: 18px;
   --radius-pill: 999px;
-  --shadow-card: 0 1px 2px rgba(0,43,84,0.06), 0 4px 16px rgba(0,43,84,0.06);
-  --shadow-raised: 0 2px 4px rgba(0,43,84,0.08), 0 12px 32px rgba(0,43,84,0.10);
-  --shadow-focus: 0 0 0 3px rgba(14,76,143,0.25);
+  --shadow-card: 0 1px 2px rgba(0,43,84,0.05), 0 8px 24px rgba(0,43,84,0.055);
+  --shadow-raised: 0 4px 10px rgba(0,43,84,0.08), 0 18px 44px rgba(0,43,84,0.12);
+  --shadow-focus: 0 0 0 3px rgba(14,76,143,0.18);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,3 +61,203 @@ input, select, textarea { font-family: var(--font-body); }
 /* Responsive table scroll */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table-scroll > div { min-width: 600px; }
+
+/* Shared LexAMS workspace refinement */
+.lexams-ui-page {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.lexams-ui-page > div > h2:first-child,
+.lexams-ui-page > div > div:first-child h2,
+.lexams-ui-page h2[style*="font-family"] {
+  letter-spacing: -0.025em;
+  color: var(--color-navy-900);
+}
+
+.lexams-ui-page button,
+.lexams-ui-page input,
+.lexams-ui-page select,
+.lexams-ui-page textarea {
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease, background-color 140ms ease;
+}
+
+.lexams-ui-page input:focus,
+.lexams-ui-page select:focus,
+.lexams-ui-page textarea:focus {
+  border-color: var(--color-navy-700) !important;
+  box-shadow: var(--shadow-focus);
+}
+
+.lexams-ui-page button:focus-visible,
+.lexams-ui-page a:focus-visible {
+  outline: 2px solid var(--color-navy-700);
+  outline-offset: 2px;
+}
+
+.lexams-ui-page button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.lexams-ui-page .table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-mist-200) transparent;
+}
+
+.lexams-ui-page .table-scroll::-webkit-scrollbar { height: 8px; }
+.lexams-ui-page .table-scroll::-webkit-scrollbar-thumb { background: var(--color-mist-200); border-radius: 999px; }
+
+/* Participants */
+.lexams-ui-participants > div > div:first-child,
+.lexams-ui-surveys > div > div:first-child,
+.lexams-ui-assessments > div > div:first-child,
+.lexams-ui-certificates > div > div:first-child,
+.lexams-ui-settings > div > div:first-child,
+.lexams-ui-team > div > div:first-child {
+  gap: 24px !important;
+}
+
+.lexams-ui-participants > div > div:first-child h2,
+.lexams-ui-surveys > div > div:first-child h2,
+.lexams-ui-assessments > div > div:first-child h2,
+.lexams-ui-certificates h2,
+.lexams-ui-settings h2,
+.lexams-ui-team h2 {
+  font-size: clamp(26px, 3vw, 34px) !important;
+  line-height: 1.15 !important;
+}
+
+.lexams-ui-participants .table-scroll,
+.lexams-ui-surveys .table-scroll,
+.lexams-ui-assessments .table-scroll,
+.lexams-ui-certificates .table-scroll,
+.lexams-ui-team .table-scroll {
+  border-radius: inherit;
+}
+
+.lexams-ui-participants > div > div[style*="box-shadow"],
+.lexams-ui-surveys > div > div[style*="box-shadow"],
+.lexams-ui-assessments > div > div[style*="box-shadow"],
+.lexams-ui-certificates > div > div[style*="box-shadow"],
+.lexams-ui-settings > div > div[style*="box-shadow"],
+.lexams-ui-team > div > div[style*="box-shadow"] {
+  box-shadow: var(--shadow-card) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+.lexams-ui-participants > div > div[style*="position: fixed"][style*="right: 0"] {
+  width: min(440px, 100vw) !important;
+  border-left: 1px solid var(--border-default);
+}
+
+/* Surveys and assessments */
+.lexams-ui-surveys > div > div[style*="flex-direction: column"][style*="gap: 14px"],
+.lexams-ui-assessments > div > div[style*="flex-direction: column"][style*="gap: 14px"] {
+  gap: 12px !important;
+}
+
+.lexams-ui-surveys > div > div[style*="justify-content: space-between"][style*="align-items: center"],
+.lexams-ui-assessments > div > div[style*="justify-content: space-between"][style*="align-items: center"] {
+  border-radius: var(--radius-xl) !important;
+}
+
+/* Certificates */
+.lexams-ui-certificates > div > div[style*="grid-template-columns"] {
+  gap: 18px !important;
+}
+
+/* Settings and Team */
+.lexams-ui-settings > div,
+.lexams-ui-team > div {
+  max-width: 1180px;
+}
+
+.lexams-ui-settings label,
+.lexams-ui-team label {
+  color: var(--color-navy-900);
+}
+
+.lexams-ui-team button,
+.lexams-ui-settings button {
+  min-height: 38px;
+}
+
+/* Reports */
+.lexams-ui-reports article,
+.lexams-ui-reports [role="button"] {
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+/* Global empty-state polish for core workspace pages */
+.lexams-ui-participants div[style*="text-align: center"],
+.lexams-ui-surveys div[style*="text-align: center"],
+.lexams-ui-assessments div[style*="text-align: center"],
+.lexams-ui-certificates div[style*="text-align: center"],
+.lexams-ui-reports div[style*="text-align: center"] {
+  line-height: 1.65;
+}
+
+@media (max-width: 900px) {
+  .lexams-ui-page { max-width: none; }
+  .lexams-ui-page > div > div:first-child {
+    flex-wrap: wrap;
+  }
+  .lexams-ui-participants > div > div[style*="grid-template-columns: 1fr 220px"] {
+    grid-template-columns: 1fr !important;
+  }
+  .lexams-ui-certificates > div > div[style*="grid-template-columns: repeat(3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --radius-lg: 14px;
+    --radius-xl: 16px;
+  }
+
+  .lexams-ui-page {
+    padding-bottom: 12px;
+  }
+
+  .lexams-ui-page > div > div:first-child {
+    align-items: stretch !important;
+  }
+
+  .lexams-ui-page > div > div:first-child > button,
+  .lexams-ui-page > div > div:first-child > a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lexams-ui-participants > div > div[style*="grid-template-columns"],
+  .lexams-ui-surveys > div > div[style*="grid-template-columns"],
+  .lexams-ui-assessments > div > div[style*="grid-template-columns"],
+  .lexams-ui-certificates > div > div[style*="grid-template-columns"],
+  .lexams-ui-settings > div > div[style*="grid-template-columns"],
+  .lexams-ui-team > div > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lexams-ui-surveys > div > div[style*="justify-content: space-between"][style*="align-items: center"],
+  .lexams-ui-assessments > div > div[style*="justify-content: space-between"][style*="align-items: center"] {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .lexams-ui-surveys > div > div[style*="justify-content: space-between"] > div:last-child,
+  .lexams-ui-assessments > div > div[style*="justify-content: space-between"] > div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .lexams-ui-participants > div > div[style*="position: fixed"][style*="right: 0"] {
+    width: 100vw !important;
+  }
+
+  .lexams-ui-page .table-scroll > div {
+    min-width: 680px;
+  }
+}

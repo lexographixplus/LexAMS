@@ -4,7 +4,7 @@ import { initials as getInitials } from '../lib/format';
 import { fmtRange } from '../lib/format';
 
 export default function Participants() {
-  const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct } = useData();
+  const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct, isAdmin } = useData();
   const [q, setQ] = useState('');
   const [catF, setCatF] = useState('all');
   const [showNew, setShowNew] = useState(false);
@@ -49,13 +49,12 @@ export default function Participants() {
         phone: form.phone.trim() || null,
         org: form.org.trim() || null,
         category: form.category,
-      });
+      }, { activityIds: form.activityIds });
       if (result?.pending) {
         setShowNew(false);
         setForm({ name: '', email: '', phone: '', org: '', category: 'Volunteer', activityIds: [] });
         showToast('Submitted for admin approval');
       } else {
-        // Register to selected activities
         for (const actId of form.activityIds) {
           try { await addRegistration(actId, result.id); } catch {}
         }
@@ -111,7 +110,6 @@ export default function Participants() {
         }}>Add participant</button>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14, marginTop: 22 }}>
         <input
           placeholder="Search by name, email or organization..."
@@ -123,7 +121,6 @@ export default function Participants() {
         </select>
       </div>
 
-      {/* Table */}
       <div style={{
         background: 'var(--surface-card)', border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
@@ -176,7 +173,6 @@ export default function Participants() {
         </div></div>
       </div>
 
-      {/* Participant Drawer */}
       {selectedP && (
         <>
           <div onClick={() => setSelectedPid(null)} style={{
@@ -226,7 +222,6 @@ export default function Participants() {
                 <span style={{ fontWeight: 600 }}>{selectedActs.filter(a => a.cert).length}</span>
               </div>
             </div>
-            {/* Edit / Delete buttons */}
             <div style={{
               padding: '12px 24px', borderBottom: '1px solid var(--border-default)',
               display: 'flex', gap: 8,
@@ -243,10 +238,9 @@ export default function Participants() {
                 flex: 1, padding: '8px', fontSize: 13, fontWeight: 600,
                 background: 'transparent', border: '1.5px solid var(--color-danger)',
                 borderRadius: 'var(--radius-sm)', color: 'var(--color-danger)', cursor: 'pointer',
-              }}>Delete</button>
+              }}>{isAdmin ? 'Delete' : 'Request deletion'}</button>
             </div>
 
-            {/* Edit form (inline in drawer) */}
             {editing && editForm && (
               <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Edit participant</div>
@@ -286,17 +280,18 @@ export default function Participants() {
               </div>
             )}
 
-            {/* Delete confirmation */}
             {showDeleteConfirm && (
               <div style={{
                 padding: '20px 24px', borderBottom: '1px solid var(--border-default)',
                 background: '#FEF2F2',
               }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-danger)' }}>
-                  Delete {selectedP.name}?
+                  {isAdmin ? `Delete ${selectedP.name}?` : `Request deletion of ${selectedP.name}?`}
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.5 }}>
-                  This removes the participant and all their registrations, attendance, and certificates.
+                  {isAdmin
+                    ? 'This removes the participant and all their registrations, attendance, and certificates.'
+                    : 'An administrator must approve this request before the participant and related records are removed.'}
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
                   <button onClick={() => setShowDeleteConfirm(false)} style={{
@@ -306,16 +301,16 @@ export default function Participants() {
                   }}>Cancel</button>
                   <button onClick={async () => {
                     try {
-                      await deleteParticipant(selectedPid);
-                      setSelectedPid(null);
+                      const result = await deleteParticipant(selectedPid);
                       setShowDeleteConfirm(false);
-                      showToast('Participant deleted');
+                      setSelectedPid(null);
+                      showToast(result?.pending ? 'Deletion submitted for admin approval' : 'Participant deleted');
                     } catch (err) { showToast('Error: ' + err.message); }
                   }} style={{
                     padding: '8px 16px', fontSize: 13, fontWeight: 600,
                     background: 'var(--color-danger)', color: '#FFFFFF',
                     border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                  }}>Delete</button>
+                  }}>{isAdmin ? 'Delete' : 'Submit request'}</button>
                 </div>
               </div>
             )}
@@ -344,7 +339,6 @@ export default function Participants() {
         </>
       )}
 
-      {/* Add participant dialog */}
       {showNew && (
         <div onClick={() => setShowNew(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.25)',
@@ -367,7 +361,6 @@ export default function Participants() {
                 )}
               </select>
 
-              {/* Assign to activities */}
               {activities.length > 0 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}>
@@ -423,7 +416,6 @@ export default function Participants() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)',

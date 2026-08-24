@@ -59,35 +59,28 @@ export default function AssessmentPublic() {
     setSubmitting(true);
     setError(null);
 
-    // Grade
-    let score = 0;
-    const totalPoints = questions.reduce((s, q) => s + q.points, 0);
-    questions.forEach(q => {
-      if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
-        if (q.correct_answer && answers[q.id] === q.correct_answer) {
-          score += q.points;
-        }
-      }
-      // Short/long answers need manual grading - give full points for now if answered
-    });
-
-    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100 * 100) / 100 : 0;
-    const passed = percentage >= (assessment.passing_score || 70);
-
-    const { error: err } = await anonClient.from('assessment_submissions').insert({
+    const { data, error: err } = await anonClient.from('assessment_submissions').insert({
       assessment_id: assessment.id,
       respondent_name: name.trim(),
       respondent_email: email.trim(),
       answers,
-      score,
-      total_points: totalPoints,
-      percentage,
-      passed,
       submitted_at: new Date().toISOString(),
+      auto_submitted: autoSubmit,
     });
 
-    if (err) { setError(err.message); setSubmitting(false); return; }
-    setResult({ score, totalPoints, percentage, passed });
+    if (err || !data) {
+      setError(err?.message || 'Could not submit assessment.');
+      setSubmitting(false);
+      return;
+    }
+
+    setResult({
+      score: Number(data.score || 0),
+      totalPoints: Number(data.total_points || 0),
+      percentage: Number(data.percentage || 0),
+      passed: Boolean(data.passed),
+    });
+    setSubmitting(false);
   }
 
   function formatTime(secs) {
@@ -104,7 +97,6 @@ export default function AssessmentPublic() {
   if (loading) return <PageShell><p style={{ textAlign: 'center', color: '#7A8699' }}>Loading assessment...</p></PageShell>;
   if (error && !assessment) return <PageShell><p style={{ textAlign: 'center', color: '#C0362C' }}>{error}</p></PageShell>;
 
-  // Result screen
   if (result) return (
     <PageShell>
       <div style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -133,7 +125,6 @@ export default function AssessmentPublic() {
     </PageShell>
   );
 
-  // Start screen
   if (!started) return (
     <PageShell>
       <div style={{
@@ -164,7 +155,6 @@ export default function AssessmentPublic() {
     </PageShell>
   );
 
-  // Assessment in progress
   return (
     <PageShell>
       {timeLeft !== null && (
