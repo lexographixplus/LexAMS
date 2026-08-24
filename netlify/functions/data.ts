@@ -75,7 +75,6 @@ async function handleProfiles(request: Request, body: any, tenant: any, db: Retu
     const targetUserId = String(filters.id);
     const updates = body.payload || {};
 
-    // Legacy Team UI expresses member removal by resetting team_id to that member.
     if (updates.team_id === targetUserId && updates.team_role === 'admin' && targetUserId !== tenant.user.id) {
       if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
       const membership = await db.query('select role from organization_members where organization_id = $1 and user_id = $2', [tenant.organization_id, targetUserId]);
@@ -105,10 +104,10 @@ async function handleProfiles(request: Request, body: any, tenant: any, db: Retu
 }
 
 async function sendTeamInvite(request: Request, tenant: any, invite: any) {
-  const apiKey = Netlify.env.get('RESEND_API_KEY');
+  const apiKey = Netlify.env.get('RESEND_API_KEY') || process.env.RESEND_API_KEY;
   if (!apiKey) return;
-  const from = Netlify.env.get('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
-  const appUrl = Netlify.env.get('APP_URL') || new URL(request.url).origin;
+  const from = Netlify.env.get('AUTH_EMAIL_FROM') || process.env.AUTH_EMAIL_FROM || 'LexAMS <onboarding@resend.dev>';
+  const appUrl = Netlify.env.get('APP_URL') || process.env.APP_URL || new URL(request.url).origin;
   const resend = new Resend(apiKey);
   const inviteUrl = `${appUrl}/join/${invite.token}`;
   await resend.emails.send({
@@ -134,6 +133,9 @@ export default async (request: Request) => {
   const isDirect = Boolean(directTables[table]);
   const isChild = Boolean(childTables[table]);
   if (!isDirect && !isChild) return json({ error: 'Unsupported table' }, 400);
+
+  const canMutate = ['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer'].includes(tenant.role);
+  if (body.operation !== 'select' && !canMutate) return json({ error: 'Read-only role' }, 403);
 
   const rawFilters = Array.isArray(body.filters) ? body.filters : [];
   const filters = rawFilters.map((f: any) => {
