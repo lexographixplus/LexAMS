@@ -11,8 +11,9 @@ export default async (request: Request) => {
     user: tenant.user,
     profile: {
       id: tenant.user.id,
-      full_name: tenant.user.name || tenant.user.email,
+      full_name: tenant.profile_full_name || tenant.user.name || tenant.user.email,
       org_name: tenant.organization_name,
+      logo_url: tenant.organization_logo_url,
       role: tenant.role,
       team_role: ['owner', 'admin'].includes(tenant.role) ? 'admin' : 'member',
       team_id: tenant.organization_id,
@@ -21,6 +22,7 @@ export default async (request: Request) => {
       id: tenant.organization_id,
       name: tenant.organization_name,
       slug: tenant.slug,
+      logo_url: tenant.organization_logo_url,
       role: tenant.role,
     },
   });
