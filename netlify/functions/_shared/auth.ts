@@ -3,10 +3,20 @@ import NeonAdapter from '@auth/neon-adapter';
 import Resend from '@auth/core/providers/resend';
 import { getPool } from './db';
 
+function env(name: string) {
+  try {
+    const value = typeof Netlify !== 'undefined' ? Netlify.env.get(name) : undefined;
+    if (value) return value;
+  } catch {
+    // Fall back to the Node environment below.
+  }
+  return process.env[name];
+}
+
 export function getAuthConfig(): AuthConfig {
-  const secret = Netlify.env.get('AUTH_SECRET');
-  const resendApiKey = Netlify.env.get('RESEND_API_KEY');
-  const from = Netlify.env.get('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
+  const secret = env('AUTH_SECRET');
+  const resendApiKey = env('RESEND_API_KEY');
+  const from = env('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
 
   if (!secret) throw new Error('AUTH_SECRET is not configured');
   if (!resendApiKey) throw new Error('RESEND_API_KEY is not configured');
