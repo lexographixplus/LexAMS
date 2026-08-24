@@ -124,11 +124,14 @@ export function DataProvider({ children }) {
   }, [mutate]);
 
   const deleteParticipant = useCallback(async (id) => {
-    await mutate('delete_participant', { id });
-    setParticipants(prev => prev.filter(p => p.id !== id));
-    setRegistrations(prev => prev.filter(r => r.participant_id !== id));
-    setAttendance(prev => prev.filter(a => a.participant_id !== id));
-    setCertificates(prev => prev.filter(c => c.participant_id !== id));
+    const data = await mutate('delete_participant', { id });
+    if (!data.pending) {
+      setParticipants(prev => prev.filter(p => p.id !== id));
+      setRegistrations(prev => prev.filter(r => r.participant_id !== id));
+      setAttendance(prev => prev.filter(a => a.participant_id !== id));
+      setCertificates(prev => prev.filter(c => c.participant_id !== id));
+    }
+    return data;
   }, [mutate]);
 
   const addRegistration = useCallback(async (activityId, participantId) => {
