@@ -14,6 +14,11 @@ export default async (request: Request) => {
   const orgId = tenant.organization_id;
   const userId = tenant.user.id;
   const isAdmin = ['owner', 'admin'].includes(tenant.role);
+  const canMutate = ['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer'].includes(tenant.role);
+
+  if (!canMutate) {
+    return Response.json({ error: 'Read-only role' }, { status: 403 });
+  }
 
   try {
     switch (action) {
@@ -46,7 +51,7 @@ export default async (request: Request) => {
       }
       case 'add_participant': {
         const p = payload.participant || {};
-        if (!isAdmin && !payload.skipApproval) {
+        if (!isAdmin) {
           await db.query(
             `insert into pending_approvals (organization_id, requested_by, action_type, payload)
              values ($1,$2,'add_participant',$3::jsonb)`,
