@@ -206,7 +206,11 @@ export default function Landing() {
               <div className="lexams-note">Designed for programme teams, training providers, NGOs and organizations that need clear participation records.</div>
             </div>
             <div className="lexams-hero-visual" aria-hidden="true">
-              <img src="/assets/lexams-workflow-illustration.svg" alt="" />
+              <img
+                src="/assets/lexams-workflow-v2.svg"
+                alt=""
+                onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
+              />
             </div>
           </div>
         </section>
@@ -265,7 +269,11 @@ export default function Landing() {
               </div>
             </div>
             <div className="lexams-story-visual" aria-hidden="true">
-              <img src="/assets/lexams-outcomes-illustration.svg" alt="" />
+              <img
+                src="/assets/lexams-outcomes-illustration.svg?v=2"
+                alt=""
+                onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
+              />
             </div>
           </div>
         </section>
