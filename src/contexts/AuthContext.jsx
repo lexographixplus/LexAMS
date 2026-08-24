@@ -9,6 +9,18 @@ async function getCsrfToken() {
   return data.csrfToken;
 }
 
+function authErrorFromResponse(data) {
+  if (data?.error) return data.error;
+  if (typeof data?.url === 'string') {
+    try {
+      return new URL(data.url, window.location.origin).searchParams.get('error');
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -54,11 +66,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refreshProfile(); }, [refreshProfile]);
 
-  async function requestMagicLink(email, callbackUrl = '/app') {
+  async function requestMagicLink(email, callbackUrl = '/app', { hideAccessDenied = false } = {}) {
     try {
       const csrfToken = await getCsrfToken();
       const absoluteCallback = callbackUrl.startsWith('http') ? callbackUrl : `${window.location.origin}${callbackUrl}`;
-      const body = new URLSearchParams({ csrfToken, email, callbackUrl: absoluteCallback });
+      const body = new URLSearchParams({ csrfToken, email: String(email || '').trim().toLowerCase(), callbackUrl: absoluteCallback });
 
       const response = await fetch('/api/auth/signin/resend', {
         method: 'POST',
@@ -70,7 +82,14 @@ export function AuthProvider({ children }) {
         body,
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.error || 'Could not send sign-in link.');
+      const authError = authErrorFromResponse(data);
+
+      if (hideAccessDenied && authError === 'AccessDenied') {
+        return { error: null, emailSent: true };
+      }
+      if (!response.ok || authError) {
+        throw new Error(authError || 'Could not send sign-in link.');
+      }
       return { error: null, emailSent: true };
     } catch (error) {
       return { error };
@@ -78,14 +97,28 @@ export function AuthProvider({ children }) {
   }
 
   async function signIn(email, callbackUrl) {
-    return requestMagicLink(email, callbackUrl);
+    return requestMagicLink(email, callbackUrl, { hideAccessDenied: true });
   }
 
   async function signUp(email, _password, fullName, orgName, callbackUrl) {
-    if (fullName || orgName) {
-      localStorage.setItem('lexams_pending_onboarding', JSON.stringify({ fullName, orgName }));
+    try {
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const intentResponse = await fetch('/api/signup-intent', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const intentData = await intentResponse.json().catch(() => ({}));
+      if (!intentResponse.ok) throw new Error(intentData.error || 'Could not start account creation.');
+
+      if (fullName || orgName) {
+        localStorage.setItem('lexams_pending_onboarding', JSON.stringify({ fullName, orgName }));
+      }
+      return requestMagicLink(normalizedEmail, callbackUrl);
+    } catch (error) {
+      return { error };
     }
-    return requestMagicLink(email, callbackUrl);
   }
 
   async function signOut() {
