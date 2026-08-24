@@ -22,6 +22,107 @@ export default async (request: Request) => {
 
   try {
     switch (action) {
+      case 'review_approval': {
+        if (!isAdmin) return Response.json({ error: 'Admin permission required' }, { status: 403 });
+        const approvalId = payload.approvalId;
+        const decision = payload.decision;
+        if (!approvalId || !['approved', 'rejected'].includes(decision)) {
+          return Response.json({ error: 'Invalid approval decision' }, { status: 400 });
+        }
+
+        const client = await db.connect();
+        try {
+          await client.query('begin');
+          const locked = await client.query(
+            `select id, organization_id, requested_by, action_type, payload, status
+             from pending_approvals
+             where id = $1 and organization_id = $2
+             for update`,
+            [approvalId, orgId]
+          );
+          if (!locked.rowCount) {
+            await client.query('rollback');
+            return Response.json({ error: 'Approval request not found' }, { status: 404 });
+          }
+
+          const approval = locked.rows[0];
+          if (approval.status !== 'pending') {
+            await client.query('rollback');
+            return Response.json({ error: `Approval has already been ${approval.status}` }, { status: 409 });
+          }
+
+          let executed: unknown = null;
+          if (decision === 'approved') {
+            const p = approval.payload || {};
+
+            if (approval.action_type === 'add_participant') {
+              if (!p.name || !p.email) throw new Error('Approval payload is missing participant details');
+              const result = await client.query(
+                `insert into participants (organization_id, name, email, phone, org, category)
+                 values ($1,$2,$3,$4,$5,$6) returning *`,
+                [orgId, p.name, String(p.email).toLowerCase(), p.phone || '', p.org || '', p.category || 'Community member']
+              );
+              executed = result.rows[0];
+            } else if (approval.action_type === 'issue_certificate') {
+              const context = await client.query(
+                `select a.id as activity_id, p.id as participant_id
+                 from activities a, participants p
+                 where a.id = $1 and a.organization_id = $3
+                   and p.id = $2 and p.organization_id = $3`,
+                [p.activity_id, p.participant_id, orgId]
+              );
+              if (!context.rowCount) throw new Error('Certificate approval references an invalid activity or participant');
+
+              const placeholder = `PENDING-${randomUUID()}`;
+              const inserted = await client.query(
+                `insert into certificates (organization_id, cert_no, activity_id, participant_id, certificate_type, issued_by)
+                 values ($1,$2,$3,$4,$5,$6) returning *`,
+                [orgId, placeholder, p.activity_id, p.participant_id, p.certificate_type || 'completion', userId]
+              );
+              const cert = inserted.rows[0];
+              const certNo = `LEX-${new Date().getFullYear()}-${String(cert.id).padStart(4, '0')}`;
+              const updated = await client.query(
+                'update certificates set cert_no = $2 where id = $1 returning *',
+                [cert.id, certNo]
+              );
+              executed = updated.rows[0];
+            } else if (approval.action_type === 'delete_participant') {
+              const participantId = p.id || p.participant_id;
+              if (!participantId) throw new Error('Approval payload is missing participant id');
+              const deleted = await client.query(
+                'delete from participants where id = $1 and organization_id = $2 returning id, name, email',
+                [participantId, orgId]
+              );
+              if (!deleted.rowCount) throw new Error('Participant not found');
+              executed = deleted.rows[0];
+            } else {
+              throw new Error(`Unsupported approval action: ${approval.action_type}`);
+            }
+          }
+
+          const reviewed = await client.query(
+            `update pending_approvals
+             set status = $1, reviewed_by = $2, reviewed_at = now()
+             where id = $3 and organization_id = $4
+             returning *`,
+            [decision, userId, approvalId, orgId]
+          );
+
+          await client.query(
+            `insert into audit_log (organization_id, user_id, action, entity_type, entity_id, metadata)
+             values ($1,$2,$3,'pending_approval',$4,$5::jsonb)`,
+            [orgId, userId, `approval.${decision}`, String(approvalId), JSON.stringify({ action_type: approval.action_type, requested_by: approval.requested_by })]
+          );
+
+          await client.query('commit');
+          return Response.json({ approval: reviewed.rows[0], executed });
+        } catch (error) {
+          await client.query('rollback').catch(() => undefined);
+          throw error;
+        } finally {
+          client.release();
+        }
+      }
       case 'add_activity': {
         const a = payload.activity || {};
         const result = await db.query(
