@@ -12,6 +12,10 @@ function signatureIsValid(payload: string, signature: string, secret: string) {
   return calculated.length === signature.length && timingSafeEqual(Buffer.from(calculated), Buffer.from(signature));
 }
 
+function signatureMatchesAny(payload: string, signature: string, secrets: Array<string | undefined>) {
+  return secrets.some(secret => Boolean(secret) && signatureIsValid(payload, signature, secret));
+}
+
 function validEmail(value: unknown): value is string {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -125,8 +129,12 @@ export default async (request: Request, context: Context) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   const rawPayload = await request.text();
   const signature = request.headers.get('x-modem-signature');
-  const secret = env('MODEM_PAY_WEBHOOK_SECRET') || env('MODEM_PAY_SECRET_HASH');
-  if (!signature || !secret || !signatureIsValid(rawPayload, signature, secret)) {
+  // A per-payment callback uses the merchant secret key (the server-side Modem
+  // API key), while the dashboard's global webhook uses its own signing secret.
+  // Accept either trusted signature so both delivery paths are safe and usable.
+  const callbackSecret = env('MODEM_PAY_MERCHANT_SECRET_KEY') || env('MODEM_PAY_API_KEY');
+  const webhookSecret = env('MODEM_PAY_WEBHOOK_SECRET') || env('MODEM_PAY_SECRET_HASH');
+  if (!signature || !signatureMatchesAny(rawPayload, signature, [callbackSecret, webhookSecret])) {
     return Response.json({ error: 'Invalid webhook signature' }, { status: 400 });
   }
 
