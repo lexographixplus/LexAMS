@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /join/
+Disallow: /register/
+Disallow: /checkin/
+Disallow: /survey/
+Disallow: /assessment/
+Sitemap: https://lexams.com/sitemap.xml
