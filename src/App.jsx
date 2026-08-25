@@ -22,7 +22,8 @@ import AttendancePublic from './pages/public/AttendancePublic';
 import JoinTeam from './pages/public/JoinTeam';
 import AppLayout from './components/AppLayout';
 import ContactPage from './pages/ContactPage';
-import { FeaturesPage, PricingPage, SolutionsIndex, SolutionPage, SecurityPage, AboutPage, PrivacyPage, TermsPage } from './pages/MarketingPages';
+import PricingPage from './pages/PricingPage';
+import { FeaturesPage, SolutionsIndex, SolutionPage, SecurityPage, AboutPage, PrivacyPage, TermsPage } from './pages/MarketingPages';
 
 function ProtectedRoute({ children }) { const { user, loading } = useAuth(); if (loading) return <LoadingScreen />; if (!user) return <Navigate to="/login" replace />; return children; }
 function LoadingScreen(){return <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{fontFamily:'var(--font-display)',fontSize:22,fontWeight:700,color:'var(--color-navy-900)'}}>LexAMS</div></div>}
