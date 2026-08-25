@@ -1,5 +1,9 @@
+Warning: truncated output (original token count: 75292)
+Total output lines: 8317
+
 import type { Config, Context } from '@netlify/functions';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import PDFDocument from 'pdfkit';
 import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 
@@ -22,6 +26,66 @@ function escapeHtml(value: unknown) {
 
 function formatAmount(amount: number, currency: string) {
   return new Intl.NumberFormat('en-GM', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount) + ` ${currency}`;
+}
+
+function pdfText(value: unknown, limit = 110) {
+  return String(value || '').replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
+}
+
+function createReceiptPdf({
+  organizationName,
+  planName,
+  amount,
+  currency,
+  reference,
+  paymentMethod,
+  paidDate,
+}: {
+  organizationName: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  paymentMethod: string | null;
+  paidDate: string;
+}) {
+  const rows = [
+    ['Organisation', organizationName],
+    ['Plan', planName],
+    ['Amount paid', formatAmount(amount, currency)],
+    ['Payment date', paidDate],
+    ['Reference', reference],
+    ...(paymentMethod ? [['Payment method', paymentMethod]] : []),
+  ] as Array<[string, string]>;
+  return new Promise<Buffer>((resolve, reject) => {
+    const pdf = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `LexAMS receipt ${pdfText(reference, 64)}`, Author: 'LexAMS by LexoGraphix Plus' } });
+    const chunks: Buffer[] = [];
+    pdf.on('data', chunk => chunks.push(Buffer.from(chunk)));
+    pdf.on('end', () => resolve(Buffer.concat(chunks)));
+    pdf.on('error', reject);
+
+    pdf.rect(0, 0, 595, 150).fill('#002B54');
+    pdf.rect(46, 110, 100, 4).fill('#FAB72D');
+    pdf.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(28).text('LexAMS', 46, 45);
+    pdf.fillColor('#FAB72D').font('Helvetica-Bold').fontSize(11).text('PAYMENT RECEIPT', 46, 87, { characterSpacing: 1.4 });
+    pdf.fillColor('#D9E7F2').font('Helvetica').fontSize(10).text('LexAMS by LexoGraphix Plus', 46, 121);
+
+    pdf.fillColor('#002B54').font('Helvetica-Bold').fontSize(21).text('Payment confirmed', 46, 188);
+    pdf.fillColor('#52677B').font('Helvetica').fontSize(11).text('Thank you. Your LexAMS Pro access is active.', 46, 219);
+
+    let y = 286;
+    rows.forEach(([label, value]) => {
+      pdf.strokeColor('#E4EBF1').lineWidth(1).moveTo(46, y - 12).lineTo(549, y - 12).stroke();
+      pdf.fillColor('#5E7084').font('Helvetica').fontSize(10).text(pdfText(label, 36), 54, y, { width: 180 });
+      pdf.fillColor('#002B54').font('Helvetica-Bold').fontSize(10).text(pdfText(value, 66), 280, y, { width: 260, align: 'right' });
+      y += 43;
+    });
+    pdf.strokeColor('#E4EBF1').lineWidth(1).moveTo(46, y - 12).lineTo(549, y - 12).stroke();
+    pdf.roundedRect(46, y + 30, 503, 54, 8).fill('#FFF3D5');
+    pdf.fillColor('#5C4613').font('Helvetica').fontSize(10).text('Keep this document as your LexAMS payment receipt.', 62, y + 51);
+    pdf.fillColor('#5E7084').font('Helvetica').fontSize(9).text('Questions? Reply to your LexAMS payment confirmation email.', 46, 773);
+    pdf.end();
+  });
 }
 
 async function sendReceipt({
@@ -54,11 +118,13 @@ async function sendReceipt({
 
   const paidDate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Africa/Banjul' }).format(new Date(paidAt));
   const planName = `LexAMS Pro — ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} plan`;
+  const receiptPdf = await createReceiptPdf({ organizationName, planName, amount, currency, reference, paymentMethod, paidDate });
   const result = await new Resend(apiKey).emails.send({
     from: env('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>',
     to: receiptTo,
-    subject: `Payment receipt — ${reference}`,
-    html: `<div style="margin:0;padding:32px 16px;background:#f5f7fa;font-family:Arial,sans-serif;color:#122033"><div style="max-width:620px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e3e8ee"><div style="padding:28px 32px;background:#002B54;color:#fff"><div style="font-size:24px;font-weight:700;letter-spacing:.2px">LexAMS</div><div style="margin-top:6px;color:#FAB72D;font-size:14px;font-weight:700">PAYMENT RECEIPT</div></div><div style="padding:32px"><p style="margin:0 0 20px">Hello,</p><p style="margin:0 0 24px;line-height:1.6">Thank you. Your payment has been confirmed and your LexAMS Pro access is active.</p><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Organisation</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(organizationName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Plan</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(planName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Amount paid</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-size:18px;font-weight:700;color:#002B54">${escapeHtml(formatAmount(amount, currency))}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment date</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paidDate)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Reference</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(reference)}</td></tr>${paymentMethod ? `<tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment method</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paymentMethod)}</td></tr>` : ''}</table><p style="margin:28px 0 0;line-height:1.6">Keep this email as your receipt. For billing support, reply to this message.</p></div><div style="padding:16px 32px;background:#f8fafc;color:#64748b;font-size:12px">LexAMS by LexoGraphix Plus</div></div></div>`,
+    subject: `LexAMS payment receipt — ${reference}`,
+    html: `<div style="margin:0;padding:32px 16px;background:#f5f7fa;font-family:Arial,sans-serif;color:#122033"><div style="max-width:620px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e3e8ee"><div style="padding:28px 32px;background:#002B54;color:#fff"><div style="font-size:24px;font-weight:700;letter-spacing:.2px">LexAMS</div><div style="margin-top:6px;color:#FAB72D;font-size:14px;font-weight:700">PAYMENT RECEIPT</div></div><div style="padding:32px"><p style="margin:0 0 20px">Hello,</p><p style="margin:0 0 24px;line-height:1.6">Thank you. Your payment has been confirmed and your LexAMS Pro access is active.</p><p style="margin:0 0 22px;line-height:1.6"><strong>Your branded PDF receipt is attached to this email.</strong></p><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Organisation</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(organizationName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Plan</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(planName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Amount paid</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-size:18px;font-weight:700;color:#002B54">${escapeHtml(formatAmount(amount, currency))}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment date</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paidDate)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Reference</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(reference)}</td></tr>${paymentMethod ? `<tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment method</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paymentMethod)}</td></tr>` : ''}</table><p style="margin:28px 0 0;line-height:1.6">Keep this email as your receipt. For billing support, reply to this message.</p></div><div style="padding:16px 32px;background:#f8fafc;color:#64748b;font-size:12px">LexAMS by LexoGraphix Plus</div></div></div>`,
+    attachments: [{ filename: `LexAMS-receipt-${pdfText(reference, 48) || 'payment'}.pdf`, content: receiptPdf }],
   });
 
   if (result.error) throw new Error(result.error.message || 'Receipt email delivery failed');
