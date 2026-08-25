@@ -32,7 +32,7 @@ function limit(name: string, fallback: number) {
 export const PLAN_ENTITLEMENTS: Record<PlanName, EntitlementSet> = {
   free: {
     activeActivities: 2,
-    participants: 100,
+    participants: 50,
     teamSeats: 1,
     surveysPerActivity: 1,
     surveyQuestions: 5,

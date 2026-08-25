@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ContactForm from '../components/ContactForm';
 import {
   ArrowRight,
   Award,
@@ -193,6 +194,7 @@ export default function Landing() {
           .lexams-step { grid-template-columns: 38px 1fr; }
           .lexams-step-text { grid-column: 2; }
           .lexams-footer-top, .lexams-footer-bottom { flex-direction: column; }
+          .lexams-contact-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -203,6 +205,7 @@ export default function Landing() {
             <a href="#capabilities">Capabilities</a>
             <a href="#workflow">Workflow</a>
             <a href="#pricing">Pricing</a>
+            <a href="#contact">Contact</a>
             <a href="#principles">Why LexAMS</a>
             <Link className="lexams-login" to="/login">Log in</Link>
             <Link className="lexams-primary-link" to="/signup">Create workspace</Link>
@@ -345,7 +348,7 @@ export default function Landing() {
                 <p className="lexams-price-copy">Run a small programme yourself with essential registration, attendance and participant tools.</p>
                 <ul className="lexams-price-list">
                   <li><CheckCircle2 size={16} />1 workspace and 1 primary user</li>
-                  <li><CheckCircle2 size={16} />2 active activities and up to 100 participants</li>
+                  <li><CheckCircle2 size={16} />2 active activities and up to 50 participants</li>
                   <li><CheckCircle2 size={16} />Registration, check-in and basic reporting</li>
                   <li><CheckCircle2 size={16} />Limited surveys, assessments and LexAMS-branded certificates</li>
                 </ul>
@@ -366,6 +369,19 @@ export default function Landing() {
               </article>
             </div>
             <p className="lexams-institutional">Need a larger institutional rollout or onboarding support? <a href="mailto:hello@lexographixplus.com?subject=LexAMS%20institutional%20enquiry">Talk to LexoGraphix Plus</a>.</p>
+          </div>
+        </section>
+
+        <section id="contact" className="lexams-section">
+          <div className="lexams-container">
+            <div className="lexams-section-head">
+              <div>
+                <div className="lexams-section-label">Contact LexAMS</div>
+                <h2>Let’s talk about your programme needs.</h2>
+              </div>
+              <p className="lexams-section-lede">Send an enquiry about LexAMS, implementation support or a larger institutional rollout. Our team will respond by email.</p>
+            </div>
+            <ContactForm />
           </div>
         </section>
 
