@@ -1,9 +1,8 @@
-Warning: truncated output (original token count: 75292)
-Total output lines: 8317
+Warning: truncated output (original token count: 73566)
+Total output lines: 8130
 
 import type { Config, Context } from '@netlify/functions';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import PDFDocument from 'pdfkit';
 import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 
@@ -57,35 +56,28 @@ function createReceiptPdf({
     ['Reference', reference],
     ...(paymentMethod ? [['Payment method', paymentMethod]] : []),
   ] as Array<[string, string]>;
-  return new Promise<Buffer>((resolve, reject) => {
-    const pdf = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `LexAMS receipt ${pdfText(reference, 64)}`, Author: 'LexAMS by LexoGraphix Plus' } });
-    const chunks: Buffer[] = [];
-    pdf.on('data', chunk => chunks.push(Buffer.from(chunk)));
-    pdf.on('end', () => resolve(Buffer.concat(chunks)));
-    pdf.on('error', reject);
-
-    pdf.rect(0, 0, 595, 150).fill('#002B54');
-    pdf.rect(46, 110, 100, 4).fill('#FAB72D');
-    pdf.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(28).text('LexAMS', 46, 45);
-    pdf.fillColor('#FAB72D').font('Helvetica-Bold').fontSize(11).text('PAYMENT RECEIPT', 46, 87, { characterSpacing: 1.4 });
-    pdf.fillColor('#D9E7F2').font('Helvetica').fontSize(10).text('LexAMS by LexoGraphix Plus', 46, 121);
-
-    pdf.fillColor('#002B54').font('Helvetica-Bold').fontSize(21).text('Payment confirmed', 46, 188);
-    pdf.fillColor('#52677B').font('Helvetica').fontSize(11).text('Thank you. Your LexAMS Pro access is active.', 46, 219);
-
-    let y = 286;
-    rows.forEach(([label, value]) => {
-      pdf.strokeColor('#E4EBF1').lineWidth(1).moveTo(46, y - 12).lineTo(549, y - 12).stroke();
-      pdf.fillColor('#5E7084').font('Helvetica').fontSize(10).text(pdfText(label, 36), 54, y, { width: 180 });
-      pdf.fillColor('#002B54').font('Helvetica-Bold').fontSize(10).text(pdfText(value, 66), 280, y, { width: 260, align: 'right' });
-      y += 43;
-    });
-    pdf.strokeColor('#E4EBF1').lineWidth(1).moveTo(46, y - 12).lineTo(549, y - 12).stroke();
-    pdf.roundedRect(46, y + 30, 503, 54, 8).fill('#FFF3D5');
-    pdf.fillColor('#5C4613').font('Helvetica').fontSize(10).text('Keep this document as your LexAMS payment receipt.', 62, y + 51);
-    pdf.fillColor('#5E7084').font('Helvetica').fontSize(9).text('Questions? Reply to your LexAMS payment confirmation email.', 46, 773);
-    pdf.end();
+  const rowContent = rows.map(([label, value], index) => {
+    const y = 616 - (index * 42);
+    return `0.95 0.96 0.97 rg 44 ${y - 10} 507 1 re f\nBT /F1 10 Tf 0.36 0.44 0.51 rg 52 ${y + 8} Td (${pdfText(label, 36)}) Tj ET\nBT /F2 10 Tf 0.00 0.17 0.33 rg 282 ${y + 8} Td (${pdfText(value, 62)}) Tj ET`;
+  }).join('\n');
+  const stream = `q\n0.00 0.17 0.33 rg\n0 742 595 100 re f\n0.98 0.72 0.18 rg\n44 760 92 4 re f\nBT /F2 27 Tf 1 1 1 rg 44 796 Td (LexAMS) Tj ET\nBT /F2 11 Tf 0.98 0.72 0.18 rg 44 775 Td (PAYMENT RECEIPT) Tj ET\nBT /F1 10 Tf 0.85 0.91 0.96 rg 44 756 Td (LexAMS by LexoGraphix Plus) Tj ET\nQ\nBT /F2 18 Tf 0.00 0.17 0.33 rg 44 700 Td (Payment confirmed) Tj ET\nBT /F1 11 Tf 0.32 0.40 0.48 rg 44 680 Td (Thank you. Your LexAMS Pro access is active.) Tj ET\n${rowContent}\n0.98 0.95 0.87 rg\n44 290 507 54 re f\nBT /F1 10 Tf 0.36 0.28 0.08 rg 58 321 Td (Keep this document as your LexAMS payment receipt.) Tj ET\nBT /F1 9 Tf 0.36 0.44 0.51 rg 44 62 Td (Questions? Reply to your LexAMS payment confirmation email.) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    `<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}\nendstream`,
+  ];
+  let output = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(output, 'binary'));
+    output += `${index + 1} 0 obj\n${object}\nendobj\n`;
   });
+  const xrefOffset = Buffer.byteLength(output, 'binary');
+  output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map(offset => `${String(offset).padStart(10, '0')} 00000 n `).join('\n')}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(output, 'binary');
 }
 
 async function sendReceipt({
