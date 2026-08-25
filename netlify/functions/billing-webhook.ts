@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 73566)
-Total output lines: 8130
-
 import type { Config, Context } from '@netlify/functions';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Resend } from 'resend';
@@ -48,6 +45,7 @@ function createReceiptPdf({
   paymentMethod: string | null;
   paidDate: string;
 }) {
+  // Keep this generator dependency-free so billing webhooks remain lightweight.
   const rows = [
     ['Organisation', organizationName],
     ['Plan', planName],
