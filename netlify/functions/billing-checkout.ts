@@ -10,6 +10,11 @@ function env(name: string) {
   return Netlify.env.get(name);
 }
 
+function safeProviderMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Modem Pay could not create a payment link.';
+  return message.replace(/[\r\n]+/g, ' ').slice(0, 300);
+}
+
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
@@ -82,9 +87,20 @@ export default async (request: Request) => {
     );
     return Response.json({ checkoutUrl: intent.payment_link, invoiceId, billingCycle, amount, currency: 'GMD' });
   } catch (error) {
-    await db.query(`update billing_invoices set status = 'failed', updated_at = now() where id = $1`, [invoiceId]);
+    const providerMessage = safeProviderMessage(error);
+    await db.query(
+      `update billing_invoices
+       set status = 'failed', metadata = metadata || $2::jsonb, updated_at = now()
+       where id = $1`,
+      [invoiceId, JSON.stringify({ checkout_error: providerMessage })]
+    );
+    await db.query(
+      `insert into billing_events (provider, event_type, processing_status, payload, error_message)
+       values ('modempay', 'checkout.failed', 'failed', $1::jsonb, $2)`,
+      [JSON.stringify({ organization_id: tenant.organization_id, invoice_id: invoiceId, billing_cycle: billingCycle }), providerMessage]
+    ).catch(() => undefined);
     console.error('Modem Pay checkout creation failed', error);
-    return Response.json({ error: 'Could not start checkout. Please try again or contact LexAMS support.' }, { status: 502 });
+    return Response.json({ error: `Could not start checkout: ${providerMessage}`, code: 'MODEM_CHECKOUT_FAILED' }, { status: 502 });
   }
 };
 
