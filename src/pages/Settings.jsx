@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import BillingPlan from '../components/BillingPlan';
 import { Upload, X } from 'lucide-react';
 
 export default function Settings() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isAdmin } = useAuth();
   const [orgName, setOrgName] = useState(profile?.org_name || '');
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
@@ -166,6 +167,8 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      <BillingPlan isAdmin={isAdmin} notify={showToast} />
 
       {toast && (
         <div style={{ position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-navy-900)', color: '#FFFFFF', fontSize: 13, fontWeight: 500, padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300 }}>{toast}</div>

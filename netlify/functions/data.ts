@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { Resend } from 'resend';
 import { getPool } from './_shared/db';
+import { assertCreationEntitlement, getBillingSnapshot, PlanLimitError, requireAllowance, requirePro } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 
 const directTables: Record<string, Set<string>> = {
@@ -121,6 +122,8 @@ async function handleProfiles(request: Request, body: any, tenant: any, db: Retu
     }
     if (updates.logo_url !== undefined) {
       if (!['owner','admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);
+      const billing = await getBillingSnapshot(db, tenant.organization_id);
+      requirePro('custom organisation branding', billing.entitlements.customBranding);
       await db.query('update organizations set logo_url = $1, updated_at = now() where id = $2', [updates.logo_url, tenant.organization_id]);
     }
     return json({ data: [] });
@@ -220,6 +223,7 @@ export default async (request: Request) => {
         validateColumns(table, Object.keys(row));
         if (isChild && !(await parentOwned(db, table, row, tenant.organization_id))) return json({ error: 'Parent record not found' }, 404);
         if (!(await relationshipsOwned(db, table, row, tenant.organization_id))) return json({ error: 'Referenced record belongs to another organization or does not exist' }, 403);
+        await assertCreationEntitlement(db, tenant.organization_id, table, row);
         const keys = Object.keys(row);
         const values = Object.values(row);
         const placeholders = values.map((_, i) => `$${i + 1}`);
@@ -244,6 +248,22 @@ export default async (request: Request) => {
       validateColumns(table, Object.keys(updates));
       if (!Object.keys(updates).length) return json({ error: 'Missing updates' }, 400);
       if (!(await relationshipsOwned(db, table, updates, tenant.organization_id))) return json({ error: 'Referenced record belongs to another organization or does not exist' }, 403);
+      if (table === 'assessments' && updates.time_limit_minutes) {
+        const billing = await getBillingSnapshot(db, tenant.organization_id);
+        requirePro('timed assessments', billing.entitlements.timedAssessments);
+      }
+      if (table === 'activities' && ['Upcoming', 'Ongoing'].includes(updates.status)) {
+        const transitioning = await db.query(
+          `select count(*)::int as count from activities where ${where.join(' and ')} and status = 'Completed'`,
+          params
+        );
+        if (transitioning.rows[0].count) {
+          const billing = await getBillingSnapshot(db, tenant.organization_id);
+          for (let index = 0; index < transitioning.rows[0].count; index += 1) {
+            requireAllowance('active activities', billing.usage.activeActivities + index, billing.entitlements.activeActivities, 'ACTIVITY_LIMIT_REACHED');
+          }
+        }
+      }
       const setParams: any[] = [];
       const setSql = Object.entries(updates).map(([key, value], index) => { setParams.push(value); return `${quoteIdent(key)} = $${index + 1}`; });
       const shiftedWhere = where.map(clause => clause.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + setParams.length}`));
@@ -276,6 +296,7 @@ export default async (request: Request) => {
     return json({ error: 'Unsupported operation' }, 400);
   } catch (error: any) {
     console.error('data api error', error);
+    if (error instanceof PlanLimitError) return json(error.toResponse(), error.code === 'PRO_REQUIRED' ? 403 : 409);
     return json({ error: error.message || 'Database request failed' }, 500);
   }
 };

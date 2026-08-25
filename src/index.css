@@ -209,6 +209,7 @@ input, select, textarea { font-family: var(--font-body); }
   .lexams-ui-certificates > div > div[style*="grid-template-columns: repeat(3"] {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
+  .billing-checkout-main { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 640px) {

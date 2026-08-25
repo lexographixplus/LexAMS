@@ -3,6 +3,10 @@
    ============================================================ */
 
 @media (max-width: 768px) {
+  .billing-plan-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* ── Grid layouts: stack vertically ── */
   div[style*="grid-template-columns: repeat(4, 1fr)"],
   div[style*="grid-template-columns: repeat(4,1fr)"] {

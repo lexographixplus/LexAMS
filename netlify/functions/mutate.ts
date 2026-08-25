@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { randomUUID } from 'node:crypto';
 import { getPool } from './_shared/db';
+import { assertCreationEntitlement, PlanLimitError } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 
 export default async (request: Request) => {
@@ -57,6 +58,7 @@ export default async (request: Request) => {
 
             if (approval.action_type === 'add_participant') {
               if (!p.name || !p.email) throw new Error('Approval payload is missing participant details');
+              await assertCreationEntitlement(client as ReturnType<typeof getPool>, orgId, 'participants', p);
               const result = await client.query(
                 `insert into participants (organization_id, name, email, phone, org, category)
                  values ($1,$2,$3,$4,$5,$6) returning *`,
@@ -91,6 +93,7 @@ export default async (request: Request) => {
                 [p.activity_id, p.participant_id, orgId]
               );
               if (!context.rowCount) throw new Error('Certificate approval references an invalid activity or participant');
+              await assertCreationEntitlement(client as ReturnType<typeof getPool>, orgId, 'certificates', p);
 
               const placeholder = `PENDING-${randomUUID()}`;
               const inserted = await client.query(
@@ -144,6 +147,7 @@ export default async (request: Request) => {
       }
       case 'add_activity': {
         const a = payload.activity || {};
+        await assertCreationEntitlement(db, orgId, 'activities', a);
         const result = await db.query(
           `insert into activities (organization_id, title, type, status, venue, organizer, facilitator, start_date, end_date, sessions, reg_open, description, created_by)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
@@ -157,6 +161,11 @@ export default async (request: Request) => {
         const allowed = ['title','type','status','venue','organizer','facilitator','start_date','end_date','sessions','reg_open','description'];
         const entries = Object.entries(updates).filter(([key]) => allowed.includes(key));
         if (!entries.length) return Response.json({ error: 'No valid updates' }, { status: 400 });
+        if (['Upcoming', 'Ongoing'].includes(updates.status)) {
+          const current = await db.query('select status from activities where id = $1 and organization_id = $2', [id, orgId]);
+          if (!current.rowCount) return Response.json({ error: 'Not found' }, { status: 404 });
+          if (current.rows[0].status === 'Completed') await assertCreationEntitlement(db, orgId, 'activities', updates);
+        }
         const sets = entries.map(([key], i) => `${key} = $${i + 3}`).join(', ');
         const result = await db.query(
           `update activities set ${sets}, updated_at = now() where id = $1 and organization_id = $2 returning *`,
@@ -191,6 +200,7 @@ export default async (request: Request) => {
           );
           return Response.json({ pending: true });
         }
+        await assertCreationEntitlement(db, orgId, 'participants', p);
         const result = await db.query(
           `insert into participants (organization_id, name, email, phone, org, category)
            values ($1,$2,$3,$4,$5,$6) returning *`,
@@ -273,6 +283,7 @@ export default async (request: Request) => {
           );
           return Response.json({ pending: true });
         }
+        await assertCreationEntitlement(db, orgId, 'certificates', payload);
         const placeholder = `PENDING-${randomUUID()}`;
         const inserted = await db.query(
           `insert into certificates (organization_id, cert_no, activity_id, participant_id, certificate_type, issued_by)
@@ -292,6 +303,7 @@ export default async (request: Request) => {
     }
   } catch (error) {
     console.error('LexAMS mutation failed', { action, error });
+    if (error instanceof PlanLimitError) return Response.json(error.toResponse(), { status: error.code === 'PRO_REQUIRED' ? 403 : 409 });
     return Response.json({ error: error instanceof Error ? error.message : 'Mutation failed' }, { status: 500 });
   }
 };

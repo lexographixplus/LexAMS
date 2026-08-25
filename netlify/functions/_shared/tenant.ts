@@ -1,5 +1,6 @@
 import { getPool } from './db';
 import { requireUser } from './session';
+import { ensureFreeSubscription } from './billing';
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'workspace';
@@ -53,6 +54,7 @@ export async function requireTenant(request: Request) {
        on conflict (user_id) do update set active_organization_id = excluded.active_organization_id`,
       [user.id, user.name || baseName, organization.id]
     );
+    await ensureFreeSubscription(client, organization.id);
     await client.query('commit');
 
     return {
