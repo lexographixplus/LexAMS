@@ -6,4 +6,4 @@ Disallow: /register/
 Disallow: /checkin/
 Disallow: /survey/
 Disallow: /assessment/
-Sitemap: https://lexams.com/sitemap.xml
+Sitemap: https://lexams.netlify.app/sitemap.xml
