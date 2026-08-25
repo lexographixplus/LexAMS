@@ -35,7 +35,10 @@ export default async (request: Request) => {
   const billing = await getBillingSnapshot(db, tenant.organization_id);
   const internalReference = `LEXAMS-${billingCycle.slice(0, 1).toUpperCase()}-${randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`;
   const amount = PRICES[billingCycle];
-  const appUrl = env('APP_URL') || new URL(request.url).origin;
+  // Use the exact deployment that initiated checkout. This keeps preview tests
+  // inside their preview and prevents a stale static APP_URL from taking users
+  // back to an older deployment.
+  const appUrl = new URL(request.url).origin;
   const invoice = await db.query(
     `insert into billing_invoices (
        organization_id, subscription_id, provider, internal_reference, amount, currency, status,
@@ -74,6 +77,7 @@ export default async (request: Request) => {
           customer_email: tenant.user.email || undefined,
           return_url: `${appUrl}/app/settings?billing=success`,
           cancel_url: `${appUrl}/app/settings?billing=cancelled`,
+          callback_url: `${appUrl}/api/billing/webhook`,
           metadata: {
             invoice_id: invoiceId,
             internal_reference: internalReference,
