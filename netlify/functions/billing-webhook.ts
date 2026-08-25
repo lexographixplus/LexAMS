@@ -29,7 +29,14 @@ function formatAmount(amount: number, currency: string) {
 }
 
 function pdfText(value: unknown, limit = 110) {
-  return String(value || '').replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
+  return String(value || '')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limit)
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
 }
 
 function createReceiptPdf({
@@ -50,19 +57,21 @@ function createReceiptPdf({
   paidDate: string;
 }) {
   // Keep this generator dependency-free so billing webhooks remain lightweight.
+  const receiptNumber = `RCPT-${reference}`;
   const rows = [
-    ['Organisation', organizationName],
-    ['Plan', planName],
-    ['Amount paid', formatAmount(amount, currency)],
+    ['Received from', organizationName],
+    ['Payment for', planName],
+    ['Amount received', formatAmount(amount, currency)],
     ['Payment date', paidDate],
-    ['Reference', reference],
+    ['Receipt number', receiptNumber],
+    ['Payment reference', reference],
     ...(paymentMethod ? [['Payment method', paymentMethod]] : []),
   ] as Array<[string, string]>;
   const rowContent = rows.map(([label, value], index) => {
-    const y = 616 - (index * 42);
-    return `0.95 0.96 0.97 rg 44 ${y - 10} 507 1 re f\nBT /F1 10 Tf 0.36 0.44 0.51 rg 52 ${y + 8} Td (${pdfText(label, 36)}) Tj ET\nBT /F2 10 Tf 0.00 0.17 0.33 rg 282 ${y + 8} Td (${pdfText(value, 62)}) Tj ET`;
+    const y = 548 - (index * 38);
+    return `0.92 0.94 0.96 RG 44 ${y - 8} 507 0.7 re S\nBT /F1 9 Tf 0.34 0.42 0.50 rg 52 ${y + 8} Td (${pdfText(label, 34)}) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 240 ${y + 8} Td (${pdfText(value, 74)}) Tj ET`;
   }).join('\n');
-  const stream = `q\n0.00 0.17 0.33 rg\n0 742 595 100 re f\n0.98 0.72 0.18 rg\n44 760 92 4 re f\nBT /F2 27 Tf 1 1 1 rg 44 796 Td (LexAMS) Tj ET\nBT /F2 11 Tf 0.98 0.72 0.18 rg 44 775 Td (PAYMENT RECEIPT) Tj ET\nBT /F1 10 Tf 0.85 0.91 0.96 rg 44 756 Td (LexAMS by LexoGraphix Plus) Tj ET\nQ\nBT /F2 18 Tf 0.00 0.17 0.33 rg 44 700 Td (Payment confirmed) Tj ET\nBT /F1 11 Tf 0.32 0.40 0.48 rg 44 680 Td (Thank you. Your LexAMS Pro access is active.) Tj ET\n${rowContent}\n0.98 0.95 0.87 rg\n44 290 507 54 re f\nBT /F1 10 Tf 0.36 0.28 0.08 rg 58 321 Td (Keep this document as your LexAMS payment receipt.) Tj ET\nBT /F1 9 Tf 0.36 0.44 0.51 rg 44 62 Td (Questions? Reply to your LexAMS payment confirmation email.) Tj ET`;
+  const stream = `q\n0.00 0.17 0.33 rg\n0 706 595 136 re f\n0.98 0.72 0.18 rg\n44 730 100 4 re f\nBT /F2 28 Tf 1 1 1 rg 44 788 Td (LexAMS) Tj ET\nBT /F2 11 Tf 0.98 0.72 0.18 rg 44 766 Td (PAYMENT RECEIPT) Tj ET\nBT /F1 9 Tf 0.86 0.91 0.96 rg 44 742 Td (https://lexams.com) Tj ET\nBT /F1 9 Tf 0.86 0.91 0.96 rg 44 727 Td (billing@lexams.com) Tj ET\nBT /F1 8 Tf 0.70 0.80 0.89 rg 393 788 Td (LexAMS by LexoGraphix Plus) Tj ET\nQ\nBT /F2 10 Tf 0.34 0.42 0.50 rg 44 675 Td (Receipt number) Tj ET\nBT /F2 14 Tf 0.00 0.17 0.33 rg 44 654 Td (${pdfText(receiptNumber, 60)}) Tj ET\n0.90 0.97 0.92 rg\n438 648 113 30 re f\nBT /F2 10 Tf 0.09 0.43 0.22 rg 479 659 Td (PAID) Tj ET\nBT /F2 18 Tf 0.00 0.17 0.33 rg 44 603 Td (Payment received) Tj ET\nBT /F1 10 Tf 0.34 0.42 0.50 rg 44 582 Td (Thank you. Your LexAMS Pro access has been confirmed.) Tj ET\n${rowContent}\n0.98 0.95 0.87 rg\n44 132 507 68 re f\nBT /F2 10 Tf 0.36 0.28 0.08 rg 58 175 Td (Billing contact) Tj ET\nBT /F1 9 Tf 0.36 0.28 0.08 rg 58 157 Td (billing@lexams.com  |  https://lexams.com) Tj ET\nBT /F1 8 Tf 0.36 0.28 0.08 rg 58 141 Td (This receipt confirms payment received for the LexAMS service described above.) Tj ET\nBT /F1 8 Tf 0.42 0.49 0.56 rg 44 62 Td (LexAMS  |  CREATE · PUBLISH · DIGITIZE · GROW) Tj ET`;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -117,7 +126,7 @@ async function sendReceipt({
     from: env('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>',
     to: receiptTo,
     subject: `LexAMS payment receipt — ${reference}`,
-    html: `<div style="margin:0;padding:32px 16px;background:#f5f7fa;font-family:Arial,sans-serif;color:#122033"><div style="max-width:620px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e3e8ee"><div style="padding:28px 32px;background:#002B54;color:#fff"><div style="font-size:24px;font-weight:700;letter-spacing:.2px">LexAMS</div><div style="margin-top:6px;color:#FAB72D;font-size:14px;font-weight:700">PAYMENT RECEIPT</div></div><div style="padding:32px"><p style="margin:0 0 20px">Hello,</p><p style="margin:0 0 24px;line-height:1.6">Thank you. Your payment has been confirmed and your LexAMS Pro access is active.</p><p style="margin:0 0 22px;line-height:1.6"><strong>Your branded PDF receipt is attached to this email.</strong></p><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Organisation</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(organizationName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Plan</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(planName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Amount paid</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-size:18px;font-weight:700;color:#002B54">${escapeHtml(formatAmount(amount, currency))}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment date</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paidDate)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Reference</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(reference)}</td></tr>${paymentMethod ? `<tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment method</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paymentMethod)}</td></tr>` : ''}</table><p style="margin:28px 0 0;line-height:1.6">Keep this email as your receipt. For billing support, reply to this message.</p></div><div style="padding:16px 32px;background:#f8fafc;color:#64748b;font-size:12px">LexAMS by LexoGraphix Plus</div></div></div>`,
+    html: `<div style="margin:0;padding:32px 16px;background:#f5f7fa;font-family:Arial,sans-serif;color:#122033"><div style="max-width:620px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e3e8ee"><div style="padding:28px 32px;background:#002B54;color:#fff"><div style="font-size:24px;font-weight:700;letter-spacing:.2px">LexAMS</div><div style="margin-top:6px;color:#FAB72D;font-size:14px;font-weight:700">PAYMENT RECEIPT</div><div style="margin-top:10px;color:#dbe8f2;font-size:12px">https://lexams.com · billing@lexams.com</div></div><div style="padding:32px"><p style="margin:0 0 20px">Hello,</p><p style="margin:0 0 24px;line-height:1.6">Thank you. We have received payment from <strong>${escapeHtml(organizationName)}</strong> for <strong>${escapeHtml(planName)}</strong>. Your LexAMS Pro access is active.</p><p style="margin:0 0 22px;line-height:1.6"><strong>Your official LexAMS PDF receipt is attached.</strong></p><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Received from</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(organizationName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment for</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(planName)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Amount received</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-size:18px;font-weight:700;color:#002B54">${escapeHtml(formatAmount(amount, currency))}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment date</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paidDate)}</td></tr><tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Reference</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(reference)}</td></tr>${paymentMethod ? `<tr><td style="padding:10px 0;border-top:1px solid #e7ebf0;color:#64748b">Payment method</td><td style="padding:10px 0;border-top:1px solid #e7ebf0;text-align:right;font-weight:600">${escapeHtml(paymentMethod)}</td></tr>` : ''}</table><p style="margin:28px 0 0;line-height:1.6">For billing questions, contact <strong>billing@lexams.com</strong>.</p></div><div style="padding:16px 32px;background:#f8fafc;color:#64748b;font-size:12px">LexAMS by LexoGraphix Plus · https://lexams.com</div></div></div>`,
     attachments: [{ filename: `LexAMS-receipt-${pdfText(reference, 48) || 'payment'}.pdf`, content: receiptPdf }],
   });
 
