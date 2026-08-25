@@ -93,7 +93,14 @@ export default function BillingPlan({ isAdmin, notify }) {
 
     <div style={{ marginTop: 24, borderTop: '1px solid var(--border-default)', paddingTop: 20 }}>
       <div style={{ fontWeight: 700, fontSize: 14 }}>Payment history</div>
-      {invoices.length ? <div style={{ marginTop: 10 }}>{invoices.slice(0, 5).map(invoice => <div key={invoice.id} style={invoiceRow}><span>{formatDate(invoice.created_at)} · {invoice.internal_reference}</span><span>{formatMoney(invoice.amount)} · <strong>{invoice.status}</strong></span></div>)}</div> : <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 9 }}>No payment records yet.</p>}
+      <p style={{ ...subtext, marginTop: 5 }}>Open a professional LexAMS invoice at any time. A payment receipt becomes available after payment is confirmed.</p>
+      {invoices.length ? <div style={{ marginTop: 10 }}>{invoices.slice(0, 5).map(invoice => <div key={invoice.id} style={invoiceRow}>
+        <div><div>{formatDate(invoice.created_at)} · {invoice.internal_reference}</div><div style={{ marginTop: 3 }}>{formatMoney(invoice.amount)} · <strong>{invoice.status}</strong></div></div>
+        <div style={documentLinks}>
+          <a href={`/api/billing/document?id=${encodeURIComponent(invoice.id)}&type=invoice`} target="_blank" rel="noreferrer" style={documentLink}>Invoice PDF</a>
+          {invoice.status === 'paid' && <a href={`/api/billing/document?id=${encodeURIComponent(invoice.id)}&type=receipt`} target="_blank" rel="noreferrer" style={documentLink}>Receipt PDF</a>}
+        </div>
+      </div>)}</div> : <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 9 }}>No payment records yet.</p>}
     </div>
   </section>;
 }
@@ -107,4 +114,6 @@ const pill = { display: 'inline-flex', alignItems: 'center', gap: 6, borderRadiu
 const optionButton = { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 11px', border: '1px solid var(--border-default)', background: 'var(--surface-card)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer' };
 const selectedOption = { borderColor: 'var(--color-accent)', boxShadow: '0 0 0 2px rgba(250,183,45,.25)' };
 const primaryButton = { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 18 };
-const invoiceRow = { display: 'flex', justifyContent: 'space-between', gap: 14, padding: '10px 0', borderTop: '1px solid var(--border-default)', fontSize: 12, color: 'var(--text-secondary)' };
+const invoiceRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: '1px solid var(--border-default)', fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' };
+const documentLinks = { display: 'flex', gap: 7, flexWrap: 'wrap' };
+const documentLink = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 30, padding: '6px 9px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', color: 'var(--color-navy-800)', fontSize: 11, fontWeight: 700, textDecoration: 'none' };
