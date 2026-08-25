@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound,
-  LogOut, Menu, X,
+  LogOut, Menu, ShieldCheck, X,
 } from 'lucide-react';
 
 const navItems = [
@@ -30,6 +30,7 @@ const pageTitles = {
   '/app/reports': 'Reports',
   '/app/team': 'Team',
   '/app/settings': 'Settings',
+  '/app/admin/billing': 'Billing administration',
 };
 
 export default function AppLayout() {
@@ -44,6 +45,9 @@ export default function AppLayout() {
   const orgName = profile?.org_name || 'Horizon Community Foundation';
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'Admin User';
   const role = profile?.role || 'Institution Administrator';
+  const visibleNavItems = profile?.platform_admin
+    ? [...navItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
+    : navItems;
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const pageTitle = pageTitles[location.pathname] ||
@@ -73,7 +77,7 @@ export default function AppLayout() {
       </div>
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 12px', flex: 1, overflowY: 'auto' }}>
-        {navItems.map(item => (
+        {visibleNavItems.map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',

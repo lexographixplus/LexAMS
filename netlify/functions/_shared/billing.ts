@@ -1,4 +1,4 @@
-import { getPool } from './db';
+type Queryable = { query: (...args: any[]) => Promise<any> };
 
 export type PlanName = 'free' | 'pro';
 
@@ -91,7 +91,7 @@ function effectivePlan(subscription: any): PlanName {
   return 'free';
 }
 
-export async function ensureFreeSubscription(db: ReturnType<typeof getPool>, organizationId: string) {
+export async function ensureFreeSubscription(db: Queryable, organizationId: string) {
   await db.query(
     `insert into organization_subscriptions (organization_id, plan, status, provider)
      values ($1, 'free', 'active', 'manual')
@@ -100,7 +100,7 @@ export async function ensureFreeSubscription(db: ReturnType<typeof getPool>, org
   );
 }
 
-export async function getBillingSnapshot(db: ReturnType<typeof getPool>, organizationId: string): Promise<BillingSnapshot> {
+export async function getBillingSnapshot(db: Queryable, organizationId: string): Promise<BillingSnapshot> {
   await ensureFreeSubscription(db, organizationId);
   const [subscriptionResult, activeActivities, participants, teamSeats, monthlyCertificates] = await Promise.all([
     db.query('select * from organization_subscriptions where organization_id = $1', [organizationId]),
@@ -170,7 +170,7 @@ export function requirePro(feature: string, allowed: boolean) {
 }
 
 export async function assertCreationEntitlement(
-  db: ReturnType<typeof getPool>,
+  db: Queryable,
   organizationId: string,
   table: string,
   row: Record<string, any>,
@@ -210,7 +210,7 @@ export async function assertCreationEntitlement(
   }
 }
 
-export async function requirePlatformAdmin(db: ReturnType<typeof getPool>, userId: string) {
+export async function requirePlatformAdmin(db: Queryable, userId: string) {
   const result = await db.query('select role from platform_administrators where user_id = $1', [userId]);
   return result.rows[0] || null;
 }

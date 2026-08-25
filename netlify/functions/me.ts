@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { getPool } from './_shared/db';
-import { getBillingSnapshot } from './_shared/billing';
+import { getBillingSnapshot, requirePlatformAdmin } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 
 export default async (request: Request) => {
@@ -8,7 +8,11 @@ export default async (request: Request) => {
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const billing = await getBillingSnapshot(getPool(), tenant.organization_id);
+  const db = getPool();
+  const [billing, platformAdmin] = await Promise.all([
+    getBillingSnapshot(db, tenant.organization_id),
+    requirePlatformAdmin(db, tenant.user.id),
+  ]);
 
   return Response.json({
     user: tenant.user,
@@ -20,6 +24,8 @@ export default async (request: Request) => {
       role: tenant.role,
       team_role: ['owner', 'admin'].includes(tenant.role) ? 'admin' : 'member',
       team_id: tenant.organization_id,
+      platform_admin: Boolean(platformAdmin),
+      platform_admin_role: platformAdmin?.role || null,
     },
     organization: {
       id: tenant.organization_id,

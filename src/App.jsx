@@ -13,6 +13,7 @@ import Surveys from './pages/Surveys';
 import Assessments from './pages/Assessments';
 import Settings from './pages/Settings';
 import Team from './pages/Team';
+import BillingAdmin from './pages/BillingAdmin';
 import SurveyPublic from './pages/public/SurveyPublic';
 import AssessmentPublic from './pages/public/AssessmentPublic';
 import RegisterPublic from './pages/public/RegisterPublic';
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="assessments" element={<UiPage name="assessments"><Assessments /></UiPage>} />
         <Route path="settings" element={<UiPage name="settings"><Settings /></UiPage>} />
         <Route path="team" element={<UiPage name="team"><Team /></UiPage>} />
+        <Route path="admin/billing" element={<UiPage name="billing-admin"><BillingAdmin /></UiPage>} />
       </Route>
     </Routes>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, fmtDate } from '../lib/format';
 import { Activity, Award, ClipboardList, FileSpreadsheet, Users } from 'lucide-react';
@@ -17,6 +17,17 @@ export default function Reports() {
     loading, getRegsForActivity, getAttendancePct, getActivity, getParticipant,
   } = useData();
   const [report, setReport] = useState(null);
+  const [csvExportAllowed, setCsvExportAllowed] = useState(false);
+  const [billingLoaded, setBillingLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/billing/plan', { credentials: 'include' })
+      .then(response => response.ok ? response.json() : null)
+      .then(billing => { if (active) setCsvExportAllowed(Boolean(billing?.entitlements?.csvExport)); })
+      .finally(() => { if (active) setBillingLoaded(true); });
+    return () => { active = false; };
+  }, []);
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading report data...</div>;
@@ -71,7 +82,7 @@ export default function Reports() {
   }
 
   function exportCsv() {
-    if (!report) return;
+    if (!report || !csvExportAllowed) return;
     const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const csv = [report.cols.map(esc).join(','), ...report.rows.map(row => row.map(esc).join(','))].join('\r\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
@@ -105,7 +116,7 @@ export default function Reports() {
       <section className="lexams-reports-hero">
         <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--color-navy-700)', fontWeight: 800 }}>Operational reporting</div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.08, color: 'var(--color-navy-900)', margin: '8px 0 0' }}>Reports built from live programme records</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.65, maxWidth: 700 }}>Choose a report to review the current workspace data, then export the complete result as CSV for further analysis or sharing.</p>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.65, maxWidth: 700 }}>Choose a report to review the current workspace data. CSV export is available on LexAMS Pro.</p>
         <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-tertiary)' }}>{totalRecords} live records available across activities, participants, attendance, certificates and surveys.</div>
       </section>
 
@@ -129,7 +140,10 @@ export default function Reports() {
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-navy-900)' }}>{report.title}</div>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{report.rows.length} record{report.rows.length === 1 ? '' : 's'}</div>
             </div>
-            <button onClick={exportCsv} disabled={!report.rows.length} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, background: 'var(--color-navy-900)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', cursor: report.rows.length ? 'pointer' : 'not-allowed', opacity: report.rows.length ? 1 : .5 }}>Export CSV</button>
+            <div style={{ display: 'grid', gap: 5, justifyItems: 'end' }}>
+              <button onClick={exportCsv} disabled={!report.rows.length || !csvExportAllowed || !billingLoaded} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, background: 'var(--color-navy-900)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', cursor: report.rows.length && csvExportAllowed ? 'pointer' : 'not-allowed', opacity: report.rows.length && csvExportAllowed ? 1 : .5 }}>Export CSV</button>
+              {!csvExportAllowed && billingLoaded && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>CSV export is a Pro feature.</span>}
+            </div>
           </div>
           {report.rows.length ? (
             <div className="lexams-report-scroll">
