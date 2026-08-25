@@ -5,6 +5,7 @@ import {
   Award,
   BarChart3,
   CalendarRange,
+  CheckCircle2,
   ClipboardCheck,
   FileCheck2,
   Globe2,
@@ -144,6 +145,21 @@ export default function Landing() {
         .lexams-principle { border-top: 2px solid var(--gold); padding: 22px 4px 0; }
         .lexams-principle h3 { margin: 14px 0 0; color: var(--navy); font-family: var(--font-heading); font-size: 20px; }
         .lexams-principle p { margin: 10px 0 0; color: #697688; font-size: 13px; line-height: 1.75; }
+        .lexams-pricing { background: #F1F5F8; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+        .lexams-pricing-grid { display: grid; grid-template-columns: 1fr 1.08fr; gap: 22px; align-items: stretch; }
+        .lexams-price-card { padding: 32px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+        .lexams-price-card-pro { border: 2px solid var(--gold); box-shadow: 0 18px 44px rgba(0,43,84,.10); position: relative; }
+        .lexams-price-tag { display: inline-flex; padding: 6px 10px; border-radius: 99px; background: #FFF2CF; color: #735305; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+        .lexams-price-card h3 { margin: 14px 0 0; font: 700 28px var(--font-heading); color: var(--navy); }
+        .lexams-price { margin-top: 12px; color: var(--navy); font: 700 38px var(--font-heading); letter-spacing: -.035em; }
+        .lexams-price small { font: 600 13px var(--font-body); color: #687587; letter-spacing: 0; }
+        .lexams-price-copy { min-height: 46px; margin: 12px 0 0; color: #687587; font-size: 13px; line-height: 1.6; }
+        .lexams-price-list { display: grid; gap: 11px; margin: 24px 0 28px; padding: 0; list-style: none; color: #425269; font-size: 13px; }
+        .lexams-price-list li { display: flex; gap: 9px; align-items: flex-start; }
+        .lexams-price-list svg { flex: 0 0 auto; color: var(--navy-soft); margin-top: 1px; }
+        .lexams-price-card .lexams-btn { width: 100%; justify-content: center; }
+        .lexams-institutional { margin: 26px 0 0; color: #687587; font-size: 13px; text-align: center; }
+        .lexams-institutional a { color: var(--navy); font-weight: 700; }
         .lexams-cta { padding: 92px 0; background: var(--navy); color: white; }
         .lexams-cta-inner { display: flex; align-items: center; justify-content: space-between; gap: 44px; }
         .lexams-cta h2 { margin: 0; max-width: 700px; font-family: var(--font-heading); font-size: clamp(34px,4vw,50px); line-height: 1.08; }
@@ -155,6 +171,7 @@ export default function Landing() {
           .lexams-nav-links a[href^="#"], .lexams-login { display: none; }
           .lexams-hero-grid, .lexams-section-head, .lexams-story { grid-template-columns: 1fr; gap: 36px; }
           .lexams-cap-grid, .lexams-principles { grid-template-columns: 1fr 1fr; }
+          .lexams-pricing-grid { grid-template-columns: 1fr; max-width: 620px; }
           .lexams-section-head { align-items: start; }
           .lexams-cta-inner { align-items: flex-start; flex-direction: column; }
         }
@@ -172,6 +189,7 @@ export default function Landing() {
           .lexams-trust-items { justify-content: flex-start; }
           .lexams-section { padding: 72px 0; }
           .lexams-cap-grid, .lexams-principles { grid-template-columns: 1fr; }
+          .lexams-price-card { padding: 24px; }
           .lexams-step { grid-template-columns: 38px 1fr; }
           .lexams-step-text { grid-column: 2; }
           .lexams-footer-top, .lexams-footer-bottom { flex-direction: column; }
@@ -184,6 +202,7 @@ export default function Landing() {
           <nav className="lexams-nav-links">
             <a href="#capabilities">Capabilities</a>
             <a href="#workflow">Workflow</a>
+            <a href="#pricing">Pricing</a>
             <a href="#principles">Why LexAMS</a>
             <Link className="lexams-login" to="/login">Log in</Link>
             <Link className="lexams-primary-link" to="/signup">Create workspace</Link>
@@ -306,6 +325,47 @@ export default function Landing() {
                 <p>Participation, attendance, outcomes and certificates remain tied to the activity record that produced them.</p>
               </article>
             </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="lexams-section lexams-pricing">
+          <div className="lexams-container">
+            <div className="lexams-section-head">
+              <div>
+                <div className="lexams-section-label">Free and Pro</div>
+                <h2>Start with the work. Upgrade for organisational scale.</h2>
+              </div>
+              <p className="lexams-section-lede">Free remains useful for small programmes. Pro gives organisations the capacity, team controls and professional outputs needed for regular delivery.</p>
+            </div>
+            <div className="lexams-pricing-grid">
+              <article className="lexams-price-card">
+                <div className="lexams-price-tag" style={{ background: '#EEF3F8', color: '#34516E' }}>For individuals</div>
+                <h3>Free</h3>
+                <div className="lexams-price">GMD 0 <small>free to use</small></div>
+                <p className="lexams-price-copy">Run a small programme yourself with essential registration, attendance and participant tools.</p>
+                <ul className="lexams-price-list">
+                  <li><CheckCircle2 size={16} />1 workspace and 1 primary user</li>
+                  <li><CheckCircle2 size={16} />2 active activities and up to 100 participants</li>
+                  <li><CheckCircle2 size={16} />Registration, check-in and basic reporting</li>
+                  <li><CheckCircle2 size={16} />Limited surveys, assessments and LexAMS-branded certificates</li>
+                </ul>
+                <Link className="lexams-btn lexams-btn-secondary" to="/signup">Start Free <ArrowRight size={16} /></Link>
+              </article>
+              <article className="lexams-price-card lexams-price-card-pro">
+                <div className="lexams-price-tag">Recommended for organisations</div>
+                <h3>Pro</h3>
+                <div className="lexams-price">GMD 1,000 <small>per month</small></div>
+                <p className="lexams-price-copy"><strong>GMD 10,200/year</strong> · GMD 850/month equivalent · save 15% with annual billing.</p>
+                <ul className="lexams-price-list">
+                  <li><CheckCircle2 size={16} />Multiple team members, roles and approvals</li>
+                  <li><CheckCircle2 size={16} />Higher programme and participant capacity</li>
+                  <li><CheckCircle2 size={16} />Full surveys, assessments, timed tests and CSV export</li>
+                  <li><CheckCircle2 size={16} />Professional certificates and organisation branding</li>
+                </ul>
+                <Link className="lexams-btn lexams-btn-primary" to="/signup?plan=pro">Choose Pro <ArrowRight size={16} /></Link>
+              </article>
+            </div>
+            <p className="lexams-institutional">Need a larger institutional rollout or onboarding support? <a href="mailto:hello@lexographixplus.com?subject=LexAMS%20institutional%20enquiry">Talk to LexoGraphix Plus</a>.</p>
           </div>
         </section>
 

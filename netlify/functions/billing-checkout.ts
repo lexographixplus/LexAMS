@@ -7,7 +7,7 @@ import { requireTenant } from './_shared/tenant';
 const PRICES = { monthly: 1000, annual: 10200 } as const;
 
 function env(name: string) {
-  return (globalThis as any).Netlify?.env?.get?.(name) || process.env[name];
+  return Netlify.env.get(name);
 }
 
 export default async (request: Request) => {

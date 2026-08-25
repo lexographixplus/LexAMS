@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getPool } from './_shared/db';
 
 function env(name: string) {
-  return (globalThis as any).Netlify?.env?.get?.(name) || process.env[name];
+  return Netlify.env.get(name);
 }
 
 function signatureIsValid(payload: string, signature: string, secret: string) {
