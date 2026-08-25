@@ -3,12 +3,12 @@ import { getPool } from './_shared/db';
 import { requireTenant } from './_shared/tenant';
 
 function formatAmount(amount: number, currency: string) {
-  return `${currency} ${new Intl.NumberFormat('en-GM', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount)}`;
+  return `${currency} ${new Intl.NumberFormat('en-GM', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)}`;
 }
 
 function formatDate(value: string | Date | null | undefined) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Banjul' }).format(new Date(value));
+  if (!value) return 'N/A';
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Africa/Banjul' }).format(new Date(value));
 }
 
 function pdfText(value: unknown, limit = 110) {
@@ -25,6 +25,7 @@ function pdfText(value: unknown, limit = 110) {
 function makePdf({
   kind,
   organizationName,
+  customerEmail,
   invoiceNumber,
   amount,
   currency,
@@ -39,6 +40,7 @@ function makePdf({
 }: {
   kind: 'invoice' | 'receipt';
   organizationName: string;
+  customerEmail: string | null;
   invoiceNumber: string;
   amount: number;
   currency: string;
@@ -52,37 +54,50 @@ function makePdf({
   billingCycle: 'monthly' | 'annual';
 }) {
   const isReceipt = kind === 'receipt';
-  const title = isReceipt ? 'PAYMENT RECEIPT' : 'INVOICE';
-  const documentNumber = isReceipt ? `RCPT-${invoiceNumber}` : invoiceNumber;
-  const plan = `LexAMS Pro - ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} subscription`;
-  const dateLabel = isReceipt ? 'Payment date' : 'Invoice date';
-  const documentDate = isReceipt ? formatDate(paidAt) : formatDate(createdAt);
-  const period = `${formatDate(billingPeriodStart)} to ${formatDate(billingPeriodEnd)}`;
-  const rows = [
-    [isReceipt ? 'Received from' : 'Bill to', organizationName],
-    ['Payment for', plan],
-    ['Billing period', period],
-    [isReceipt ? 'Amount received' : 'Amount due', formatAmount(amount, currency)],
-    [dateLabel, documentDate],
-    ['Invoice number', invoiceNumber],
-    ...(isReceipt ? [['Receipt number', documentNumber]] : []),
-    ...(paymentReference ? [['Payment reference', paymentReference]] : []),
-    ...(paymentMethod ? [['Payment method', paymentMethod]] : []),
-  ] as Array<[string, string]>;
+  const title = isReceipt ? 'RECEIPT' : 'INVOICE';
+  const receiptNumber = `RCPT-${invoiceNumber}`;
+  const documentNumber = isReceipt ? receiptNumber : invoiceNumber;
+  const description = `LexAMS Pro - ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} Subscription`;
+  const period = `${formatDate(billingPeriodStart)} - ${formatDate(billingPeriodEnd)}`;
+  const statusText = isReceipt ? 'PAID' : status.toUpperCase();
+  const total = formatAmount(amount, currency);
+  const paymentDate = formatDate(paidAt);
+  const invoiceDate = formatDate(createdAt);
 
-  const rowContent = rows.map(([label, value], index) => {
-    const y = 548 - (index * 37);
-    return `0.92 0.94 0.96 RG 44 ${y - 7} 507 0.7 re S\nBT /F1 9 Tf 0.34 0.42 0.50 rg 52 ${y + 8} Td (${pdfText(label, 34)}) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 240 ${y + 8} Td (${pdfText(value, 74)}) Tj ET`;
+  const statusFill = statusText === 'PAID' ? '0.90 0.97 0.92' : statusText === 'FAILED' ? '0.98 0.91 0.90' : '1.00 0.95 0.82';
+  const statusColor = statusText === 'PAID' ? '0.09 0.43 0.22' : statusText === 'FAILED' ? '0.65 0.13 0.10' : '0.48 0.33 0.05';
+
+  const transactionRows = isReceipt
+    ? [
+        ['Transaction date', paymentDate],
+        ['Gateway', paymentMethod || 'Modem Pay'],
+        ['Transaction ID', paymentReference || 'N/A'],
+        ['Amount', total],
+      ]
+    : [
+        ['Payment terms', 'Due on receipt'],
+        ['Gateway', 'Modem Pay'],
+        ['Balance', total],
+      ];
+
+  const transactionContent = transactionRows.map(([label, value], index) => {
+    const y = 276 - (index * 25);
+    return `0.86 0.88 0.91 RG 44 ${y - 6} 507 0.5 re S\nBT /F1 8 Tf 0.38 0.43 0.50 rg 52 ${y + 4} Td (${pdfText(label, 28)}) Tj ET\nBT /F2 8 Tf 0.00 0.17 0.33 rg 210 ${y + 4} Td (${pdfText(value, 64)}) Tj ET`;
   }).join('\n');
 
-  const statusText = isReceipt ? 'PAID' : status.toUpperCase();
-  const statusFill = isReceipt ? '0.90 0.97 0.92' : '0.98 0.95 0.87';
-  const statusColor = isReceipt ? '0.09 0.43 0.22' : '0.48 0.33 0.05';
-  const footerText = isReceipt
-    ? 'This receipt confirms payment received for the LexAMS service described above.'
-    : 'Please retain this invoice for your records. Payment is processed securely through Modem Pay.';
+  const billToEmail = customerEmail
+    ? `BT /F1 9 Tf 0.35 0.40 0.48 rg 44 560 Td (${pdfText(customerEmail, 58)}) Tj ET`
+    : '';
 
-  const stream = `q\n0.00 0.17 0.33 rg\n0 706 595 136 re f\n0.98 0.72 0.18 rg\n44 730 100 4 re f\nBT /F2 28 Tf 1 1 1 rg 44 788 Td (LexAMS) Tj ET\nBT /F2 11 Tf 0.98 0.72 0.18 rg 44 766 Td (${title}) Tj ET\nBT /F1 9 Tf 0.86 0.91 0.96 rg 44 742 Td (https://lexams.com) Tj ET\nBT /F1 9 Tf 0.86 0.91 0.96 rg 44 727 Td (billing@lexams.com) Tj ET\nBT /F1 8 Tf 0.70 0.80 0.89 rg 393 788 Td (LexAMS by LexoGraphix Plus) Tj ET\nBT /F1 8 Tf 0.70 0.80 0.89 rg 393 772 Td (Banjul, The Gambia, West Africa) Tj ET\nQ\nBT /F2 10 Tf 0.34 0.42 0.50 rg 44 675 Td (Document number) Tj ET\nBT /F2 14 Tf 0.00 0.17 0.33 rg 44 654 Td (${pdfText(documentNumber, 60)}) Tj ET\n${statusFill} rg\n438 648 113 30 re f\nBT /F2 10 Tf ${statusColor} rg 467 659 Td (${pdfText(statusText, 18)}) Tj ET\nBT /F2 18 Tf 0.00 0.17 0.33 rg 44 603 Td (${isReceipt ? 'Payment received' : 'Invoice details'}) Tj ET\nBT /F1 10 Tf 0.34 0.42 0.50 rg 44 582 Td (${isReceipt ? 'Thank you. Your LexAMS Pro access has been confirmed.' : 'Professional subscription billing statement.'}) Tj ET\n${rowContent}\n0.98 0.95 0.87 rg\n44 122 507 78 re f\nBT /F2 10 Tf 0.36 0.28 0.08 rg 58 177 Td (Billing contact) Tj ET\nBT /F1 9 Tf 0.36 0.28 0.08 rg 58 159 Td (billing@lexams.com  |  https://lexams.com) Tj ET\nBT /F1 8 Tf 0.36 0.28 0.08 rg 58 144 Td (Banjul, The Gambia, West Africa) Tj ET\nBT /F1 8 Tf 0.36 0.28 0.08 rg 58 129 Td (${pdfText(footerText, 96)}) Tj ET\nBT /F1 8 Tf 0.42 0.49 0.56 rg 44 62 Td (LexAMS  |  CREATE | PUBLISH | DIGITIZE | GROW) Tj ET`;
+  const paidDateLine = isReceipt
+    ? `BT /F1 8 Tf 0.35 0.40 0.48 rg 394 558 Td (Paid date) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 394 542 Td (${pdfText(paymentDate, 25)}) Tj ET`
+    : `BT /F1 8 Tf 0.35 0.40 0.48 rg 394 558 Td (Terms) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 394 542 Td (Due on receipt) Tj ET`;
+
+  const notes = isReceipt
+    ? 'Payment received. This receipt confirms your LexAMS Pro subscription payment.'
+    : 'Thank you for choosing LexAMS. Please complete payment using the secure Modem Pay checkout.';
+
+  const stream = `q\n1 1 1 rg\n0 0 595 842 re f\n0.00 0.17 0.33 rg\n0 790 595 52 re f\n0.98 0.72 0.18 rg\n0 785 595 5 re f\nBT /F2 25 Tf 1 1 1 rg 44 808 Td (LexAMS) Tj ET\nBT /F1 8 Tf 0.82 0.89 0.95 rg 44 795 Td (A LexoGraphix Plus product) Tj ET\nQ\nBT /F2 26 Tf 0.00 0.17 0.33 rg 400 744 Td (${title}) Tj ET\nBT /F1 9 Tf 0.35 0.40 0.48 rg 44 744 Td (LexAMS) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 44 728 Td (Banjul, The Gambia, West Africa) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 44 714 Td (billing@lexams.com) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 44 700 Td (https://lexams.com) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 400 714 Td (${isReceipt ? 'Receipt #' : 'Invoice #'}) Tj ET\nBT /F2 10 Tf 0.00 0.17 0.33 rg 400 698 Td (${pdfText(documentNumber, 34)}) Tj ET\n${statusFill} rg\n400 658 105 27 re f\nBT /F2 10 Tf ${statusColor} rg 431 667 Td (${pdfText(statusText, 16)}) Tj ET\n0.93 0.94 0.95 rg\n44 606 507 1 re f\nBT /F2 10 Tf 0.00 0.17 0.33 rg 44 592 Td (${isReceipt ? 'RECEIVED FROM' : 'BILL TO'}) Tj ET\nBT /F2 13 Tf 0.00 0.17 0.33 rg 44 574 Td (${pdfText(organizationName, 58)}) Tj ET\n${billToEmail}\nBT /F1 8 Tf 0.35 0.40 0.48 rg 394 592 Td (Invoice date) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 394 576 Td (${pdfText(invoiceDate, 25)}) Tj ET\n${paidDateLine}\nBT /F1 8 Tf 0.35 0.40 0.48 rg 394 524 Td (Billing period) Tj ET\nBT /F2 8 Tf 0.00 0.17 0.33 rg 394 508 Td (${pdfText(period, 35)}) Tj ET\n0.00 0.17 0.33 rg\n44 458 507 30 re f\nBT /F2 8 Tf 1 1 1 rg 54 469 Td (DESCRIPTION) Tj ET\nBT /F2 8 Tf 1 1 1 rg 372 469 Td (QTY) Tj ET\nBT /F2 8 Tf 1 1 1 rg 409 469 Td (UNIT PRICE) Tj ET\nBT /F2 8 Tf 1 1 1 rg 501 469 Td (TOTAL) Tj ET\n0.91 0.92 0.94 RG\n44 411 507 47 re S\nBT /F2 9 Tf 0.00 0.17 0.33 rg 54 439 Td (${pdfText(description, 48)}) Tj ET\nBT /F1 7 Tf 0.35 0.40 0.48 rg 54 424 Td (${pdfText(period, 52)}) Tj ET\nBT /F1 9 Tf 0.00 0.17 0.33 rg 383 435 Td (1) Tj ET\nBT /F1 9 Tf 0.00 0.17 0.33 rg 421 435 Td (${pdfText(total, 20)}) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 501 435 Td (${pdfText(total, 20)}) Tj ET\nBT /F1 9 Tf 0.35 0.40 0.48 rg 378 386 Td (Subtotal) Tj ET\nBT /F2 9 Tf 0.00 0.17 0.33 rg 476 386 Td (${pdfText(total, 20)}) Tj ET\nBT /F2 11 Tf 0.00 0.17 0.33 rg 378 360 Td (TOTAL) Tj ET\nBT /F2 13 Tf 0.00 0.17 0.33 rg 469 360 Td (${pdfText(total, 20)}) Tj ET\n${isReceipt ? `0.90 0.97 0.92 rg\n378 324 173 25 re f\nBT /F2 10 Tf 0.09 0.43 0.22 rg 486 333 Td (PAID) Tj ET` : ''}\nBT /F2 11 Tf 0.00 0.17 0.33 rg 44 304 Td (${isReceipt ? 'TRANSACTION' : 'PAYMENT'}) Tj ET\n${transactionContent}\nBT /F2 10 Tf 0.00 0.17 0.33 rg 44 157 Td (NOTES) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 44 139 Td (${pdfText(notes, 98)}) Tj ET\nBT /F1 8 Tf 0.35 0.40 0.48 rg 44 123 Td (Billing enquiries: billing@lexams.com) Tj ET\n0.93 0.94 0.95 rg\n44 91 507 1 re f\nBT /F2 8 Tf 0.00 0.17 0.33 rg 44 68 Td (Thank you for choosing LexAMS.) Tj ET\nBT /F1 7 Tf 0.42 0.47 0.54 rg 369 68 Td (LexAMS by LexoGraphix Plus | https://lexams.com) Tj ET`;
 
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -139,6 +154,7 @@ export default async (request: Request) => {
   const pdf = makePdf({
     kind,
     organizationName: invoice.organization_name,
+    customerEmail: invoice.metadata?.receipt_recipient || null,
     invoiceNumber: invoice.internal_reference,
     amount: Number(invoice.amount),
     currency: invoice.currency,
