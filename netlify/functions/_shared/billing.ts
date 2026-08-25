@@ -26,9 +26,8 @@ function limit(name: string, fallback: number) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-// Pro ceilings remain configuration, rather than a promise of "unlimited" use.
-// The fallbacks are deliberately generous development defaults and must be approved
-// through environment configuration before a production paid launch.
+// Pro ceilings are explicit launch limits rather than an "unlimited" promise.
+// Netlify environment values should match these public limits in production.
 export const PLAN_ENTITLEMENTS: Record<PlanName, EntitlementSet> = {
   free: {
     activeActivities: 2,
@@ -45,17 +44,17 @@ export const PLAN_ENTITLEMENTS: Record<PlanName, EntitlementSet> = {
     teamCollaboration: false,
   },
   pro: {
-    activeActivities: limit('LEXAMS_PRO_MAX_ACTIVE_ACTIVITIES', 250),
-    participants: limit('LEXAMS_PRO_MAX_PARTICIPANTS', 10000),
-    teamSeats: limit('LEXAMS_PRO_MAX_TEAM_SEATS', 50),
-    surveysPerActivity: limit('LEXAMS_PRO_MAX_SURVEYS_PER_ACTIVITY', 100),
-    surveyQuestions: limit('LEXAMS_PRO_MAX_SURVEY_QUESTIONS', 100),
-    assessmentsPerActivity: limit('LEXAMS_PRO_MAX_ASSESSMENTS_PER_ACTIVITY', 100),
-    assessmentQuestions: limit('LEXAMS_PRO_MAX_ASSESSMENT_QUESTIONS', 200),
+    activeActivities: limit('LEXAMS_PRO_MAX_ACTIVE_ACTIVITIES', 100),
+    participants: limit('LEXAMS_PRO_MAX_PARTICIPANTS', 5000),
+    teamSeats: limit('LEXAMS_PRO_MAX_TEAM_SEATS', 20),
+    surveysPerActivity: limit('LEXAMS_PRO_MAX_SURVEYS_PER_ACTIVITY', 25),
+    surveyQuestions: limit('LEXAMS_PRO_MAX_SURVEY_QUESTIONS', 50),
+    assessmentsPerActivity: limit('LEXAMS_PRO_MAX_ASSESSMENTS_PER_ACTIVITY', 25),
+    assessmentQuestions: limit('LEXAMS_PRO_MAX_ASSESSMENT_QUESTIONS', 100),
     timedAssessments: true,
     csvExport: true,
     customBranding: true,
-    monthlyCertificates: limit('LEXAMS_PRO_MAX_MONTHLY_CERTIFICATES', 5000),
+    monthlyCertificates: limit('LEXAMS_PRO_MAX_MONTHLY_CERTIFICATES', 1000),
     teamCollaboration: true,
   },
 };
