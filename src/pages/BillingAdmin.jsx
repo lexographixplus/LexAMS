@@ -77,7 +77,7 @@ export default function BillingAdmin() {
       <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>Audit reason <textarea value={reason} onChange={event => setReason(event.target.value)} placeholder="e.g. Cash payment received and verified against receipt 1234" rows={3} style={input} /></label>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
         <button disabled={saving} onClick={() => runAction('record_manual_payment', { billingCycle: 'monthly' })} style={primary}>{saving ? 'Saving…' : 'Record GMD 1,000 monthly payment'}</button>
-        <button disabled={saving} onClick={() => runAction('record_manual_payment', { billingCycle: 'annual' })} style={primary}>{saving ? 'Saving…' : 'Record GMD 10,200 annual payment'}</button>
+        <button disabled={saving} onClick={() => runAction('record_manual_payment', { billingCycle: 'annual' })} style={primary}>{saving ? 'Saving…' : 'Record GMD 10,000 annual payment'}</button>
         <button disabled={saving} onClick={() => runAction('grant_complimentary_pro', { durationDays: 30 })} style={secondary}>{saving ? 'Saving…' : 'Grant 30-day complimentary Pro'}</button>
       </div>
     </section>}

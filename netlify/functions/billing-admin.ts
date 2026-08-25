@@ -4,7 +4,7 @@ import { getPool } from './_shared/db';
 import { ensureFreeSubscription, requirePlatformAdmin } from './_shared/billing';
 import { requireUser } from './_shared/session';
 
-const PRICE_BY_CYCLE = { monthly: 1000, annual: 10200 } as const;
+const PRICE_BY_CYCLE = { monthly: 1000, annual: 10000 } as const;
 type BillingCycle = keyof typeof PRICE_BY_CYCLE;
 
 function validCycle(value: unknown): value is BillingCycle {

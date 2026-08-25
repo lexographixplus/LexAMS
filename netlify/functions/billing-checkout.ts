@@ -4,7 +4,7 @@ import { getPool } from './_shared/db';
 import { getBillingSnapshot } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 
-const PRICES = { monthly: 1000, annual: 10200 } as const;
+const PRICES = { monthly: 1000, annual: 10000 } as const;
 
 function env(name: string) {
   return Netlify.env.get(name);

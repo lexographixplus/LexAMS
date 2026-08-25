@@ -100,7 +100,7 @@ export default function BillingPlan({ isAdmin, notify }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15 }}><Sparkles size={17} color="var(--color-accent)" /> Upgrade to Pro</div>
         <p style={{ ...subtext, marginTop: 7 }}>Team collaboration, larger programme capacity, full reporting and professional outputs.</p>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={() => setCycle('annual')} style={{ ...optionButton, ...(cycle === 'annual' ? selectedOption : {}) }}>Annual <strong>GMD 10,200</strong><small>GMD 850/month · Save 15%</small></button>
+          <button onClick={() => setCycle('annual')} style={{ ...optionButton, ...(cycle === 'annual' ? selectedOption : {}) }}>Annual <strong>GMD 10,000</strong><small>GMD 833/month · Save 17%</small></button>
           <button onClick={() => setCycle('monthly')} style={{ ...optionButton, ...(cycle === 'monthly' ? selectedOption : {}) }}>Monthly <strong>GMD 1,000</strong><small>Flexible access</small></button>
         </div>
         {isAdmin ? <button onClick={beginCheckout} disabled={startingCheckout} style={primaryButton}><CreditCard size={16} />{startingCheckout ? 'Opening secure checkout…' : `Choose Pro · ${cycle === 'annual' ? 'Annual' : 'Monthly'}`}</button> : <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 18 }}>Only an organisation owner or administrator can manage billing.</p>}

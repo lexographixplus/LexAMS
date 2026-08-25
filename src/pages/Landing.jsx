@@ -358,7 +358,7 @@ export default function Landing() {
                 <div className="lexams-price-tag">Recommended for organisations</div>
                 <h3>Pro</h3>
                 <div className="lexams-price">GMD 1,000 <small>per month</small></div>
-                <p className="lexams-price-copy"><strong>GMD 10,200/year</strong> · GMD 850/month equivalent · save 15% with annual billing.</p>
+                <p className="lexams-price-copy"><strong>GMD 10,000/year</strong> · GMD 833/month equivalent · save 17% with annual billing.</p>
                 <ul className="lexams-price-list">
                   <li><CheckCircle2 size={16} />Multiple team members, roles and approvals</li>
                   <li><CheckCircle2 size={16} />Higher programme and participant capacity</li>
