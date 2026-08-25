@@ -1,4 +1,6 @@
 import type { Config } from '@netlify/functions';
+import { getPool } from './_shared/db';
+import { getBillingSnapshot } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 
 export default async (request: Request) => {
@@ -6,6 +8,7 @@ export default async (request: Request) => {
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const billing = await getBillingSnapshot(getPool(), tenant.organization_id);
 
   return Response.json({
     user: tenant.user,
@@ -25,6 +28,7 @@ export default async (request: Request) => {
       logo_url: tenant.organization_logo_url,
       role: tenant.role,
     },
+    billing,
   });
 };
 
