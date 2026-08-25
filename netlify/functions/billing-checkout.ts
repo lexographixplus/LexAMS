@@ -48,7 +48,13 @@ export default async (request: Request) => {
       internalReference,
       amount,
       billingCycle === 'annual' ? '1 year' : '1 month',
-      JSON.stringify({ organization_id: tenant.organization_id, billing_cycle: billingCycle }),
+      JSON.stringify({
+        organization_id: tenant.organization_id,
+        billing_cycle: billingCycle,
+        // Keep the receipt address with the LexAMS invoice, rather than exposing it
+        // in the hosted checkout metadata.
+        receipt_recipient: tenant.user.email || null,
+      }),
     ]
   );
   const invoiceId = invoice.rows[0].id;
