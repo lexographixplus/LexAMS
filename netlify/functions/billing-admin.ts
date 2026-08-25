@@ -113,6 +113,17 @@ export default async (request: Request) => {
           typeof body.cancelAtPeriodEnd === 'boolean' ? body.cancelAtPeriodEnd : null]
       );
       after = result.rows[0];
+    } else if (action === 'downgrade_to_free') {
+      if (before.plan === 'free' && before.status === 'active') throw new Error('This organization is already on the Free plan');
+      const result = await client.query(
+        `update organization_subscriptions
+         set plan = 'free', status = 'active', billing_cycle = null, provider = 'manual',
+             current_period_start = null, current_period_end = null, grace_period_end = null,
+             cancel_at_period_end = false, updated_at = now()
+         where organization_id = $1 returning *`,
+        [organizationId]
+      );
+      after = result.rows[0];
     } else if (action === 'grant_complimentary_pro') {
       const durationDays = Number(body.durationDays);
       if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 366) throw new Error('Complimentary duration must be between 1 and 366 days');
