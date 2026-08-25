@@ -70,6 +70,8 @@ export default async (request: Request) => {
           from_sdk: false,
           title: `LexAMS Pro — ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} plan`,
           description: `LexAMS Pro subscription for ${tenant.organization_name}`,
+          customer_name: tenant.profile_full_name || tenant.organization_name,
+          customer_email: tenant.user.email || undefined,
           return_url: `${appUrl}/app/settings?billing=success`,
           cancel_url: `${appUrl}/app/settings?billing=cancelled`,
           metadata: {

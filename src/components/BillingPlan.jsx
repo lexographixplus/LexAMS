@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, CreditCard, Sparkles } from 'lucide-react';
 
 const formatDate = (value) => value ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : '—';
@@ -17,11 +18,11 @@ function Meter({ label, current, limit }) {
 }
 
 export default function BillingPlan({ isAdmin, notify }) {
+  const navigate = useNavigate();
   const [billing, setBilling] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [cycle, setCycle] = useState('annual');
   const [loading, setLoading] = useState(true);
-  const [startingCheckout, setStartingCheckout] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,23 +52,6 @@ export default function BillingPlan({ isAdmin, notify }) {
     if (billing.subscription.status === 'grace') return `Grace period ends ${formatDate(billing.subscription.grace_period_end)}`;
     return billing.subscription.current_period_end ? `Renews or expires ${formatDate(billing.subscription.current_period_end)}` : 'No paid renewal is scheduled';
   }, [billing]);
-
-  async function beginCheckout() {
-    if (!isAdmin || startingCheckout) return;
-    setStartingCheckout(true);
-    try {
-      const response = await fetch('/api/billing/checkout', {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billingCycle: cycle }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Could not start checkout.');
-      window.location.assign(data.checkoutUrl);
-    } catch (error) {
-      notify(error.message || 'Could not start checkout.');
-      setStartingCheckout(false);
-    }
-  }
 
   if (loading) return <section style={card}><div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading billing and plan details…</div></section>;
 
@@ -103,7 +87,7 @@ export default function BillingPlan({ isAdmin, notify }) {
           <button onClick={() => setCycle('annual')} style={{ ...optionButton, ...(cycle === 'annual' ? selectedOption : {}) }}>Annual <strong>GMD 10,000</strong><small>GMD 833/month · Save 17%</small></button>
           <button onClick={() => setCycle('monthly')} style={{ ...optionButton, ...(cycle === 'monthly' ? selectedOption : {}) }}>Monthly <strong>GMD 1,000</strong><small>Flexible access</small></button>
         </div>
-        {isAdmin ? <button onClick={beginCheckout} disabled={startingCheckout} style={primaryButton}><CreditCard size={16} />{startingCheckout ? 'Opening secure checkout…' : `Choose Pro · ${cycle === 'annual' ? 'Annual' : 'Monthly'}`}</button> : <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 18 }}>Only an organisation owner or administrator can manage billing.</p>}
+        {isAdmin ? <button onClick={() => navigate(`/app/checkout?cycle=${cycle}`)} style={primaryButton}><CreditCard size={16} />Review order · {cycle === 'annual' ? 'Annual' : 'Monthly'}</button> : <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 18 }}>Only an organisation owner or administrator can manage billing.</p>}
       </div>}
     </div>
 

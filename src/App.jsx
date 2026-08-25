@@ -14,6 +14,7 @@ import Assessments from './pages/Assessments';
 import Settings from './pages/Settings';
 import Team from './pages/Team';
 import BillingAdmin from './pages/BillingAdmin';
+import BillingCheckout from './pages/BillingCheckout';
 import SurveyPublic from './pages/public/SurveyPublic';
 import AssessmentPublic from './pages/public/AssessmentPublic';
 import RegisterPublic from './pages/public/RegisterPublic';
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="surveys" element={<UiPage name="surveys"><Surveys /></UiPage>} />
         <Route path="assessments" element={<UiPage name="assessments"><Assessments /></UiPage>} />
         <Route path="settings" element={<UiPage name="settings"><Settings /></UiPage>} />
+        <Route path="checkout" element={<UiPage name="checkout"><BillingCheckout /></UiPage>} />
         <Route path="team" element={<UiPage name="team"><Team /></UiPage>} />
         <Route path="admin/billing" element={<UiPage name="billing-admin"><BillingAdmin /></UiPage>} />
       </Route>
