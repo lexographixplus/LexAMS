@@ -18,7 +18,17 @@ function cleanIdentity(value: unknown) {
 }
 
 function dateKey(value: unknown) {
-  return String(value || '').slice(0, 10);
+  if (!value) return '';
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  const isoDate = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw.slice(0, 10) : parsed.toISOString().slice(0, 10);
 }
 
 function timeKey(value: unknown) {
@@ -463,18 +473,23 @@ async function handleSessionCheckin(request: Request, db: ReturnType<typeof getP
 }
 
 export default async (request: Request, context: Context) => {
-  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
-  const token = context.params.token;
-  if (!token) return json({ error: 'Invalid check-in link.' }, 400);
+  try {
+    if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
+    const token = context.params.token;
+    if (!token) return json({ error: 'Invalid check-in link.' }, 400);
 
-  const db = getPool();
-  const directSession = await directSessionByToken(db, token);
-  if (directSession) return handleSessionCheckin(request, db, directSession);
+    const db = getPool();
+    const directSession = await directSessionByToken(db, token);
+    if (directSession) return handleSessionCheckin(request, db, directSession);
 
-  const activity = await activityByToken(db, token);
-  if (activity) return handleActivityCheckin(request, db, activity);
+    const activity = await activityByToken(db, token);
+    if (activity) return handleActivityCheckin(request, db, activity);
 
-  return json({ error: 'Check-in link not found.' }, 404);
+    return json({ error: 'Check-in link not found.' }, 404);
+  } catch (error) {
+    console.error('Public check-in request failed', error);
+    return json({ error: 'Check-in is temporarily unavailable. Please try again.' }, 500);
+  }
 };
 
 export const config: Config = {
