@@ -242,6 +242,7 @@ async function handleActivityCheckin(request: Request, db: ReturnType<typeof get
      from attendance a
      left join activity_sessions s on s.id=a.session_id and s.organization_id=a.organization_id
      where a.organization_id=$1 and a.activity_id=$2 and a.participant_id=$3
+       and a.status in ('present','late')
        and (s.session_date=$4::date or (a.session_id is null and a.session_label=$5))
      order by a.recorded_at
      limit 1`,
@@ -273,7 +274,9 @@ async function handleActivityCheckin(request: Request, db: ReturnType<typeof get
   const inserted = await db.query(
     `insert into attendance (organization_id, activity_id, participant_id, session_id, session_label, status, source)
      values ($1,$2,$3,$4,$5,'present',$6)
-     on conflict (activity_id, participant_id, session_label) do nothing
+     on conflict (activity_id, participant_id, session_label)
+     do update set status='present', source=excluded.source, recorded_at=now()
+       where attendance.status='absent'
      returning id, status, recorded_at`,
     [activity.organization_id, activity.id, person.participant_id, todaySession?.id || null, label, source]
   );
