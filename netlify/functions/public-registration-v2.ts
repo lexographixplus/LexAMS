@@ -4,6 +4,14 @@ import { assertCreationEntitlement } from './_shared/billing';
 import { appBaseUrl, brandedEmail, sendEmailBatch } from './_shared/communications';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
+type RegistrationField = {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'checkbox';
+  required: boolean;
+  options: string[];
+};
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -23,20 +31,20 @@ function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function customFields(value: unknown) {
-  if (!Array.isArray(value)) return [] as Array<Record<string, unknown>>;
+function customFields(value: unknown): RegistrationField[] {
+  if (!Array.isArray(value)) return [];
   return value
     .filter(field => field && typeof field === 'object')
-    .map((field: any, index) => ({
+    .map((field: any, index): RegistrationField => ({
       id: String(field.id || `field_${index + 1}`).slice(0, 80),
       label: String(field.label || `Question ${index + 1}`).slice(0, 180),
-      type: ['text', 'textarea', 'select', 'checkbox'].includes(String(field.type)) ? String(field.type) : 'text',
+      type: ['text', 'textarea', 'select', 'checkbox'].includes(String(field.type)) ? String(field.type) as RegistrationField['type'] : 'text',
       required: Boolean(field.required),
       options: Array.isArray(field.options) ? field.options.map((option: unknown) => String(option).slice(0, 120)).slice(0, 30) : [],
     }));
 }
 
-function validateAnswers(fields: ReturnType<typeof customFields>, answers: any) {
+function validateAnswers(fields: RegistrationField[], answers: any) {
   const safeAnswers: Record<string, unknown> = {};
   const source = answers && typeof answers === 'object' ? answers : {};
   for (const field of fields) {
@@ -76,7 +84,9 @@ async function sendConfirmation(args: {
     ? 'confirmed'
     : args.registration.status === 'waitlisted'
       ? 'on the waitlist'
-      : 'pending approval';
+      : args.registration.status === 'cancelled'
+        ? 'cancelled'
+        : 'pending approval';
   const base = appBaseUrl(args.request);
   const passUrl = `${base}/pass/${args.participant.pass_token}`;
   const message = String(args.activity.registration_confirmation_message || '').trim();
@@ -121,7 +131,7 @@ async function activityByToken(db: ReturnType<typeof getPool>, token: string, fo
      from activities a
      join organizations o on o.id = a.organization_id
      where a.reg_token = $1
-     limit 1${forUpdate ? ' for update' : ''}`,
+     limit 1${forUpdate ? ' for update of a' : ''}`,
     [token]
   );
   return result.rows[0] || null;
@@ -213,7 +223,7 @@ export default async (request: Request, context: Context) => {
     return json({ ok: true, email_sent: delivery.sent });
   }
 
-  if (existingRegistration.rowCount) {
+  if (existingRegistration.rowCount && existingRegistration.rows[0].status !== 'cancelled') {
     const reg = existingRegistration.rows[0];
     return json({ state: 'already', status: reg.status, reference: reg.reference_code }, 409);
   }
@@ -251,8 +261,7 @@ export default async (request: Request, context: Context) => {
       const insertedParticipant = await client.query(
         `insert into participants (organization_id, name, email, phone, org, category)
          values ($1,$2,$3,$4,$5,$6)
-         on conflict (organization_id, lower(btrim(email))) where btrim(email) <> ''
-         do nothing
+         on conflict do nothing
          returning id, name, email, pass_token`,
         [
           lockedActivity.organization_id,
@@ -281,7 +290,10 @@ export default async (request: Request, context: Context) => {
        from registrations where organization_id=$1 and activity_id=$2 and participant_id=$3 limit 1`,
       [lockedActivity.organization_id, lockedActivity.id, participantRow.id]
     );
-    if (racedRegistration.rowCount) {
+    const previousCancelled = racedRegistration.rowCount && racedRegistration.rows[0].status === 'cancelled'
+      ? racedRegistration.rows[0]
+      : null;
+    if (racedRegistration.rowCount && !previousCancelled) {
       await client.query('commit');
       const reg = racedRegistration.rows[0];
       return json({ state: 'already', status: reg.status, reference: reg.reference_code }, 409);
@@ -299,16 +311,24 @@ export default async (request: Request, context: Context) => {
       status = 'waitlisted';
     }
 
-    const insertedRegistration = await client.query(
-      `insert into registrations (organization_id, activity_id, participant_id, status, custom_answers, confirmed_at, reference_code)
-       values ($1,$2,$3,$4,$5::jsonb,case when $4='confirmed' then now() else null end,
-               'REG-' || upper(substr(replace(gen_random_uuid()::text,'-',''),1,10)))
-       returning id, status, reference_code, registered_at, confirmed_at`,
-      [lockedActivity.organization_id, lockedActivity.id, participantRow.id, status, JSON.stringify(answers)]
-    );
+    const registrationResult = previousCancelled
+      ? await client.query(
+          `update registrations set status=$4, custom_answers=$5::jsonb, registered_at=now(),
+                   confirmed_at=case when $4='confirmed' then now() else null end
+           where id=$1 and activity_id=$2 and organization_id=$3
+           returning id, status, reference_code, registered_at, confirmed_at`,
+          [previousCancelled.id, lockedActivity.id, lockedActivity.organization_id, status, JSON.stringify(answers)]
+        )
+      : await client.query(
+          `insert into registrations (organization_id, activity_id, participant_id, status, custom_answers, confirmed_at, reference_code)
+           values ($1,$2,$3,$4,$5::jsonb,case when $4='confirmed' then now() else null end,
+                   'REG-' || upper(substr(replace(gen_random_uuid()::text,'-',''),1,10)))
+           returning id, status, reference_code, registered_at, confirmed_at`,
+          [lockedActivity.organization_id, lockedActivity.id, participantRow.id, status, JSON.stringify(answers)]
+        );
     await client.query('commit');
 
-    const registration = insertedRegistration.rows[0];
+    const registration = registrationResult.rows[0];
     const delivery = await sendConfirmation({ request, activity: lockedActivity, participant: participantRow, registration });
     return json({
       state: 'registered',
