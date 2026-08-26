@@ -24,6 +24,7 @@ function authErrorFromResponse(data) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = useCallback(async () => {
@@ -31,6 +32,7 @@ export function AuthProvider({ children }) {
     if (!response.ok) {
       setUser(null);
       setProfile(null);
+      setBilling(null);
       setLoading(false);
       return null;
     }
@@ -38,6 +40,7 @@ export function AuthProvider({ children }) {
     const data = await response.json();
     setUser(data.user);
     setProfile(data.profile);
+    setBilling(data.billing || null);
 
     const pending = localStorage.getItem('lexams_pending_onboarding');
     if (pending) {
@@ -54,6 +57,7 @@ export function AuthProvider({ children }) {
           const next = await refreshed.json();
           setUser(next.user);
           setProfile(next.profile);
+          setBilling(next.billing || null);
         }
       } catch {
         // Keep pending onboarding details for a later retry.
@@ -136,18 +140,21 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       setProfile(null);
+      setBilling(null);
       window.location.assign('/');
     }
   }
 
   const isAdmin = profile?.team_role === 'admin';
+  const isPro = billing?.subscription?.plan === 'pro';
 
   return (
     <AuthContext.Provider value={{
-      user, profile, loading,
+      user, profile, billing, loading,
       signUp, signIn, signOut,
       isDemo: false,
       isAdmin,
+      isPro,
       refreshProfile,
     }}>
       {children}
@@ -160,4 +167,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
-

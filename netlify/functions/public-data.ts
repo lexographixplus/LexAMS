@@ -1,5 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { getPool } from './_shared/db';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
@@ -74,6 +75,7 @@ async function validateParticipant(db: ReturnType<typeof getPool>, participantId
 }
 
 export default async (request: Request) => {
+  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const body = await request.json().catch(() => null) as any;
   if (!body?.table || !body?.operation) return json({ error: 'Invalid request' }, 400);

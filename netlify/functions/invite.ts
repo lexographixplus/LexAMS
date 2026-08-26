@@ -1,6 +1,7 @@
 import type { Config, Context } from '@netlify/functions';
 import { getPool } from './_shared/db';
 import { requireUser } from './_shared/session';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
@@ -9,6 +10,7 @@ function json(data: unknown, status = 200) {
 export default async (request: Request, context: Context) => {
   const token = context.params.token;
   if (!token) return json({ error: 'Missing invitation token' }, 400);
+  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   const db = getPool();
 
   const inviteResult = await db.query(

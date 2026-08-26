@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { getPool } from './_shared/db';
 import { requireTenant } from './_shared/tenant';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'workspace';
@@ -8,6 +9,7 @@ function slugify(value: string) {
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });

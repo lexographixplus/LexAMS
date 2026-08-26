@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { requireTenant } from './_shared/tenant';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
@@ -32,6 +33,7 @@ export default async (request: Request) => {
   }
 
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
   const tenant = await requireTenant(request);
   if (!tenant) return json({ error: 'Unauthorized' }, 401);
   if (!['owner', 'admin'].includes(tenant.role)) return json({ error: 'Admin permission required' }, 403);

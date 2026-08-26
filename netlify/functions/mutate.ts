@@ -2,10 +2,13 @@ import type { Config } from '@netlify/functions';
 import { randomUUID } from 'node:crypto';
 import { getPool } from './_shared/db';
 import { assertCreationEntitlement, PlanLimitError } from './_shared/billing';
+import { maybeSendAwardedCertificate } from './_shared/certificate-delivery';
 import { requireTenant } from './_shared/tenant';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -53,6 +56,7 @@ export default async (request: Request) => {
           }
 
           let executed: unknown = null;
+          let autoCertificateId: number | null = null;
           if (decision === 'approved') {
             const p = approval.payload || {};
 
@@ -108,6 +112,7 @@ export default async (request: Request) => {
                 [cert.id, certNo]
               );
               executed = updated.rows[0];
+              autoCertificateId = Number(updated.rows[0].id);
             } else if (approval.action_type === 'delete_participant') {
               const participantId = p.id || p.participant_id;
               if (!participantId) throw new Error('Approval payload is missing participant id');
@@ -137,7 +142,24 @@ export default async (request: Request) => {
           );
 
           await client.query('commit');
-          return Response.json({ approval: reviewed.rows[0], executed });
+
+          let emailDelivery: unknown = null;
+          if (autoCertificateId) {
+            try {
+              emailDelivery = await maybeSendAwardedCertificate({
+                db,
+                request,
+                tenant,
+                certificateId: autoCertificateId,
+                createdBy: userId,
+              });
+            } catch (error) {
+              console.error('Automatic certificate delivery failed after approval', { autoCertificateId, error });
+              emailDelivery = { attempted: true, sent: false, error: error instanceof Error ? error.message : 'Delivery failed' };
+            }
+          }
+
+          return Response.json({ approval: reviewed.rows[0], executed, email_delivery: emailDelivery });
         } catch (error) {
           await client.query('rollback').catch(() => undefined);
           throw error;
@@ -253,7 +275,7 @@ export default async (request: Request) => {
           `insert into attendance (organization_id, activity_id, participant_id, session_label, status)
            select $1, a.id, p.id, $4, $5 from activities a join participants p on p.id = $3
            where a.id = $2 and a.organization_id = $1 and p.organization_id = $1
-           on conflict (activity_id, participant_id, session_label)
+           on conflict (activity_id, participant_id,session_label)
            do update set status = excluded.status, recorded_at = now()
            returning *`,
           [orgId, payload.activityId, payload.participantId, payload.sessionLabel, payload.status]
@@ -296,7 +318,21 @@ export default async (request: Request) => {
         const cert = inserted.rows[0];
         const certNo = `LEX-${new Date().getFullYear()}-${String(cert.id).padStart(4, '0')}`;
         const updated = await db.query('update certificates set cert_no = $2 where id = $1 returning *', [cert.id, certNo]);
-        return Response.json(updated.rows[0]);
+        const certificate = updated.rows[0];
+        let emailDelivery: unknown = null;
+        try {
+          emailDelivery = await maybeSendAwardedCertificate({
+            db,
+            request,
+            tenant,
+            certificateId: Number(certificate.id),
+            createdBy: userId,
+          });
+        } catch (error) {
+          console.error('Automatic certificate delivery failed after direct award', { certificateId: certificate.id, error });
+          emailDelivery = { attempted: true, sent: false, error: error instanceof Error ? error.message : 'Delivery failed' };
+        }
+        return Response.json({ ...certificate, email_delivery: emailDelivery });
       }
       default:
         return Response.json({ error: 'Unsupported action' }, { status: 400 });

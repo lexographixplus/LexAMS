@@ -22,8 +22,8 @@ export function fmtDate(value) {
 }
 
 export function fmtRange(a = {}) {
-  const start = parseDate(a.start);
-  const end = parseDate(a.end);
+  const start = parseDate(a.start ?? a.start_date);
+  const end = parseDate(a.end ?? a.end_date);
   if (!start && !end) return DATE_NOT_SET;
   if (!start || !end) return fmtDate(start || end);
 
@@ -54,5 +54,5 @@ export function statusChip(status) {
 }
 
 export function initials(name) {
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  return String(name || '').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
 }

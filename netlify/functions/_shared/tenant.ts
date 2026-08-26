@@ -1,6 +1,7 @@
 import { getPool } from './db';
 import { requireUser } from './session';
 import { ensureFreeSubscription } from './billing';
+import { isPreviewDeployment } from './preview';
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'workspace';
@@ -28,6 +29,10 @@ export async function requireTenant(request: Request) {
   );
 
   if (membership.rowCount) return { user, ...membership.rows[0] };
+
+  // A preview can read the workspace of an existing member, but must never
+  // create a real organization as a side effect of loading the app.
+  if (isPreviewDeployment(request)) return null;
 
   const baseName = user.name?.trim() || user.email?.split('@')[0] || 'My Organization';
   const suffix = String(user.id).slice(0, 8);

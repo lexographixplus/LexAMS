@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 import { assertCreationEntitlement, getBillingSnapshot, PlanLimitError, requireAllowance, requirePro } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 const directTables: Record<string, Set<string>> = {
   activities: new Set(['id','organization_id','title','type','status','venue','organizer','facilitator','start_date','end_date','sessions','reg_open','reg_token','att_token','description','created_by','created_at','updated_at']),
@@ -153,6 +154,7 @@ export default async (request: Request) => {
 
   const body = await request.json().catch(() => null) as any;
   if (!body?.table || !body?.operation) return json({ error: 'Invalid request' }, 400);
+  if (body.operation !== 'select' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   const table = String(body.table);
   const db = getPool();
 

@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
-  ClipboardCheck, GraduationCap, Settings, UsersRound,
-  MessageCircle, UserCircle, CreditCard, LogOut, Menu, ShieldCheck, X,
+  ClipboardCheck, GraduationCap, Settings, UsersRound, Mail,
+  UserCircle, CreditCard, LogOut, Menu, ShieldCheck, X,
 } from 'lucide-react';
 
 const navItems = [
@@ -15,9 +15,9 @@ const navItems = [
   { to: '/app/surveys', icon: ClipboardCheck, label: 'Surveys' },
   { to: '/app/assessments', icon: GraduationCap, label: 'Assessments' },
   { to: '/app/certificates', icon: Award, label: 'Certificates' },
+  { to: '/app/communications', icon: Mail, label: 'Communications', proOnly: true },
   { to: '/app/reports', icon: FileBarChart, label: 'Reports' },
-  { to: '/app/communication', icon: MessageCircle, label: 'Communication' },
-  { to: '/app/team', icon: UsersRound, label: 'Team' },
+  { to: '/app/team', icon: UsersRound, label: 'Team', proOnly: true },
   { to: '/app/settings', icon: Settings, label: 'Settings' },
   { to: '/app/billing', icon: CreditCard, label: 'Billing & plan' },
   { to: '/app/account', icon: UserCircle, label: 'My account' },
@@ -30,8 +30,8 @@ const pageTitles = {
   '/app/surveys': 'Surveys',
   '/app/assessments': 'Assessments',
   '/app/certificates': 'Certificates',
+  '/app/communications': 'Communications',
   '/app/reports': 'Reports',
-  '/app/communication': 'Communication',
   '/app/team': 'Team',
   '/app/settings': 'Settings',
   '/app/billing': 'Billing & plan',
@@ -40,20 +40,20 @@ const pageTitles = {
 };
 
 export default function AppLayout() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isPro } = useAuth();
   const { activities, participants, certificates, surveys, assessments } = useData();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   const orgName = profile?.org_name || 'Horizon Community Foundation';
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'Admin User';
   const role = profile?.role || 'Institution Administrator';
+  const planNavItems = navItems.filter(item => !item.proOnly || isPro);
   const visibleNavItems = profile?.platform_admin
-    ? [...navItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
-    : navItems;
+    ? [...planNavItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
+    : planNavItems;
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const pageTitle = pageTitles[location.pathname] ||
@@ -75,10 +75,7 @@ export default function AppLayout() {
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: '#FFFFFF', lineHeight: 1.1 }}>LexAMS</div>
             <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>by LexoStudio</div>
           </div>
-          {/* Close button - mobile only */}
-          <button onClick={() => setSidebarOpen(false)} className="mobile-only" style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', padding: 4, cursor: 'pointer',
-          }}><X size={20} /></button>
+          <button onClick={() => setSidebarOpen(false)} className="mobile-only" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', padding: 4, cursor: 'pointer' }}><X size={20} /></button>
         </div>
       </div>
 
@@ -93,25 +90,16 @@ export default function AppLayout() {
               background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
             })}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <item.icon size={18} />
-              {item.label}
-            </span>
-            {counts[item.label] !== undefined && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>{counts[item.label]}</span>
-            )}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><item.icon size={18} />{item.label}</span>
+            {counts[item.label] !== undefined && <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>{counts[item.label]}</span>}
           </NavLink>
         ))}
       </nav>
 
       <div style={{ padding: '18px 24px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{orgName}</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>Activity Management System</div>
-        <button onClick={signOut} style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          marginTop: 12, fontSize: 12, fontWeight: 600,
-          color: 'var(--color-gold-500)', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-        }}><LogOut size={14} /> Sign out</button>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{isPro ? 'Pro plan' : 'Free plan'}</div>
+        <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: 'var(--color-gold-500)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><LogOut size={14} /> Sign out</button>
       </div>
     </>
   );
@@ -127,7 +115,6 @@ export default function AppLayout() {
         .desktop-user { display: flex; }
         .content-pad { padding: 30px 40px 72px; }
         .topbar-pad { padding: 14px 40px; }
-
         @media (max-width: 768px) {
           .desktop-sidebar { display: none !important; }
           .mobile-only { display: flex !important; }
@@ -135,54 +122,18 @@ export default function AppLayout() {
           .desktop-user { display: none !important; }
           .content-pad { padding: 20px 16px 60px; }
           .topbar-pad { padding: 12px 16px; }
-          .mobile-overlay {
-            display: block; position: fixed; inset: 0;
-            background: rgba(0,43,84,0.4); z-index: 200;
-          }
-          .mobile-sidebar {
-            display: flex; position: fixed; top: 0; left: 0; bottom: 0;
-            width: 270px; z-index: 210; flex-direction: column;
-            background: var(--surface-inverse);
-            box-shadow: var(--shadow-raised);
-          }
+          .mobile-overlay { display: block; position: fixed; inset: 0; background: rgba(0,43,84,0.4); z-index: 200; }
+          .mobile-sidebar { display: flex; position: fixed; top: 0; left: 0; bottom: 0; width: 270px; z-index: 210; flex-direction: column; background: var(--surface-inverse); box-shadow: var(--shadow-raised); }
         }
       `}</style>
-
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-        {/* Desktop sidebar */}
-        <div className="desktop-sidebar" style={{
-          width: 232, flexShrink: 0, background: 'var(--surface-inverse)',
-          flexDirection: 'column',
-        }}>
-          {sidebarContent}
-        </div>
-
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <>
-            <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} />
-            <div className="mobile-sidebar">{sidebarContent}</div>
-          </>
-        )}
-
-        {/* Main content */}
+        <div className="desktop-sidebar" style={{ width: 232, flexShrink: 0, background: 'var(--surface-inverse)', flexDirection: 'column' }}>{sidebarContent}</div>
+        {sidebarOpen && <><div className="mobile-overlay" onClick={() => setSidebarOpen(false)} /><div className="mobile-sidebar">{sidebarContent}</div></>}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          {/* Top bar */}
-          <div className="topbar-pad" style={{
-            background: 'var(--surface-card)',
-            borderBottom: '1px solid var(--border-default)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            flexShrink: 0,
-          }}>
+          <div className="topbar-pad" style={{ background: 'var(--surface-card)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button className="hamburger" onClick={() => setSidebarOpen(true)} style={{
-                background: 'none', border: 'none', padding: 4, color: 'var(--text-primary)',
-                cursor: 'pointer', alignItems: 'center',
-              }}><Menu size={22} /></button>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: 19,
-                fontWeight: 700, color: 'var(--text-primary)',
-              }}>{pageTitle}</div>
+              <button className="hamburger" onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-primary)', cursor: 'pointer', alignItems: 'center' }}><Menu size={22} /></button>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-primary)' }}>{pageTitle}</div>
             </div>
             <NavLink to="/app/account" className="desktop-user" aria-label="Open My account" style={{ alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <div style={{
@@ -204,6 +155,7 @@ export default function AppLayout() {
               <Outlet />
             </div>
           </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}><div className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}><Outlet /></div></div>
         </div>
       </div>
     </>

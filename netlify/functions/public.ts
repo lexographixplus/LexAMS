@@ -1,6 +1,7 @@
 import type { Config, Context } from '@netlify/functions';
 import { getPool } from './_shared/db';
 import { assertCreationEntitlement } from './_shared/billing';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -209,6 +210,7 @@ async function assessment(request: Request, token: string) {
 }
 
 export default async (request: Request, context: Context) => {
+  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   const token = context.params.token;
   const kind = context.params.kind;
   if (!token || !kind) return json({ error: 'Invalid public link' }, 400);

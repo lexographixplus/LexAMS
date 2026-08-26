@@ -1,5 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { Resend } from 'resend';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 const CONTACT_RECIPIENT = 'lexographixplus@gmail.com';
 
@@ -17,6 +18,7 @@ function escapeHtml(value: string) {
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return Response.json({ error: 'A valid contact message is required' }, { status: 400 });
   if (clean(body['bot-field'], 100)) return Response.json({ ok: true });

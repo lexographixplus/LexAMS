@@ -7,7 +7,7 @@ const freeFeatures = [
   '1 team seat',
   '1 survey per activity with up to 5 questions',
   '1 assessment per activity with up to 10 questions',
-  '5 certificates per month',
+  'Generate, view and download up to 5 certificates per month',
 ];
 
 const proFeatures = [
@@ -17,9 +17,12 @@ const proFeatures = [
   'Up to 25 surveys per activity with 50 questions each',
   'Up to 25 assessments per activity with 100 questions each',
   'Timed assessments',
-  'CSV exports',
+  'CSV and advanced report exports',
   'Custom organisation branding',
   'Up to 1,000 certificates per month',
+  'Participant announcements and programme email',
+  'Individual and bulk certificate email delivery',
+  'Automatic certificate email delivery',
 ];
 
 function FeatureList({ items, pro = false }) {
@@ -62,14 +65,9 @@ export default function PricingPlanCards({
               <h2>Free</h2>
               <p>For small programmes, pilots and teams getting started.</p>
             </div>
-            <div className="mk-plan-price-row">
-              <span className="mk-plan-currency">GMD</span>
-              <strong>0</strong>
-            </div>
+            <div className="mk-plan-price-row"><span className="mk-plan-currency">GMD</span><strong>0</strong></div>
           </div>
-
           <Link className="mk-plan-cta free" to={freeTo}>{freeCta}</Link>
-
           <div className="mk-plan-divider" />
           <div className="mk-plan-included">What’s included</div>
           <FeatureList items={freeFeatures} />
@@ -83,18 +81,10 @@ export default function PricingPlanCards({
               <h2>Pro</h2>
               <p>For growing organisations running larger or recurring programmes.</p>
             </div>
-            <div className="mk-plan-price-row pro">
-              <span className="mk-plan-currency">GMD</span>
-              <strong key={proPrice}>{proPrice}</strong>
-              <small>{proPeriod}</small>
-            </div>
-            <p className="mk-plan-price-note">
-              {annual ? 'GMD 833/month equivalent · billed annually' : 'Billed monthly'}
-            </p>
+            <div className="mk-plan-price-row pro"><span className="mk-plan-currency">GMD</span><strong key={proPrice}>{proPrice}</strong><small>{proPeriod}</small></div>
+            <p className="mk-plan-price-note">{annual ? 'GMD 833/month equivalent · billed annually' : 'Billed monthly'}</p>
           </div>
-
           <Link className="mk-plan-cta pro" to={proTo}>{proCta}</Link>
-
           <div className="mk-plan-divider" />
           <div className="mk-plan-included">Everything in Free, plus</div>
           <FeatureList items={proFeatures} pro />

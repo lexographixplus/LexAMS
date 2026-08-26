@@ -1,7 +1,9 @@
 const PREVIEW_HOST = 'deploy-preview-8--lexams.netlify.app';
+const PREVIEW_HOST_PATTERN = /^(?:deploy-preview-\d+|[a-z0-9-]+)--[a-z0-9-]+\.netlify\.app$/i;
 
 export function isReportingPreviewDemo() {
-  return typeof window !== 'undefined' && window.location.hostname === PREVIEW_HOST;
+  return typeof window !== 'undefined'
+    && (window.location.hostname === PREVIEW_HOST || PREVIEW_HOST_PATTERN.test(window.location.hostname));
 }
 
 export const reportPreviewDemo = {
