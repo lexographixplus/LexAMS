@@ -1,16 +1,37 @@
-export function fmtDate(iso) {
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const DATE_NOT_SET = 'Date not set';
+
+function parseDate(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(text)
+    ? new Date(`${text}T00:00:00`)
+    : new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function fmtRange(a) {
-  if (a.start === a.end) return fmtDate(a.start);
-  const s = new Date(a.start + 'T00:00:00');
-  const e = new Date(a.end + 'T00:00:00');
-  const sm = s.toLocaleDateString('en-US', { month: 'short' });
-  const em = e.toLocaleDateString('en-US', { month: 'short' });
-  if (sm === em) return sm + ' ' + s.getDate() + '\u2013' + e.getDate() + ', ' + e.getFullYear();
-  return sm + ' ' + s.getDate() + ' \u2013 ' + em + ' ' + e.getDate() + ', ' + e.getFullYear();
+export function fmtDate(value) {
+  const date = parseDate(value);
+  if (!date) return DATE_NOT_SET;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function fmtRange(a = {}) {
+  const start = parseDate(a.start);
+  const end = parseDate(a.end);
+  if (!start && !end) return DATE_NOT_SET;
+  if (!start || !end) return fmtDate(start || end);
+
+  if (start.toDateString() === end.toDateString()) return fmtDate(start);
+  const sm = start.toLocaleDateString('en-US', { month: 'short' });
+  const em = end.toLocaleDateString('en-US', { month: 'short' });
+  if (sm === em && start.getFullYear() === end.getFullYear()) return sm + ' ' + start.getDate() + '\u2013' + end.getDate() + ', ' + end.getFullYear();
+  return sm + ' ' + start.getDate() + ' \u2013 ' + em + ' ' + end.getDate() + ', ' + end.getFullYear();
 }
 
 export function statusChip(status) {

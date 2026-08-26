@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,6 +11,7 @@ export default function BillingAdmin() {
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState(null);
   const [saving, setSaving] = useState(false);
+  const selectedPanelRef = useRef(null);
 
   async function load() {
     const response = await fetch('/api/billing/admin', { credentials: 'include' });
@@ -20,6 +21,11 @@ export default function BillingAdmin() {
   }
 
   useEffect(() => { load().catch(error => setNotice({ type: 'error', text: error.message })); }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    requestAnimationFrame(() => selectedPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [selected]);
 
   async function runAction(action, extra = {}) {
     if (!selected || !reason.trim() || saving) {
@@ -79,8 +85,8 @@ export default function BillingAdmin() {
       </tbody></table></div>
     </section>
 
-    {selected && <section style={{ ...card, border: '1.5px solid var(--color-accent)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}><div><div style={eyebrow}>Selected organisation</div><h3 style={{ ...title, fontSize: 20 }}>{selected.organization_name}</h3><p style={subtext}>Current state: {selected.plan} · {selected.status} · {selected.provider}.</p></div><button onClick={() => setSelected(null)} style={smallButton}>Close</button></div>
+    {selected && <section ref={selectedPanelRef} tabIndex={-1} aria-labelledby="billing-selected-organisation" style={{ ...card, border: '1.5px solid var(--color-accent)', scrollMarginTop: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}><div><div style={eyebrow}>Selected organisation</div><h3 id="billing-selected-organisation" style={{ ...title, fontSize: 20 }}>{selected.organization_name}</h3><p style={subtext}>Current state: {selected.plan} · {selected.status} · {selected.provider}.</p></div><button onClick={() => setSelected(null)} style={smallButton}>Close</button></div>
       <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>Audit reason <textarea value={reason} onChange={event => setReason(event.target.value)} placeholder="e.g. Subscription cancelled at customer request" rows={3} style={input} /></label>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
         <button disabled={saving} onClick={() => runAction('record_manual_payment', { billingCycle: 'monthly' })} style={primary}>{saving ? 'Saving…' : 'Record GMD 1,000 monthly payment'}</button>
