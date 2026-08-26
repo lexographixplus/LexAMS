@@ -94,7 +94,7 @@ export async function maybeSendAwardedCertificate(args: {
         ctaUrl: `${base}/certificate/${cert.access_token}`,
         footer: `This certificate was issued by ${tenant.organization_name} and delivered through LexAMS.`,
       }),
-    }]);
+    }], `lexams-message-${messageId}`);
     const providerMessageId = sentResult.ids[0];
     if (!providerMessageId) throw new Error('Email provider did not return a delivery id');
     await db.query(
