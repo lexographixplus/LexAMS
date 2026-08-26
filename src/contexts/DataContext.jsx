@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { mixReportingPreviewData } from '../lib/reportPreviewDemo';
 
 const DataContext = createContext(null);
 
@@ -38,7 +39,7 @@ export function DataProvider({ children }) {
 
     setLoading(true);
     try {
-      const data = await apiFetch('/api/bootstrap');
+      const data = mixReportingPreviewData(await apiFetch('/api/bootstrap'));
       setOrganization(data.organization || null);
       setActivities(data.activities || []);
       setParticipants(data.participants || []);
