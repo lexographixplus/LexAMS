@@ -25,6 +25,7 @@ function fmtTime(value) {
 
 export default function AttendancePublic() {
   const { token } = useParams();
+  const isKiosk = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'kiosk';
   const [data, setData] = useState(null);
   const [reference, setReference] = useState('');
   const [pin, setPin] = useState('');
@@ -47,7 +48,7 @@ export default function AttendancePublic() {
     try {
       const body = await checkinApi(token, {
         method: 'POST',
-        body: JSON.stringify({ reference, pin, source: 'self' }),
+        body: JSON.stringify({ reference, pin, source: isKiosk ? 'kiosk' : 'self' }),
       });
       setDone(body);
     } catch (e2) { setError(e2.message); }
@@ -61,14 +62,14 @@ export default function AttendancePublic() {
     setDone(null);
   }
 
-  if (loading) return <PublicExperienceLayout eyebrow="Attendance" title="Loading check-in…" narrow />;
-  if (!data) return <PublicExperienceLayout eyebrow="Attendance" title="Check-in unavailable" narrow><PublicNotice tone="error">{error || 'This check-in link is unavailable.'}</PublicNotice></PublicExperienceLayout>;
+  if (loading) return <PublicExperienceLayout eyebrow={isKiosk ? 'Kiosk check-in' : 'Attendance'} title="Loading check-in…" narrow />;
+  if (!data) return <PublicExperienceLayout eyebrow={isKiosk ? 'Kiosk check-in' : 'Attendance'} title="Check-in unavailable" narrow><PublicNotice tone="error">{error || 'This check-in link is unavailable.'}</PublicNotice></PublicExperienceLayout>;
 
   const { activity, session, pin_required: pinRequired } = data;
   const time = [fmtTime(session.starts_at), fmtTime(session.ends_at)].filter(Boolean).join('–');
   return (
     <PublicExperienceLayout
-      eyebrow="Session check-in"
+      eyebrow={isKiosk ? 'Venue kiosk check-in' : 'Session check-in'}
       title={activity.title}
       description={`${session.title} · ${fmtDate(session.session_date)}${time ? ` · ${time}` : ''}${activity.venue ? ` · ${activity.venue}` : ''}`}
       organizationName={activity.organization_name}
@@ -93,14 +94,14 @@ export default function AttendancePublic() {
             <h3>{done.state === 'already' ? 'Already checked in' : 'Attendance recorded'}</h3>
             <p style={{ color: '#687587' }}>{done.name} · {done.session}</p>
             <PublicNotice tone="success">Status: <strong style={{ textTransform: 'capitalize' }}>{done.status}</strong>{done.status === 'late' ? ` · Recorded after the ${session.grace_minutes || 0}-minute grace period` : ''}</PublicNotice>
-            <div className="lex-public-actions" style={{ justifyContent: 'center' }}><button className="lex-public-button ghost" onClick={reset}>Check in another participant</button></div>
+            <div className="lex-public-actions" style={{ justifyContent: 'center' }}><button className="lex-public-button ghost" onClick={reset}>{isKiosk ? 'Check in next participant' : 'Check in another participant'}</button></div>
           </div>
         ) : (
           <form onSubmit={submit}>
-            <h3>Confirm your attendance</h3>
-            <p style={{ color: '#687587', lineHeight: 1.65 }}>Use the registration reference from your confirmation email, or scan your participant pass at a staffed desk. Email address alone is not accepted for self check-in.</p>
-            <label className="lex-public-label" htmlFor="checkin-reference">Registration reference</label>
-            <input id="checkin-reference" className="lex-public-input" required value={reference} onChange={e => setReference(e.target.value)} placeholder="REG-XXXXXXXXXX" autoCapitalize="characters" autoComplete="off" />
+            <h3>{isKiosk ? 'Scan or enter participant pass' : 'Confirm your attendance'}</h3>
+            <p style={{ color: '#687587', lineHeight: 1.65 }}>{isKiosk ? 'Scan a LexAMS participant pass with a connected QR scanner, or enter the registration reference.' : 'Use the registration reference from your confirmation email. Email address alone is not accepted for self check-in.'}</p>
+            <label className="lex-public-label" htmlFor="checkin-reference">Registration reference or pass code</label>
+            <input id="checkin-reference" className="lex-public-input" autoFocus={isKiosk} required value={reference} onChange={e => setReference(e.target.value)} placeholder={isKiosk ? 'PASS:… or REG-…' : 'REG-XXXXXXXXXX'} autoCapitalize="characters" autoComplete="off" />
             {pinRequired && (
               <label style={{ display: 'block', marginTop: 14 }}>
                 <span className="lex-public-label">Session PIN</span>
