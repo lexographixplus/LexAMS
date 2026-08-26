@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 import { resendApiKey, resendWebhookSecret } from './_shared/communications';
 
+// Deployment refresh after configuring the Resend webhook signing secret.
 const STATUS_BY_EVENT: Record<string, string> = {
   'email.sent': 'sent',
   'email.delivered': 'delivered',
