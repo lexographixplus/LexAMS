@@ -19,6 +19,22 @@ async function apiFetch(url, options = {}) {
   return data;
 }
 
+async function maybeAutoEmailCertificate(certificateId) {
+  if (!certificateId) return { sent: false };
+  try {
+    const meta = await apiFetch('/api/communications');
+    if (!meta.pro || !meta.settings?.auto_send_certificates) return { sent: false };
+    const result = await apiFetch('/api/communications', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'send_certificates', certificateIds: [certificateId] }),
+    });
+    return { sent: true, result };
+  } catch (error) {
+    console.error('Automatic certificate email failed', error);
+    return { sent: false, error };
+  }
+}
+
 export function DataProvider({ children }) {
   const { user, isAdmin } = useAuth();
   const [organization, setOrganization] = useState(null);
@@ -32,11 +48,7 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
+    if (!user) { setLoading(false); return; }
     setLoading(true);
     try {
       const data = mixReportingPreviewData(await apiFetch('/api/bootstrap'));
@@ -48,32 +60,20 @@ export function DataProvider({ children }) {
       setCertificates(data.certificates || []);
       setSurveys(data.surveys || []);
       setAssessments(data.assessments || []);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const getActivity = useCallback((id) => activities.find(a => a.id === id), [activities]);
   const getParticipant = useCallback((id) => participants.find(p => p.id === id), [participants]);
-
-  const getRegsForActivity = useCallback((aid) =>
-    registrations.filter(r => r.activity_id === aid).map(r => r.participant_id),
-  [registrations]);
-
-  const getAttForActivity = useCallback((aid) =>
-    attendance.filter(a => a.activity_id === aid),
-  [attendance]);
-
+  const getRegsForActivity = useCallback((aid) => registrations.filter(r => r.activity_id === aid).map(r => r.participant_id), [registrations]);
+  const getAttForActivity = useCallback((aid) => attendance.filter(a => a.activity_id === aid), [attendance]);
   const getDoneSessions = useCallback((aid) => {
     const sessions = [];
-    attendance.filter(a => a.activity_id === aid).forEach(a => {
-      if (!sessions.includes(a.session_label)) sessions.push(a.session_label);
-    });
+    attendance.filter(a => a.activity_id === aid).forEach(a => { if (!sessions.includes(a.session_label)) sessions.push(a.session_label); });
     return sessions;
   }, [attendance]);
-
   const getAttendancePct = useCallback((aid, pid) => {
     const done = getDoneSessions(aid);
     if (!done.length) return null;
@@ -82,23 +82,14 @@ export function DataProvider({ children }) {
     return Math.round((attended / done.length) * 100);
   }, [attendance, getDoneSessions]);
 
-  const mutate = useCallback((action, payload) => apiFetch('/api/mutate', {
-    method: 'POST',
-    body: JSON.stringify({ action, payload }),
-  }), []);
+  const mutate = useCallback((action, payload) => apiFetch('/api/mutate', { method: 'POST', body: JSON.stringify({ action, payload }) }), []);
 
   const addActivity = useCallback(async (activity) => {
-    const data = await mutate('add_activity', { activity });
-    setActivities(prev => [data, ...prev]);
-    return data;
+    const data = await mutate('add_activity', { activity }); setActivities(prev => [data, ...prev]); return data;
   }, [mutate]);
-
   const updateActivity = useCallback(async (id, updates) => {
-    const data = await mutate('update_activity', { id, updates });
-    setActivities(prev => prev.map(a => a.id === id ? data : a));
-    return data;
+    const data = await mutate('update_activity', { id, updates }); setActivities(prev => prev.map(a => a.id === id ? data : a)); return data;
   }, [mutate]);
-
   const deleteActivity = useCallback(async (id) => {
     await mutate('delete_activity', { id });
     setActivities(prev => prev.filter(a => a.id !== id));
@@ -108,22 +99,13 @@ export function DataProvider({ children }) {
     setSurveys(prev => prev.filter(s => s.activity_id !== id));
     setAssessments(prev => prev.filter(a => a.activity_id !== id));
   }, [mutate]);
-
   const addParticipant = useCallback(async (participant, opts = {}) => {
-    const data = await mutate('add_participant', {
-      participant,
-      activityIds: Array.isArray(opts.activityIds) ? opts.activityIds : [],
-    });
-    if (!data.pending) setParticipants(prev => [...prev, data]);
-    return data;
+    const data = await mutate('add_participant', { participant, activityIds: Array.isArray(opts.activityIds) ? opts.activityIds : [] });
+    if (!data.pending) setParticipants(prev => [...prev, data]); return data;
   }, [mutate]);
-
   const updateParticipant = useCallback(async (id, updates) => {
-    const data = await mutate('update_participant', { id, updates });
-    setParticipants(prev => prev.map(p => p.id === id ? data : p));
-    return data;
+    const data = await mutate('update_participant', { id, updates }); setParticipants(prev => prev.map(p => p.id === id ? data : p)); return data;
   }, [mutate]);
-
   const deleteParticipant = useCallback(async (id) => {
     const data = await mutate('delete_participant', { id });
     if (!data.pending) {
@@ -134,13 +116,10 @@ export function DataProvider({ children }) {
     }
     return data;
   }, [mutate]);
-
   const addRegistration = useCallback(async (activityId, participantId) => {
     const data = await mutate('add_registration', { activityId, participantId });
-    setRegistrations(prev => prev.some(r => r.id === data.id) ? prev : [...prev, data]);
-    return data;
+    setRegistrations(prev => prev.some(r => r.id === data.id) ? prev : [...prev, data]); return data;
   }, [mutate]);
-
   const upsertAttendance = useCallback(async (activityId, participantId, sessionLabel, status) => {
     const data = await mutate('upsert_attendance', { activityId, participantId, sessionLabel, status });
     setAttendance(prev => {
@@ -150,27 +129,23 @@ export function DataProvider({ children }) {
     });
     return data;
   }, [mutate]);
-
   const issueCertificate = useCallback(async (activityId, participantId, certificateType = 'completion') => {
     const data = await mutate('issue_certificate', { activityId, participantId, certificateType });
-    if (!data.pending) setCertificates(prev => [data, ...prev]);
+    if (!data.pending) {
+      setCertificates(prev => [data, ...prev]);
+      const delivery = await maybeAutoEmailCertificate(data.id);
+      return { ...data, autoEmailSent: delivery.sent };
+    }
     return data;
   }, [mutate]);
 
-  return (
-    <DataContext.Provider value={{
-      loading, refetch: fetchAll, organization,
-      activities, participants, registrations, attendance, certificates, surveys, assessments,
-      getActivity, getParticipant, getRegsForActivity, getAttForActivity,
-      getDoneSessions, getAttendancePct,
-      addActivity, updateActivity, deleteActivity,
-      addParticipant, updateParticipant, deleteParticipant,
-      addRegistration, upsertAttendance, issueCertificate,
-      setSurveys, setAssessments, isAdmin,
-    }}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={{
+    loading, refetch: fetchAll, organization,
+    activities, participants, registrations, attendance, certificates, surveys, assessments,
+    getActivity, getParticipant, getRegsForActivity, getAttForActivity, getDoneSessions, getAttendancePct,
+    addActivity, updateActivity, deleteActivity, addParticipant, updateParticipant, deleteParticipant,
+    addRegistration, upsertAttendance, issueCertificate, setSurveys, setAssessments, isAdmin,
+  }}>{children}</DataContext.Provider>;
 }
 
 export function useData() {
