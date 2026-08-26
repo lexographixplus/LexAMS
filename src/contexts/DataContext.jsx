@@ -103,11 +103,30 @@ export function DataProvider({ children }) {
     setAssessments(prev => prev.filter(a => a.activity_id !== id));
   }, [mutate]);
   const addParticipant = useCallback(async (participant, opts = {}) => {
-    const data = await mutate('add_participant', { participant, activityIds: Array.isArray(opts.activityIds) ? opts.activityIds : [] });
-    if (!data.pending) setParticipants(prev => [...prev, data]); return data;
-  }, [mutate]);
+    const activityIds = Array.isArray(opts.activityIds) ? opts.activityIds : [];
+    const normalized = { ...participant, email: String(participant.email || '').trim().toLowerCase() };
+    const data = isAdmin
+      ? await apiFetch('/api/participant-create-v2', { method: 'POST', body: JSON.stringify({ participant: normalized, activityIds }) })
+      : await mutate('add_participant', { participant: normalized, activityIds });
+    if (!data.pending) {
+      setParticipants(prev => prev.some(p => p.id === data.id) ? prev.map(p => p.id === data.id ? data : p) : [...prev, data]);
+      if (Array.isArray(data.registrations) && data.registrations.length) {
+        setRegistrations(prev => {
+          const next = [...prev];
+          for (const reg of data.registrations) {
+            const index = next.findIndex(item => item.id === reg.id);
+            if (index >= 0) next[index] = reg;
+            else next.push(reg);
+          }
+          return next;
+        });
+      }
+    }
+    return data;
+  }, [mutate, isAdmin]);
   const updateParticipant = useCallback(async (id, updates) => {
-    const data = await mutate('update_participant', { id, updates }); setParticipants(prev => prev.map(p => p.id === id ? data : p)); return data;
+    const normalized = { ...updates, ...(updates.email != null ? { email: String(updates.email).trim().toLowerCase() } : {}) };
+    const data = await mutate('update_participant', { id, updates: normalized }); setParticipants(prev => prev.map(p => p.id === id ? data : p)); return data;
   }, [mutate]);
   const deleteParticipant = useCallback(async (id) => {
     const data = await mutate('delete_participant', { id });
