@@ -155,7 +155,6 @@ export default function AppLayout() {
               <Outlet />
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}><div className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}><Outlet /></div></div>
         </div>
       </div>
     </>
