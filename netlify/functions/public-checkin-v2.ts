@@ -36,20 +36,35 @@ function attendanceStatus(session: any) {
   return new Date() > lateAt ? 'late' : 'present';
 }
 
-async function sessionByToken(db: ReturnType<typeof getPool>, token: string) {
-  const result = await db.query(
-    `select s.id, s.organization_id, s.activity_id, s.title, s.session_date, s.starts_at, s.ends_at,
+const SESSION_SELECT = `select s.id, s.organization_id, s.activity_id, s.title, s.session_date, s.starts_at, s.ends_at,
             s.checkin_open_at, s.checkin_close_at, s.status, s.checkin_pin, s.grace_minutes,
             a.title as activity_title, a.type as activity_type, a.venue,
             o.name as organization_name, o.logo_url as organization_logo
      from activity_sessions s
      join activities a on a.id=s.activity_id and a.organization_id=s.organization_id
-     join organizations o on o.id=s.organization_id
-     where s.checkin_token=$1
+     join organizations o on o.id=s.organization_id`;
+
+async function sessionByToken(db: ReturnType<typeof getPool>, token: string) {
+  // Preferred V2 path: a QR/link points directly to one session.
+  const direct = await db.query(`${SESSION_SELECT} where s.checkin_token=$1 limit 1`, [token]);
+  if (direct.rowCount) return direct.rows[0];
+
+  // Backward compatibility: the old activity-level attendance URL still works,
+  // but the server chooses the session. An open session always wins; otherwise
+  // the next scheduled session is shown without allowing attendance until opened.
+  const activityScoped = await db.query(
+    `${SESSION_SELECT}
+     where a.att_token=$1
+     order by
+       case s.status when 'open' then 0 when 'scheduled' then 1 else 2 end,
+       case when s.session_date >= current_date then 0 else 1 end,
+       abs(s.session_date - current_date),
+       s.sort_order,
+       s.id
      limit 1`,
     [token]
   );
-  return result.rows[0] || null;
+  return activityScoped.rows[0] || null;
 }
 
 async function logEvent(db: ReturnType<typeof getPool>, session: any, participantId: number | null, result: string, source: string) {
