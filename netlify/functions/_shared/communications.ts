@@ -96,7 +96,18 @@ export async function sendEmailBatch(emails: OutboundEmail[], idempotencyKeyBase
       ? await resend.batch.send(chunk, { idempotencyKey: key })
       : await resend.batch.send(chunk);
     if (result.error) throw new Error(result.error.message || 'Email delivery failed');
-    const batchIds = Array.isArray(result.data) ? result.data.map(item => item.id).filter(Boolean) : [];
+    // The Resend SDK wraps the provider payload in `result.data`, while the
+    // batch endpoint itself returns a second `data` array. Keep the fallback
+    // for older SDK responses that exposed the array directly.
+    const providerPayload = result.data as unknown;
+    const batchItems = Array.isArray(providerPayload)
+      ? providerPayload
+      : providerPayload && typeof providerPayload === 'object' && Array.isArray((providerPayload as { data?: unknown }).data)
+        ? (providerPayload as { data: unknown[] }).data
+        : [];
+    const batchIds = batchItems
+      .map(item => (item && typeof item === 'object' ? (item as { id?: unknown }).id : undefined))
+      .filter((id): id is string => typeof id === 'string' && Boolean(id));
     if (batchIds.length !== chunk.length) throw new Error('Email provider did not return an id for every message');
     ids.push(...batchIds);
     sent += chunk.length;
