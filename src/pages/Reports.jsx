@@ -1,1 +1,1 @@
-export { default } from './ReportsV2';
+export { default } from './ReportsPreview';
