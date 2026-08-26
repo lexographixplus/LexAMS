@@ -1,13 +1,11 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import BillingPlan from '../components/BillingPlan';
 import { Upload, X } from 'lucide-react';
 
 export default function Settings() {
-  const { profile, refreshProfile, isAdmin } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [orgName, setOrgName] = useState(profile?.org_name || '');
-  const [fullName, setFullName] = useState(profile?.full_name || '');
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -77,7 +75,6 @@ export default function Settings() {
     setSaving(true);
     try {
       const { error } = await supabase.from('profiles').update({
-        full_name: fullName.trim(),
         org_name: orgName.trim(),
       }).eq('id', profile.id);
       if (error) {
@@ -101,7 +98,7 @@ export default function Settings() {
     <div>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Settings</h2>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
-        Manage your profile, organization details, and branding.
+        Manage workspace details and branding. Personal account details live under My account.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
@@ -109,19 +106,11 @@ export default function Settings() {
           background: 'var(--surface-card)', border: '1px solid var(--border-default)',
           borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '24px 28px',
         }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>Profile</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>Organization details</div>
           <form onSubmit={saveProfile} style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Full name</label>
-              <input value={fullName} onChange={e => setFullName(e.target.value)} style={inputStyle} />
-            </div>
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Organization name</label>
               <input value={orgName} onChange={e => setOrgName(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6, color: 'var(--text-tertiary)' }}>Email</label>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)', padding: '11px 0' }}>{profile?.id ? 'Managed by LexAMS passwordless sign-in' : ''}</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" disabled={saving} style={{
@@ -167,8 +156,6 @@ export default function Settings() {
           )}
         </div>
       </div>
-
-      <BillingPlan isAdmin={isAdmin} notify={showToast} />
 
       {toast && (
         <div style={{ position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-navy-900)', color: '#FFFFFF', fontSize: 13, fontWeight: 500, padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300 }}>{toast}</div>

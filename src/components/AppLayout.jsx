@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound,
-  LogOut, Menu, ShieldCheck, X,
+  MessageCircle, UserCircle, CreditCard, LogOut, Menu, ShieldCheck, X,
 } from 'lucide-react';
 
 const navItems = [
@@ -16,8 +16,11 @@ const navItems = [
   { to: '/app/assessments', icon: GraduationCap, label: 'Assessments' },
   { to: '/app/certificates', icon: Award, label: 'Certificates' },
   { to: '/app/reports', icon: FileBarChart, label: 'Reports' },
+  { to: '/app/communication', icon: MessageCircle, label: 'Communication' },
   { to: '/app/team', icon: UsersRound, label: 'Team' },
   { to: '/app/settings', icon: Settings, label: 'Settings' },
+  { to: '/app/billing', icon: CreditCard, label: 'Billing & plan' },
+  { to: '/app/account', icon: UserCircle, label: 'My account' },
 ];
 
 const pageTitles = {
@@ -28,8 +31,11 @@ const pageTitles = {
   '/app/assessments': 'Assessments',
   '/app/certificates': 'Certificates',
   '/app/reports': 'Reports',
+  '/app/communication': 'Communication',
   '/app/team': 'Team',
   '/app/settings': 'Settings',
+  '/app/billing': 'Billing & plan',
+  '/app/account': 'My account',
   '/app/admin/billing': 'Billing administration',
 };
 
@@ -178,7 +184,7 @@ export default function AppLayout() {
                 fontWeight: 700, color: 'var(--text-primary)',
               }}>{pageTitle}</div>
             </div>
-            <div className="desktop-user" style={{ alignItems: 'center', gap: 12 }}>
+            <NavLink to="/app/account" className="desktop-user" aria-label="Open My account" style={{ alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 999,
                 background: 'var(--color-navy-900)', color: '#FFFFFF',
@@ -189,7 +195,7 @@ export default function AppLayout() {
                 <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{userName}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{role}</div>
               </div>
-            </div>
+            </NavLink>
           </div>
 
           {/* Content */}
