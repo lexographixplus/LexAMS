@@ -15,9 +15,9 @@ const navItems = [
   { to: '/app/surveys', icon: ClipboardCheck, label: 'Surveys' },
   { to: '/app/assessments', icon: GraduationCap, label: 'Assessments' },
   { to: '/app/certificates', icon: Award, label: 'Certificates' },
-  { to: '/app/communications', icon: Mail, label: 'Communications' },
+  { to: '/app/communications', icon: Mail, label: 'Communications', proOnly: true },
   { to: '/app/reports', icon: FileBarChart, label: 'Reports' },
-  { to: '/app/team', icon: UsersRound, label: 'Team' },
+  { to: '/app/team', icon: UsersRound, label: 'Team', proOnly: true },
   { to: '/app/settings', icon: Settings, label: 'Settings' },
   { to: '/app/billing', icon: CreditCard, label: 'Billing & plan' },
   { to: '/app/account', icon: UserCircle, label: 'My account' },
@@ -40,7 +40,7 @@ const pageTitles = {
 };
 
 export default function AppLayout() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isPro } = useAuth();
   const { activities, participants, certificates, surveys, assessments } = useData();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,9 +50,10 @@ export default function AppLayout() {
   const orgName = profile?.org_name || 'Horizon Community Foundation';
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'Admin User';
   const role = profile?.role || 'Institution Administrator';
+  const planNavItems = navItems.filter(item => !item.proOnly || isPro);
   const visibleNavItems = profile?.platform_admin
-    ? [...navItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
-    : navItems;
+    ? [...planNavItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
+    : planNavItems;
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const pageTitle = pageTitles[location.pathname] ||
@@ -97,7 +98,7 @@ export default function AppLayout() {
 
       <div style={{ padding: '18px 24px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{orgName}</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>Activity Management System</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{isPro ? 'Pro plan' : 'Free plan'}</div>
         <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: 'var(--color-gold-500)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><LogOut size={14} /> Sign out</button>
       </div>
     </>
