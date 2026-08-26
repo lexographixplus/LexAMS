@@ -54,24 +54,33 @@ export async function maybeSendAwardedCertificate(args: {
   if (!cert) return { attempted: false, reason: 'certificate_not_found' };
   if (!validEmail(cert.participant_email)) return { attempted: false, reason: 'missing_email' };
 
+  const suppressed = await db.query(
+    `select reason from participant_email_suppressions
+     where organization_id=$1 and lower(email)=lower($2)
+     limit 1`,
+    [tenant.organization_id, cert.participant_email]
+  );
+  if (suppressed.rowCount) return { attempted: false, reason: 'suppressed', suppressionReason: suppressed.rows[0].reason };
+
   const subject = `Your certificate — ${cert.activity_title}`;
   const message = await db.query(
     `insert into communication_messages (organization_id,activity_id,kind,subject,body,audience,created_by)
      values ($1,$2,'certificate',$3,'Automatic certificate delivery',$4::jsonb,$5) returning id`,
     [tenant.organization_id, cert.activity_id, subject, JSON.stringify({ certificateIds: [certificateId], automatic: true }), args.createdBy || tenant.user.id]
   );
-  const messageId = message.rows[0].id;
+  const messageId = Number(message.rows[0].id);
 
-  await db.query(
+  const delivery = await db.query(
     `insert into communication_deliveries
      (organization_id,message_id,participant_id,certificate_id,recipient_name,recipient_email,status)
-     values ($1,$2,$3,$4,$5,$6,'queued')`,
+     values ($1,$2,$3,$4,$5,$6,'queued') returning id`,
     [tenant.organization_id, messageId, cert.participant_id, cert.id, cert.participant_name || '', cert.participant_email]
   );
+  const deliveryId = Number(delivery.rows[0].id);
 
   try {
     const base = appBaseUrl(request);
-    await sendEmailBatch([{
+    const sentResult = await sendEmailBatch([{
       to: cert.participant_email,
       subject,
       replyTo: settings.rows[0]?.reply_to_email || null,
@@ -86,13 +95,20 @@ export async function maybeSendAwardedCertificate(args: {
         footer: `This certificate was issued by ${tenant.organization_name} and delivered through LexAMS.`,
       }),
     }]);
-    await db.query(`update communication_deliveries set status='sent',updated_at=now() where message_id=$1`, [messageId]);
-    return { attempted: true, sent: true, messageId };
+    const providerMessageId = sentResult.ids[0];
+    if (!providerMessageId) throw new Error('Email provider did not return a delivery id');
+    await db.query(
+      `update communication_deliveries
+       set status='sent',provider_message_id=$2,error_message=null,updated_at=now()
+       where id=$1`,
+      [deliveryId, providerMessageId]
+    );
+    return { attempted: true, sent: true, messageId, providerMessageId };
   } catch (error: any) {
     const messageText = String(error?.message || 'Certificate delivery failed').slice(0, 500);
     await db.query(
-      `update communication_deliveries set status='failed',error_message=$2,updated_at=now() where message_id=$1`,
-      [messageId, messageText]
+      `update communication_deliveries set status='failed',error_message=$2,updated_at=now() where id=$1`,
+      [deliveryId, messageText]
     );
     return { attempted: true, sent: false, messageId, error: messageText };
   }
