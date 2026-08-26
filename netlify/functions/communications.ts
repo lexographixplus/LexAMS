@@ -16,6 +16,22 @@ function proRequired(snapshot: Awaited<ReturnType<typeof getBillingSnapshot>>) {
   return snapshot.subscription.plan !== 'pro';
 }
 
+async function bindProviderIds(
+  db: ReturnType<typeof getPool>,
+  deliveryIds: number[],
+  providerIds: string[],
+) {
+  if (deliveryIds.length !== providerIds.length) throw new Error('Email provider delivery mapping is incomplete');
+  for (let index = 0; index < deliveryIds.length; index += 1) {
+    await db.query(
+      `update communication_deliveries
+       set provider_message_id=$2,status='sent',error_message=null,updated_at=now()
+       where id=$1`,
+      [deliveryIds[index], providerIds[index]]
+    );
+  }
+}
+
 export default async (request: Request) => {
   const tenant = await requireTenant(request);
   if (!tenant) return json({ error: 'Unauthorized' }, 401);
@@ -35,7 +51,9 @@ export default async (request: Request) => {
         `select m.id,m.kind,m.subject,m.activity_id,m.audience,m.created_at,
                 count(d.id)::int as recipients,
                 count(*) filter (where d.status in ('sent','delivered'))::int as sent,
-                count(*) filter (where d.status = 'failed')::int as failed
+                count(*) filter (where d.status = 'delivered')::int as delivered,
+                count(*) filter (where d.status in ('failed','bounced','complained','suppressed'))::int as failed,
+                count(*) filter (where d.status = 'queued')::int as queued
          from communication_messages m
          left join communication_deliveries d on d.message_id = m.id
          where m.organization_id = $1
@@ -101,7 +119,14 @@ export default async (request: Request) => {
 
     const audience = body.audience && typeof body.audience === 'object' ? body.audience : {};
     const values: any[] = [orgId];
-    const clauses = ['p.organization_id = $1', "p.email <> ''"];
+    const clauses = [
+      'p.organization_id = $1',
+      "p.email <> ''",
+      `not exists (
+        select 1 from participant_email_suppressions s
+        where s.organization_id=$1 and lower(s.email)=lower(p.email)
+      )`,
+    ];
     if (audience.activityId && audience.activityId !== 'all') {
       values.push(Number(audience.activityId));
       clauses.push(`exists (select 1 from registrations r where r.organization_id=$1 and r.participant_id=p.id and r.activity_id=$${values.length})`);
@@ -126,11 +151,12 @@ export default async (request: Request) => {
       values
     );
     const recipients = recipientsResult.rows.filter(row => validEmail(row.email));
-    if (!recipients.length) return json({ error: 'No participants with valid email addresses match this audience.' }, 400);
+    if (!recipients.length) return json({ error: 'No unsuppressed participants with valid email addresses match this audience.' }, 400);
     if (monthlyUsed + recipients.length > monthlyLimit) return json({ error: `This send would exceed the ${monthlyLimit.toLocaleString()} participant-email monthly fair-use limit.` }, 409);
 
     const client = await db.connect();
     let messageId: number;
+    const deliveryIds: number[] = [];
     try {
       await client.query('begin');
       const inserted = await client.query(
@@ -140,12 +166,13 @@ export default async (request: Request) => {
       );
       messageId = inserted.rows[0].id;
       for (const recipient of recipients) {
-        await client.query(
+        const delivery = await client.query(
           `insert into communication_deliveries
            (organization_id,message_id,participant_id,recipient_name,recipient_email,status)
-           values ($1,$2,$3,$4,$5,'queued')`,
+           values ($1,$2,$3,$4,$5,'queued') returning id`,
           [orgId, messageId, recipient.id, recipient.name || '', recipient.email]
         );
+        deliveryIds.push(Number(delivery.rows[0].id));
       }
       await client.query('commit');
     } catch (error) {
@@ -168,12 +195,14 @@ export default async (request: Request) => {
           body: `Hello ${recipient.name || 'Participant'},\n\n${messageBody}`,
         }),
       }));
-      await sendEmailBatch(emails);
-      await db.query(`update communication_deliveries set status='sent',updated_at=now() where message_id=$1`, [messageId]);
+      const sentResult = await sendEmailBatch(emails);
+      await bindProviderIds(db, deliveryIds, sentResult.ids);
       return json({ ok: true, messageId, recipients: recipients.length });
     } catch (error: any) {
       await db.query(
-        `update communication_deliveries set status='failed',error_message=$2,updated_at=now() where message_id=$1`,
+        `update communication_deliveries
+         set status='failed',error_message=$2,updated_at=now()
+         where message_id=$1 and status='queued'`,
         [messageId, String(error?.message || 'Email delivery failed').slice(0, 500)]
       );
       return json({ error: error?.message || 'Email delivery failed', messageId }, 502);
@@ -193,12 +222,17 @@ export default async (request: Request) => {
        from certificates c
        join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
        join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
-       where c.organization_id=$1 and c.id = any($2::bigint[])
+       where c.organization_id=$1
+         and c.id = any($2::bigint[])
+         and not exists (
+           select 1 from participant_email_suppressions s
+           where s.organization_id=c.organization_id and lower(s.email)=lower(p.email)
+         )
        order by p.name`,
       [orgId, ids]
     );
     const certs = certResult.rows.filter(row => validEmail(row.participant_email));
-    if (!certs.length) return json({ error: 'The selected certificate recipients do not have valid email addresses.' }, 400);
+    if (!certs.length) return json({ error: 'The selected certificate recipients do not have an unsuppressed valid email address.' }, 400);
     if (monthlyUsed + certs.length > monthlyLimit) return json({ error: `This send would exceed the ${monthlyLimit.toLocaleString()} participant-email monthly fair-use limit.` }, 409);
 
     const subject = certs.length === 1 ? `Your certificate — ${certs[0].activity_title}` : `Your certificate from ${tenant.organization_name}`;
@@ -207,19 +241,21 @@ export default async (request: Request) => {
        values ($1,'certificate',$2,'Certificate delivery',$3::jsonb,$4) returning id`,
       [orgId, subject, JSON.stringify({ certificateIds: ids }), tenant.user.id]
     );
-    const messageId = messageResult.rows[0].id;
+    const messageId = Number(messageResult.rows[0].id);
+    const deliveryIds: number[] = [];
     for (const cert of certs) {
-      await db.query(
+      const delivery = await db.query(
         `insert into communication_deliveries
          (organization_id,message_id,participant_id,certificate_id,recipient_name,recipient_email,status)
-         values ($1,$2,$3,$4,$5,$6,'queued')`,
+         values ($1,$2,$3,$4,$5,$6,'queued') returning id`,
         [orgId, messageId, cert.participant_id, cert.id, cert.participant_name || '', cert.participant_email]
       );
+      deliveryIds.push(Number(delivery.rows[0].id));
     }
 
     const base = appBaseUrl(request);
     try {
-      await sendEmailBatch(certs.map(cert => ({
+      const sentResult = await sendEmailBatch(certs.map(cert => ({
         to: cert.participant_email,
         subject: `Your certificate — ${cert.activity_title}`,
         replyTo,
@@ -234,11 +270,13 @@ export default async (request: Request) => {
           footer: `This certificate was issued by ${tenant.organization_name} and delivered through LexAMS.`,
         }),
       })));
-      await db.query(`update communication_deliveries set status='sent',updated_at=now() where message_id=$1`, [messageId]);
+      await bindProviderIds(db, deliveryIds, sentResult.ids);
       return json({ ok: true, messageId, recipients: certs.length, skipped: ids.length - certs.length });
     } catch (error: any) {
       await db.query(
-        `update communication_deliveries set status='failed',error_message=$2,updated_at=now() where message_id=$1`,
+        `update communication_deliveries
+         set status='failed',error_message=$2,updated_at=now()
+         where message_id=$1 and status='queued'`,
         [messageId, String(error?.message || 'Email delivery failed').slice(0, 500)]
       );
       return json({ error: error?.message || 'Certificate delivery failed', messageId }, 502);
