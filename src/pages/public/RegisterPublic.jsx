@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import { publicApi } from '../../lib/publicApi';
+import { fmtRange } from '../../lib/format';
 
-function fmtRange(a){const s=new Date(a.start_date+'T00:00:00'),e=new Date(a.end_date+'T00:00:00');return a.start_date===a.end_date?s.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):`${s.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${e.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`}
 export default function RegisterPublic(){
  const {token}=useParams();const [activity,setActivity]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[step,setStep]=useState('email'),[email,setEmail]=useState(''),[participant,setParticipant]=useState(null),[form,setForm]=useState({name:'',phone:'',org:'',category:'Community member'}),[submitting,setSubmitting]=useState(false),[registeredName,setRegisteredName]=useState('');
  useEffect(()=>{publicApi('registration',token).then(b=>setActivity(b.activity)).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[token]);

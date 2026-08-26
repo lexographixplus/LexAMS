@@ -1,6 +1,6 @@
 const DATE_NOT_SET = 'Date not set';
 
-function parseDate(value) {
+export function parseDate(value) {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   if (typeof value === 'number') {
     const date = new Date(value);
