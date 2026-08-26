@@ -41,7 +41,7 @@ export default function ActivityDetail() {
     </div>
   );
 
-  const activity = getActivity(+id);
+  const activity = getActivity(id);
   if (!activity) return <div>Activity not found.</div>;
 
   const pids = getRegsForActivity(activity.id);
