@@ -28,6 +28,12 @@ function errorMessage(event: any) {
   return null;
 }
 
+function eventTimestamp(event: any) {
+  const candidate = event?.created_at || event?.data?.created_at;
+  const parsed = candidate ? new Date(candidate) : new Date();
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
 export default async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
@@ -72,7 +78,7 @@ export default async (request: Request) => {
   if (!emailId || !nextStatus) return json({ ok: true, tracked: false });
 
   const delivery = await db.query(
-    `select id,organization_id,recipient_email,status
+    `select id,organization_id,recipient_email,status,provider_event_at
      from communication_deliveries
      where provider_message_id=$1
      limit 1`,
@@ -82,14 +88,24 @@ export default async (request: Request) => {
 
   const row = delivery.rows[0];
   const message = errorMessage(event);
-  await db.query(
+  const eventAt = eventTimestamp(event);
+  const updated = await db.query(
     `update communication_deliveries
      set status=$2,
-         error_message=case when $3::text is null then error_message else $3 end,
+         error_message=case
+           when $2 in ('sent','delivered') then null
+           when $3::text is null then error_message
+           else $3
+         end,
+         provider_event_at=$4::timestamptz,
          updated_at=now()
-     where id=$1`,
-    [row.id, nextStatus, message]
+     where id=$1
+       and (provider_event_at is null or provider_event_at <= $4::timestamptz)
+     returning id`,
+    [row.id, nextStatus, message, eventAt]
   );
+
+  if (!updated.rowCount) return json({ ok: true, tracked: false, stale: true });
 
   if (['bounced', 'complained', 'suppressed'].includes(nextStatus)) {
     await db.query(
