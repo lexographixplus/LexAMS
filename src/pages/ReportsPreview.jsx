@@ -31,8 +31,9 @@ function installReportingPreviewFetch() {
   window.fetch = async (input, init) => {
     const rawUrl = typeof input === 'string' ? input : input?.url || '';
     const url = new URL(rawUrl, window.location.origin);
+    const onReportsRoute = window.location.pathname === '/app/reports';
 
-    if (url.pathname === '/api/report-analytics') {
+    if (onReportsRoute && url.pathname === '/api/report-analytics') {
       const filters = Object.fromEntries(url.searchParams.entries());
       const advanced = getReportPreviewAdvanced(filters);
       const format = url.searchParams.get('format');
@@ -55,7 +56,7 @@ function installReportingPreviewFetch() {
       });
     }
 
-    if (url.pathname === '/api/billing/plan') {
+    if (onReportsRoute && url.pathname === '/api/billing/plan') {
       const response = await originalFetch(input, init);
       const body = await response.json().catch(() => ({}));
       return new Response(JSON.stringify({
@@ -76,5 +77,9 @@ function installReportingPreviewFetch() {
 installReportingPreviewFetch();
 
 export default function ReportsPreview() {
-  return <ReportsV2 />;
+  const demo = isReportingPreviewDemo();
+  return <>
+    {demo && <div style={{ marginBottom: 14, padding: '11px 14px', border: '1px solid var(--border-default)', borderRadius: 12, background: 'var(--surface-muted)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--color-navy-900)' }}>Preview demo mode:</strong> real preview records are mixed with synthetic programme, participant, attendance, survey, assessment and certificate data. Demo records exist only in this browser preview and are never written to Neon.</div>}
+    <ReportsV2 />
+  </>;
 }
