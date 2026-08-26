@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { mixReportingPreviewData } from '../lib/reportPreviewDemo';
+import { isReportingPreviewDemo, mixReportingPreviewData } from '../lib/reportPreviewDemo';
 
 const DataContext = createContext(null);
 
 async function apiFetch(url, options = {}) {
+  if (typeof window !== 'undefined' && isReportingPreviewDemo() && String(options.method || 'GET').toUpperCase() !== 'GET') {
+    throw new Error('This demo preview is read-only. Changes are disabled here.');
+  }
   const response = await fetch(url, {
     credentials: 'include',
     ...options,

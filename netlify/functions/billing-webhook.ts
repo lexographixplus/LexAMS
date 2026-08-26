@@ -2,6 +2,7 @@ import type { Config, Context } from '@netlify/functions';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Resend } from 'resend';
 import { getPool } from './_shared/db';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function env(name: string) {
   return Netlify.env.get(name);
@@ -123,6 +124,7 @@ async function sendReceipt({
 }
 
 export default async (request: Request, context: Context) => {
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   const rawPayload = await request.text();
   const signature = request.headers.get('x-modem-signature');

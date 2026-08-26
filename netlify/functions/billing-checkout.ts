@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { getPool } from './_shared/db';
 import { getBillingSnapshot } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 const PRICES = { monthly: 1000, annual: 10000 } as const;
 
@@ -17,6 +18,7 @@ function safeProviderMessage(error: unknown) {
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });

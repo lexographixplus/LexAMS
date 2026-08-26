@@ -3,6 +3,7 @@ import { getPool } from './_shared/db';
 import { getBillingSnapshot } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 import { appBaseUrl, brandedEmail, sendEmailBatch } from './_shared/communications';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
@@ -33,6 +34,7 @@ async function bindProviderIds(
 }
 
 export default async (request: Request) => {
+  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   const tenant = await requireTenant(request);
   if (!tenant) return json({ error: 'Unauthorized' }, 401);
 
@@ -195,7 +197,7 @@ export default async (request: Request) => {
           body: `Hello ${recipient.name || 'Participant'},\n\n${messageBody}`,
         }),
       }));
-      const sentResult = await sendEmailBatch(emails);
+      const sentResult = await sendEmailBatch(emails, `lexams-message-${messageId}`);
       await bindProviderIds(db, deliveryIds, sentResult.ids);
       return json({ ok: true, messageId, recipients: recipients.length });
     } catch (error: any) {
@@ -269,7 +271,7 @@ export default async (request: Request) => {
           ctaUrl: `${base}/certificate/${cert.access_token}`,
           footer: `This certificate was issued by ${tenant.organization_name} and delivered through LexAMS.`,
         }),
-      })));
+      })), `lexams-message-${messageId}`);
       await bindProviderIds(db, deliveryIds, sentResult.ids);
       return json({ ok: true, messageId, recipients: certs.length, skipped: ids.length - certs.length });
     } catch (error: any) {

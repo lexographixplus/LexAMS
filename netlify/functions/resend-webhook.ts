@@ -2,6 +2,7 @@ import type { Config } from '@netlify/functions';
 import { Resend } from 'resend';
 import { getPool } from './_shared/db';
 import { resendApiKey, resendWebhookSecret } from './_shared/communications';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 // Deployment refresh after configuring the Resend webhook signing secret for production and deploy previews.
 const STATUS_BY_EVENT: Record<string, string> = {
@@ -37,6 +38,7 @@ function eventTimestamp(event: any) {
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const webhookSecret = resendWebhookSecret();
   if (!webhookSecret) {

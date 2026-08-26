@@ -4,10 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { fmtDate } from '../lib/format';
 import CertificatePreview from '../components/CertificatePreview';
 import { Eye, Mail, Send } from 'lucide-react';
+import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
 export default function Certificates() {
   const { certificates, loading, getActivity, getParticipant } = useData();
   const { profile, isPro } = useAuth();
+  const previewReadOnly = isReportingPreviewDemo();
   const [previewCert, setPreviewCert] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [sending, setSending] = useState(false);
@@ -27,6 +29,10 @@ export default function Certificates() {
   }
 
   async function sendCertificates(ids) {
+    if (previewReadOnly) {
+      setNotice('This demo preview is read-only. No certificate emails will be sent.');
+      return;
+    }
     if (!isPro || !ids.length) return;
     setSending(true);
     setNotice('');
@@ -53,9 +59,10 @@ export default function Certificates() {
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Certificates</h2>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{isPro ? 'Generate, view, download and deliver certificates to participants by email.' : 'Generate, view and download awarded certificates.'}</p>
         </div>
-        {isPro && <span style={{ padding: '5px 10px', borderRadius: 999, background: '#E4F3E9', color: 'var(--color-success)', fontSize: 12, fontWeight: 800 }}>Email delivery active</span>}
+        {isPro && <span style={{ padding: '5px 10px', borderRadius: 999, background: previewReadOnly ? 'var(--surface-muted)' : '#E4F3E9', color: previewReadOnly ? 'var(--text-secondary)' : 'var(--color-success)', fontSize: 12, fontWeight: 800 }}>{previewReadOnly ? 'Email delivery disabled in preview' : 'Email delivery active'}</span>}
       </div>
 
+      {previewReadOnly && <div role="status" style={{ marginTop: 16, padding: '11px 14px', border: '1px solid var(--border-default)', borderRadius: 9, background: 'var(--surface-muted)', color: 'var(--text-secondary)', fontSize: 13 }}>Preview certificate records are available to inspect. Sending is disabled so demo records cannot trigger real email delivery.</div>}
       {notice && <div style={{ marginTop: 16, padding: '11px 14px', borderRadius: 9, background: 'var(--surface-muted)', fontSize: 13 }}>{notice}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginTop: 22 }}>
@@ -69,7 +76,7 @@ export default function Certificates() {
       {isPro && selected.size > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginTop: 18, padding: '12px 15px', background: '#EEF3F8', borderRadius: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} certificate{selected.size === 1 ? '' : 's'} selected</span>
-          <button onClick={() => sendCertificates([...selected])} disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}><Send size={15}/>{sending ? 'Sending…' : 'Email selected'}</button>
+          <button onClick={() => sendCertificates([...selected])} disabled={previewReadOnly || sending} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}><Send size={15}/>{previewReadOnly ? 'Email disabled in preview' : sending ? 'Sending…' : 'Email selected'}</button>
         </div>
       )}
 
@@ -90,7 +97,7 @@ export default function Certificates() {
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{fmtDate(c.issued_date)}</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
               <button onClick={() => setPreviewCert(c)} title="View & download" style={{ background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 4 }}><Eye size={16} /></button>
-              {isPro && <button onClick={() => sendCertificates([c.id])} disabled={sending || !p?.email} title="Email certificate" style={{ background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: p?.email ? 'pointer' : 'not-allowed', opacity: p?.email ? 1 : .35, padding: 4 }}><Mail size={16}/></button>}
+              {isPro && <button onClick={() => sendCertificates([c.id])} disabled={previewReadOnly || sending || !p?.email} title={previewReadOnly ? 'Email disabled in read-only preview' : 'Email certificate'} style={{ background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: previewReadOnly || !p?.email ? 'not-allowed' : 'pointer', opacity: previewReadOnly || !p?.email ? .35 : 1, padding: 4 }}><Mail size={16}/></button>}
             </div>
           </div>;
         })}

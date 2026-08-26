@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Mail, Send, History, Settings as SettingsIcon, Users, Sparkles } from 'lucide-react';
+import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
 const templates = {
   announcement: {
@@ -22,6 +23,7 @@ const templates = {
 
 export default function Communications() {
   const { activities, participants, registrations } = useData();
+  const previewReadOnly = isReportingPreviewDemo();
   const [tab, setTab] = useState('compose');
   const [meta, setMeta] = useState({ settings: { auto_send_certificates: false, reply_to_email: '' }, history: [] });
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,10 @@ export default function Communications() {
   }
 
   async function sendAnnouncement() {
+    if (previewReadOnly) {
+      setToast('This demo preview is read-only. No emails will be sent.');
+      return;
+    }
     if (!subject.trim() || !message.trim() || !matchedParticipants.length) return;
     setSending(true);
     setToast('');
@@ -105,6 +111,10 @@ export default function Communications() {
   }
 
   async function saveSettings() {
+    if (previewReadOnly) {
+      setToast('This demo preview is read-only. Delivery settings cannot be changed.');
+      return;
+    }
     setSending(true);
     setToast('');
     try {
@@ -132,6 +142,8 @@ export default function Communications() {
       <style>{`
         .lex-comm-tabs{display:flex;gap:8px;flex-wrap:wrap}.lex-comm-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.7fr);gap:18px}.lex-comm-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}@media(max-width:820px){.lex-comm-grid{grid-template-columns:1fr}.lex-comm-filters{grid-template-columns:1fr}}
       `}</style>
+
+      {previewReadOnly && <div role="status" style={{ padding: '12px 15px', border: '1px solid var(--border-default)', borderRadius: 12, background: 'var(--surface-muted)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}><strong style={{ color: 'var(--color-navy-900)' }}>Read-only demo preview:</strong> audience data is available for review, but sending email and saving delivery settings are disabled so this preview cannot change Neon or contact real participants.</div>}
 
       <section style={{ padding: 24, border: '1px solid var(--border-default)', borderRadius: 18, background: 'var(--surface-card)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -162,7 +174,7 @@ export default function Communications() {
             <input value={subject} onChange={e => setSubject(e.target.value)} style={{ ...input, marginTop: 6 }}/>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 14 }}>Message</label>
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={9} style={{ ...input, marginTop: 6, resize: 'vertical', lineHeight: 1.55 }}/>
-            <button onClick={sendAnnouncement} disabled={sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{sending ? 'Sending…' : `Send to ${matchedParticipants.length} participant${matchedParticipants.length === 1 ? '' : 's'}`}</button>
+            <button onClick={sendAnnouncement} disabled={previewReadOnly || sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: previewReadOnly || sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{previewReadOnly ? 'Email disabled in preview' : sending ? 'Sending…' : `Send to ${matchedParticipants.length} participant${matchedParticipants.length === 1 ? '' : 's'}`}</button>
           </section>
 
           <aside style={{ padding: 20, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
@@ -196,11 +208,11 @@ export default function Communications() {
       {tab === 'settings' && (
         <section style={{ maxWidth: 700, padding: 22, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
           <div style={{ display: 'flex', gap: 9, alignItems: 'center', fontSize: 14, fontWeight: 800 }}><Sparkles size={17}/> Delivery settings</div>
-          <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 18, cursor: 'pointer' }}><input type="checkbox" checked={autoSendCertificates} onChange={e => setAutoSendCertificates(e.target.checked)} style={{ marginTop: 3 }}/><div><strong style={{ fontSize: 13 }}>Automatically email certificates when awarded</strong><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.5 }}>When a certificate is issued, LexAMS sends the recipient a secure branded certificate link automatically if a valid email address is available.</div></div></label>
+          <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 18, cursor: previewReadOnly ? 'not-allowed' : 'pointer' }}><input type="checkbox" checked={autoSendCertificates} disabled={previewReadOnly} onChange={e => setAutoSendCertificates(e.target.checked)} style={{ marginTop: 3 }}/><div><strong style={{ fontSize: 13 }}>Automatically email certificates when awarded</strong><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.5 }}>When a certificate is issued, LexAMS sends the recipient a secure branded certificate link automatically if a valid email address is available.</div></div></label>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 20 }}>Reply-to email</label>
-          <input type="email" value={replyToEmail} onChange={e => setReplyToEmail(e.target.value)} placeholder="programmes@yourorganisation.org" style={{ ...input, marginTop: 6 }}/>
+          <input type="email" value={replyToEmail} disabled={previewReadOnly} onChange={e => setReplyToEmail(e.target.value)} placeholder="programmes@yourorganisation.org" style={{ ...input, marginTop: 6 }}/>
           <div style={{ marginTop: 7, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>Participant replies will go to this address. Sending still uses the authenticated LexAMS delivery domain.</div>
-          <button onClick={saveSettings} disabled={sending} style={{ marginTop: 18, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}>{sending ? 'Saving…' : 'Save settings'}</button>
+          <button onClick={saveSettings} disabled={previewReadOnly || sending} style={{ marginTop: 18, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}>{previewReadOnly ? 'Settings locked in preview' : sending ? 'Saving…' : 'Save settings'}</button>
         </section>
       )}
     </div>

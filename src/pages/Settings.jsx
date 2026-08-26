@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Upload, X } from 'lucide-react';
 
 export default function Settings() {
-  const { profile, refreshProfile, isAdmin, isPro } = useAuth();
+  const { profile, refreshProfile, isPro } = useAuth();
   const [orgName, setOrgName] = useState(profile?.org_name || '');
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
   const [saving, setSaving] = useState(false);

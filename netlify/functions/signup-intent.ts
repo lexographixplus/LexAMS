@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { randomUUID } from 'node:crypto';
 import { getPool } from './_shared/db';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function normalizeEmail(value: unknown) {
   return String(value || '').trim().toLowerCase();
@@ -14,6 +15,7 @@ export default async (request: Request) => {
   if (request.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const body = await request.json().catch(() => ({}));
   const email = normalizeEmail(body.email);

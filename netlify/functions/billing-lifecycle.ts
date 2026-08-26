@@ -1,10 +1,12 @@
 import type { Config } from '@netlify/functions';
 import { getPool } from './_shared/db';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 // This job only advances subscriptions whose recorded dates have already passed.
 // It never deletes workspace data or changes customer-facing entitlement records.
 export default async (request: Request) => {
   if (!['GET', 'POST'].includes(request.method)) return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  if (isPreviewDeployment(request)) return previewReadOnlyResponse();
 
   const db = getPool();
   const client = await db.connect();

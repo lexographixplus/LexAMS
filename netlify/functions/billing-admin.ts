@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { getPool } from './_shared/db';
 import { ensureFreeSubscription, requirePlatformAdmin } from './_shared/billing';
 import { requireUser } from './_shared/session';
+import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 const PRICE_BY_CYCLE = { monthly: 1000, annual: 10000 } as const;
 type BillingCycle = keyof typeof PRICE_BY_CYCLE;
@@ -48,6 +49,7 @@ async function subscriptionForUpdate(client: any, organizationId: string) {
 }
 
 export default async (request: Request) => {
+  if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   const access = await requireBillingAdmin(request);
   if ('error' in access) return access.error;
   const db = getPool();
