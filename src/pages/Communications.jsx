@@ -185,7 +185,7 @@ export default function Communications() {
             <div key={item.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 18, padding: '14px 20px', borderTop: '1px solid var(--border-default)' }}>
               <div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 800, color: 'var(--color-navy-700)' }}>{item.kind}</span><strong style={{ fontSize: 13 }}>{item.subject}</strong></div><div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(item.created_at).toLocaleString()}</div></div>
               <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
-                <div><strong>{item.delivered || 0}</strong> delivered · {item.sent || 0}/{item.recipients || 0} accepted</div>
+                <div><strong>{item.delivered || 0}</strong> delivered · {item.sent || 0}/{item.recipients || 0} accepted/currently healthy</div>
                 {(item.failed || item.queued) ? <div style={{ marginTop: 3, color: item.failed ? 'var(--color-danger)' : 'var(--text-tertiary)' }}>{item.failed ? `${item.failed} delivery issue${item.failed === 1 ? '' : 's'}` : ''}{item.failed && item.queued ? ' · ' : ''}{item.queued ? `${item.queued} queued` : ''}</div> : null}
               </div>
             </div>
