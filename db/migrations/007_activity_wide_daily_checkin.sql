@@ -8,18 +8,15 @@ alter table activities
   add column if not exists daily_checkin_window_end time,
   add column if not exists daily_checkin_timezone text not null default 'UTC';
 
-do $$
-begin
-  alter table activities
-    add constraint activities_daily_checkin_window_check
-    check (
-      daily_checkin_window_start is null
-      or daily_checkin_window_end is null
-      or daily_checkin_window_end > daily_checkin_window_start
-    );
-exception
-  when duplicate_object then null;
-end $$;
+alter table activities
+  drop constraint if exists activities_daily_checkin_window_check;
+alter table activities
+  add constraint activities_daily_checkin_window_check
+  check (
+    daily_checkin_window_start is null
+    or daily_checkin_window_end is null
+    or daily_checkin_window_end > daily_checkin_window_start
+  );
 
 -- Activity-wide attempts may be associated with a delivery session for the day,
 -- but the audit record also works when no explicit session exists for that date.
