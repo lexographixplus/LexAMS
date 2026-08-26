@@ -5,8 +5,10 @@
 
 -- 1. Normalize and deduplicate participant email identity within each organization.
 -- Preserve the earliest participant record as canonical and merge dependent records.
-
-create temporary table if not exists lexams_participant_merge_map on commit drop as
+-- Use a short-lived regular helper table rather than a TEMP table so this migration
+-- is safe with runners that auto-commit each statement.
+drop table if exists _lexams_participant_merge_map_005;
+create table _lexams_participant_merge_map_005 as
 select duplicate.id as duplicate_id, canonical.id as canonical_id
 from participants duplicate
 join lateral (
@@ -24,16 +26,16 @@ where duplicate.id <> canonical.id
 insert into registrations (organization_id, activity_id, participant_id, registered_at)
 select r.organization_id, r.activity_id, m.canonical_id, min(r.registered_at)
 from registrations r
-join lexams_participant_merge_map m on m.duplicate_id = r.participant_id
+join _lexams_participant_merge_map_005 m on m.duplicate_id = r.participant_id
 group by r.organization_id, r.activity_id, m.canonical_id
 on conflict (activity_id, participant_id) do nothing;
 
 delete from registrations r
-using lexams_participant_merge_map m
+using _lexams_participant_merge_map_005 m
 where r.participant_id = m.duplicate_id;
 
--- Attendance: keep one canonical record per activity/session and prefer the strongest
--- attendance evidence when duplicates disagree: present > late > absent.
+-- Attendance: copy duplicate attendance to the canonical participant. Existing
+-- canonical attendance remains authoritative when both records already exist.
 insert into attendance (organization_id, activity_id, participant_id, session_label, status, recorded_at)
 select a.organization_id,
        a.activity_id,
@@ -46,32 +48,34 @@ select a.organization_id,
        end,
        min(a.recorded_at)
 from attendance a
-join lexams_participant_merge_map m on m.duplicate_id = a.participant_id
+join _lexams_participant_merge_map_005 m on m.duplicate_id = a.participant_id
 group by a.organization_id, a.activity_id, m.canonical_id, a.session_label
 on conflict (activity_id, participant_id, session_label) do nothing;
 
 delete from attendance a
-using lexams_participant_merge_map m
+using _lexams_participant_merge_map_005 m
 where a.participant_id = m.duplicate_id;
 
 update certificates c
 set participant_id = m.canonical_id
-from lexams_participant_merge_map m
+from _lexams_participant_merge_map_005 m
 where c.participant_id = m.duplicate_id;
 
 update survey_responses s
 set participant_id = m.canonical_id
-from lexams_participant_merge_map m
+from _lexams_participant_merge_map_005 m
 where s.participant_id = m.duplicate_id;
 
 update assessment_submissions a
 set participant_id = m.canonical_id
-from lexams_participant_merge_map m
+from _lexams_participant_merge_map_005 m
 where a.participant_id = m.duplicate_id;
 
 delete from participants p
-using lexams_participant_merge_map m
+using _lexams_participant_merge_map_005 m
 where p.id = m.duplicate_id;
+
+drop table if exists _lexams_participant_merge_map_005;
 
 create unique index if not exists idx_participants_org_normalized_email
   on participants (organization_id, lower(btrim(email)))
@@ -92,6 +96,12 @@ alter table activities
   add column if not exists registration_confirmation_email boolean not null default true,
   add column if not exists registration_confirmation_message text not null default '',
   add column if not exists registration_custom_fields jsonb not null default '[]'::jsonb;
+
+alter table activities
+  drop constraint if exists activities_registration_capacity_check;
+alter table activities
+  add constraint activities_registration_capacity_check
+  check (registration_capacity is null or registration_capacity > 0);
 
 alter table registrations
   add column if not exists status text not null default 'confirmed',
