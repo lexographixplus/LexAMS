@@ -1,4 +1,6 @@
 import ActivityDetail from './ActivityDetail';
+import ActivityOperationsPanel from '../components/ActivityOperationsPanel';
+import ActivityWideCheckinPanel from '../components/ActivityWideCheckinPanel';
 
 export default function ActivityDetailFrame() {
   return (
@@ -44,6 +46,8 @@ export default function ActivityDetailFrame() {
           .lexams-activity-detail-v2 > div > div:nth-of-type(n+3) > div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
         }
       `}</style>
+      <ActivityWideCheckinPanel />
+      <ActivityOperationsPanel />
       <ActivityDetail />
     </div>
   );
