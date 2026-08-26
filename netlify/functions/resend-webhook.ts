@@ -104,6 +104,10 @@ export default async (request: Request) => {
          updated_at=now()
      where id=$1
        and (provider_event_at is null or provider_event_at <= $4::timestamptz)
+       and not (
+         status in ('bounced','complained','suppressed','failed')
+         and $2 in ('sent','delivered')
+       )
      returning id`,
     [row.id, nextStatus, message, eventAt]
   );
