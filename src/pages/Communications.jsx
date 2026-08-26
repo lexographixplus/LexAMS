@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { Mail, Send, History, Settings as SettingsIcon, LockKeyhole, Users, Sparkles } from 'lucide-react';
+import { Mail, Send, History, Settings as SettingsIcon, Users, Sparkles } from 'lucide-react';
 
 const templates = {
   announcement: {
@@ -23,9 +22,8 @@ const templates = {
 
 export default function Communications() {
   const { activities, participants, registrations } = useData();
-  const navigate = useNavigate();
   const [tab, setTab] = useState('compose');
-  const [meta, setMeta] = useState({ pro: false, settings: { auto_send_certificates: false, reply_to_email: '' }, history: [] });
+  const [meta, setMeta] = useState({ settings: { auto_send_certificates: false, reply_to_email: '' }, history: [] });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState('');
@@ -78,7 +76,7 @@ export default function Communications() {
   }
 
   async function sendAnnouncement() {
-    if (!meta.pro || !subject.trim() || !message.trim() || !matchedParticipants.length) return;
+    if (!subject.trim() || !message.trim() || !matchedParticipants.length) return;
     setSending(true);
     setToast('');
     try {
@@ -107,7 +105,6 @@ export default function Communications() {
   }
 
   async function saveSettings() {
-    if (!meta.pro) return;
     setSending(true);
     setToast('');
     try {
@@ -143,16 +140,9 @@ export default function Communications() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--color-navy-900)', margin: '8px 0 0' }}>Announcements, updates and certificate delivery</h2>
             <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, maxWidth: 720 }}>Send programme messages to one participant or a filtered audience. Certificate delivery is managed from the Certificates page and recorded here.</p>
           </div>
-          <span style={{ padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 800, background: meta.pro ? '#E4F3E9' : '#FFF3D6', color: meta.pro ? 'var(--color-success)' : '#8B5A00' }}>{meta.pro ? 'Pro active' : 'Pro feature'}</span>
+          <span style={{ padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 800, background: '#E4F3E9', color: 'var(--color-success)' }}>Pro</span>
         </div>
       </section>
-
-      {!meta.pro && (
-        <section style={{ padding: 20, border: '1px solid #E9D69C', background: '#FFF9E8', borderRadius: 14, display: 'flex', justifyContent: 'space-between', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}><LockKeyhole size={20} style={{ color: '#8B5A00', marginTop: 2 }}/><div><strong style={{ color: '#5D4300' }}>Communications is available on LexAMS Pro</strong><div style={{ color: '#7A6423', fontSize: 13, marginTop: 4 }}>Free users can still generate, view and download certificates. Pro adds participant email, bulk delivery and automatic certificate emailing.</div></div></div>
-          <button onClick={() => navigate('/app/checkout')} style={{ padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 700 }}>Upgrade to Pro</button>
-        </section>
-      )}
 
       <div className="lex-comm-tabs">
         {[
@@ -164,15 +154,15 @@ export default function Communications() {
 
       {tab === 'compose' && (
         <div className="lex-comm-grid">
-          <section style={{ padding: 22, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)', opacity: meta.pro ? 1 : .68 }}>
+          <section style={{ padding: 22, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 14 }}>Message</div>
             <label style={{ fontSize: 12, fontWeight: 700 }}>Template</label>
             <select value={template} onChange={e => chooseTemplate(e.target.value)} style={{ ...input, marginTop: 6 }}>{Object.entries(templates).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 14 }}>Subject</label>
-            <input value={subject} onChange={e => setSubject(e.target.value)} disabled={!meta.pro} style={{ ...input, marginTop: 6 }}/>
+            <input value={subject} onChange={e => setSubject(e.target.value)} style={{ ...input, marginTop: 6 }}/>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 14 }}>Message</label>
-            <textarea value={message} onChange={e => setMessage(e.target.value)} disabled={!meta.pro} rows={9} style={{ ...input, marginTop: 6, resize: 'vertical', lineHeight: 1.55 }}/>
-            <button onClick={sendAnnouncement} disabled={!meta.pro || sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: !meta.pro || sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{sending ? 'Sending…' : `Send to ${matchedParticipants.length} participant${matchedParticipants.length === 1 ? '' : 's'}`}</button>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} rows={9} style={{ ...input, marginTop: 6, resize: 'vertical', lineHeight: 1.55 }}/>
+            <button onClick={sendAnnouncement} disabled={sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{sending ? 'Sending…' : `Send to ${matchedParticipants.length} participant${matchedParticipants.length === 1 ? '' : 's'}`}</button>
           </section>
 
           <aside style={{ padding: 20, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
@@ -196,18 +186,18 @@ export default function Communications() {
               <div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 800, color: 'var(--color-navy-700)' }}>{item.kind}</span><strong style={{ fontSize: 13 }}>{item.subject}</strong></div><div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(item.created_at).toLocaleString()}</div></div>
               <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}><strong>{item.sent || 0}/{item.recipients || 0}</strong> sent{item.failed ? ` · ${item.failed} failed` : ''}</div>
             </div>
-          )) : <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)' }}>No participant emails have been sent yet.</div>}
+          )) : <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)' }}>No participant communications have been sent yet.</div>}
         </section>
       )}
 
       {tab === 'settings' && (
-        <section style={{ maxWidth: 720, padding: 22, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 800 }}><Sparkles size={17}/> Delivery automation</div>
-          <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 18 }}><input type="checkbox" checked={autoSendCertificates} disabled={!meta.pro} onChange={e => setAutoSendCertificates(e.target.checked)} style={{ marginTop: 3 }}/><span><strong style={{ fontSize: 13 }}>Automatically email certificates when awarded</strong><span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>When an authorised user issues a certificate, LexAMS will send the participant a secure branded link to view and download it. Individual and bulk resend controls remain available from Certificates.</span></span></label>
+        <section style={{ maxWidth: 700, padding: 22, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
+          <div style={{ display: 'flex', gap: 9, alignItems: 'center', fontSize: 14, fontWeight: 800 }}><Sparkles size={17}/> Delivery settings</div>
+          <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 18, cursor: 'pointer' }}><input type="checkbox" checked={autoSendCertificates} onChange={e => setAutoSendCertificates(e.target.checked)} style={{ marginTop: 3 }}/><div><strong style={{ fontSize: 13 }}>Automatically email certificates when awarded</strong><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.5 }}>When a certificate is issued, LexAMS sends the recipient a secure branded certificate link automatically if a valid email address is available.</div></div></label>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 20 }}>Reply-to email</label>
-          <input type="email" value={replyToEmail} disabled={!meta.pro} onChange={e => setReplyToEmail(e.target.value)} placeholder="programmes@yourorganisation.org" style={{ ...input, marginTop: 6 }}/>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 5 }}>Participant replies can be directed to this address while LexAMS handles delivery.</div>
-          <button onClick={saveSettings} disabled={!meta.pro || sending} style={{ marginTop: 18, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: meta.pro ? 1 : .5 }}>{sending ? 'Saving…' : 'Save settings'}</button>
+          <input type="email" value={replyToEmail} onChange={e => setReplyToEmail(e.target.value)} placeholder="programmes@yourorganisation.org" style={{ ...input, marginTop: 6 }}/>
+          <div style={{ marginTop: 7, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>Participant replies will go to this address. Sending still uses the authenticated LexAMS delivery domain.</div>
+          <button onClick={saveSettings} disabled={sending} style={{ marginTop: 18, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}>{sending ? 'Saving…' : 'Save settings'}</button>
         </section>
       )}
     </div>
