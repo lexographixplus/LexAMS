@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound, Mail,
-  UserCircle, CreditCard, LogOut, Menu, ShieldCheck, X,
+  CreditCard, LogOut, Menu, ShieldCheck, X,
 } from 'lucide-react';
 
 const navItems = [
@@ -20,7 +20,6 @@ const navItems = [
   { to: '/app/team', icon: UsersRound, label: 'Team', proOnly: true },
   { to: '/app/settings', icon: Settings, label: 'Settings' },
   { to: '/app/billing', icon: CreditCard, label: 'Billing & plan' },
-  { to: '/app/account', icon: UserCircle, label: 'My account' },
 ];
 
 const pageTitles = {
@@ -112,14 +111,15 @@ export default function AppLayout() {
         .mobile-sidebar { display: none; }
         .mobile-only { display: none !important; }
         .hamburger { display: none; }
-        .desktop-user { display: flex; }
+        .user-account-link { display: flex; }
+        .user-account-label { display: block; }
         .content-pad { padding: 30px 40px 72px; }
         .topbar-pad { padding: 14px 40px; }
         @media (max-width: 768px) {
           .desktop-sidebar { display: none !important; }
           .mobile-only { display: flex !important; }
           .hamburger { display: flex !important; }
-          .desktop-user { display: none !important; }
+          .user-account-label { display: none; }
           .content-pad { padding: 20px 16px 60px; }
           .topbar-pad { padding: 12px 16px; }
           .mobile-overlay { display: block; position: fixed; inset: 0; background: rgba(0,43,84,0.4); z-index: 200; }
@@ -135,14 +135,14 @@ export default function AppLayout() {
               <button className="hamburger" onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-primary)', cursor: 'pointer', alignItems: 'center' }}><Menu size={22} /></button>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-primary)' }}>{pageTitle}</div>
             </div>
-            <NavLink to="/app/account" className="desktop-user" aria-label="Open My account" style={{ alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
+            <NavLink to="/app/account" className="user-account-link" aria-label="Open My account" title="My account" style={{ alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 999,
                 background: 'var(--color-navy-900)', color: '#FFFFFF',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 600,
               }}>{initials}</div>
-              <div>
+              <div className="user-account-label">
                 <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{userName}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{role}</div>
               </div>
