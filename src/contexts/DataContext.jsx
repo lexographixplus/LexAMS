@@ -68,7 +68,7 @@ export function DataProvider({ children }) {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const getActivity = useCallback((id) => activities.find(a => a.id === id), [activities]);
+  const getActivity = useCallback((id) => activities.find(a => String(a.id) === String(id)), [activities]);
   const getParticipant = useCallback((id) => participants.find(p => p.id === id), [participants]);
   const getRegsForActivity = useCallback((aid) => registrations.filter(r => r.activity_id === aid).map(r => r.participant_id), [registrations]);
   const getAttForActivity = useCallback((aid) => attendance.filter(a => a.activity_id === aid), [attendance]);
