@@ -79,7 +79,7 @@ export default async (request: Request, context: Context) => {
 
     const timezone = String(body.settings?.daily_checkin_timezone || 'UTC').trim().slice(0, 80) || 'UTC';
     try {
-      await db.query('select now() at time zone $1 as local_now', [timezone]);
+      await db.query('select timezone($1, now()) as local_now', [timezone]);
     } catch {
       return json({ error: 'Enter a valid IANA timezone, for example Africa/Banjul or Europe/Amsterdam.' }, 400);
     }
