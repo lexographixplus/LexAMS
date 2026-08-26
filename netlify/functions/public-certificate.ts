@@ -1,0 +1,27 @@
+import type { Config, Context } from '@netlify/functions';
+import { getPool } from './_shared/db';
+
+export default async (request: Request, context: Context) => {
+  if (request.method !== 'GET') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  const token = context.params.token;
+  if (!token) return Response.json({ error: 'Invalid certificate link' }, { status: 400 });
+
+  const db = getPool();
+  const result = await db.query(
+    `select c.cert_no,c.certificate_type,c.issued_date,
+            p.name as participant_name,
+            a.title as activity_title,a.venue,a.facilitator,a.start_date,a.end_date,
+            o.name as organization_name,o.logo_url as organization_logo
+     from certificates c
+     join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
+     join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
+     join organizations o on o.id=c.organization_id
+     where c.access_token=$1
+     limit 1`,
+    [token]
+  );
+  if (!result.rowCount) return Response.json({ error: 'Certificate not found' }, { status: 404 });
+  return Response.json({ certificate: result.rows[0] }, { headers: { 'cache-control': 'private, max-age=300' } });
+};
+
+export const config: Config = { path: '/api/public-certificate/:token' };
