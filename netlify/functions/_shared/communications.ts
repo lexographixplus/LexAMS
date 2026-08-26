@@ -28,10 +28,18 @@ export function appBaseUrl(request?: Request) {
   return '';
 }
 
-function resendClient() {
+export function resendApiKey() {
   const key = envValue('RESEND_API_KEY');
   if (!key) throw new Error('RESEND_API_KEY is not configured');
-  return new Resend(key);
+  return key;
+}
+
+export function resendWebhookSecret() {
+  return envValue('RESEND_WEBHOOK_SECRET') || '';
+}
+
+function resendClient() {
+  return new Resend(resendApiKey());
 }
 
 export function escapeHtml(value: unknown) {
@@ -71,9 +79,10 @@ export function brandedEmail(args: {
 
 export async function sendEmailBatch(emails: OutboundEmail[]) {
   const valid = emails.filter(email => email.to && email.to.includes('@'));
-  if (!valid.length) return { sent: 0 };
+  if (!valid.length) return { sent: 0, ids: [] as string[] };
   const resend = resendClient();
   let sent = 0;
+  const ids: string[] = [];
   for (let offset = 0; offset < valid.length; offset += 100) {
     const chunk = valid.slice(offset, offset + 100).map(email => ({
       from: communicationsFrom(),
@@ -84,7 +93,10 @@ export async function sendEmailBatch(emails: OutboundEmail[]) {
     }));
     const result = await resend.batch.send(chunk);
     if (result.error) throw new Error(result.error.message || 'Email delivery failed');
+    const batchIds = Array.isArray(result.data) ? result.data.map(item => item.id).filter(Boolean) : [];
+    if (batchIds.length !== chunk.length) throw new Error('Email provider did not return an id for every message');
+    ids.push(...batchIds);
     sent += chunk.length;
   }
-  return { sent };
+  return { sent, ids };
 }
