@@ -1,6 +1,9 @@
 -- LexAMS communication delivery tracking and suppression foundation
 
 alter table communication_deliveries
+  add column if not exists provider_event_at timestamptz;
+
+alter table communication_deliveries
   drop constraint if exists communication_deliveries_status_check;
 
 alter table communication_deliveries
