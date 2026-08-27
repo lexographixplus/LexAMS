@@ -1,12 +1,18 @@
+import { Award } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import ActivityDetail from './ActivityDetail';
 import ActivityOperationsPanel from '../components/ActivityOperationsPanel';
 import ActivityWideCheckinPanel from '../components/ActivityWideCheckinPanel';
 
 export default function ActivityDetailFrame() {
+  const { id } = useParams();
   return (
     <div className="lexams-activity-detail-v2">
       <style>{`
         .lexams-activity-detail-v2 > div { max-width: 1240px; margin: 0 auto; }
+        .lexams-activity-award-shortcut { max-width:1240px; margin:0 auto 14px; display:flex; justify-content:flex-end; }
+        .lexams-activity-award-shortcut a { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 13px; border:1px solid var(--border-default); border-radius:10px; background:var(--surface-card); box-shadow:0 5px 16px rgba(0,43,84,.04); color:var(--color-navy-700); text-decoration:none; font-size:13px; font-weight:800; }
+        .lexams-activity-award-shortcut a:hover { border-color:var(--color-gold-500); background:#FFF9EA; }
         .lexams-activity-detail-v2 > div > button:first-child {
           display:inline-flex !important; align-items:center; min-height:38px; padding:0 12px !important;
           border:1px solid var(--border-default) !important; border-radius:10px !important;
@@ -39,6 +45,8 @@ export default function ActivityDetailFrame() {
           display:inline-grid; place-items:center; min-width:32px; min-height:32px; border-radius:8px !important;
         }
         @media(max-width:760px){
+          .lexams-activity-award-shortcut { justify-content:stretch; }
+          .lexams-activity-award-shortcut a { width:100%; justify-content:center; }
           .lexams-activity-detail-v2 > div > div:nth-of-type(1){padding:20px;}
           .lexams-activity-detail-v2 > div > div:nth-of-type(1) > div:last-child{flex-wrap:wrap;}
           .lexams-activity-detail-v2 > div > div:nth-of-type(2){margin-left:-4px !important;margin-right:-4px !important;}
@@ -46,6 +54,7 @@ export default function ActivityDetailFrame() {
           .lexams-activity-detail-v2 > div > div:nth-of-type(n+3) > div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
         }
       `}</style>
+      <div className="lexams-activity-award-shortcut"><Link to={`/certificates?awardActivity=${encodeURIComponent(id || '')}#awards-recognition`}><Award size={15}/>Give award / recognition</Link></div>
       <ActivityWideCheckinPanel />
       <ActivityOperationsPanel />
       <ActivityDetail />
