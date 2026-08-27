@@ -45,7 +45,7 @@ export async function maybeSendAwardedCertificate(args: {
             c.status,c.participant_id,c.activity_id,
             coalesce(c.recipient_name,p.name) as participant_name,
             lower(coalesce(nullif(c.recipient_email,''),nullif(p.email,''))) as participant_email,
-            a.title as activity_title
+            coalesce(a.title,c.metadata->>'activity_title') as activity_title
      from certificates c
      left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
      left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
