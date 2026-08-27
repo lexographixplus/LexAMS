@@ -37,7 +37,7 @@ alter table certificates
   add column if not exists reissued_from_id bigint,
   add column if not exists metadata jsonb not null default '{}'::jsonb;
 
--- Snapshot recipient details on all existing certificates before allowing
+-- Snapshot recipient details on existing certificates before allowing
 -- participant-less standalone certificates.
 update certificates c
 set recipient_name = coalesce(c.recipient_name, p.name),
@@ -46,6 +46,20 @@ from participants p
 where p.id = c.participant_id
   and p.organization_id = c.organization_id
   and (c.recipient_name is null or c.recipient_email is null);
+
+-- Preserve activity presentation data so verification still has context if
+-- an activity is removed later. New award issuance writes the same keys.
+update certificates c
+set metadata = coalesce(c.metadata, '{}'::jsonb) || jsonb_build_object(
+  'activity_title', a.title,
+  'activity_venue', a.venue,
+  'activity_facilitator', a.facilitator,
+  'activity_start_date', a.start_date,
+  'activity_end_date', a.end_date
+)
+from activities a
+where a.id = c.activity_id
+  and a.organization_id = c.organization_id;
 
 -- Awards can be standalone, so activity and participant relationships are optional.
 alter table certificates alter column activity_id drop not null;
