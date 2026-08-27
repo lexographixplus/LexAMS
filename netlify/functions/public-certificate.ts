@@ -8,13 +8,14 @@ export default async (request: Request, context: Context) => {
 
   const db = getPool();
   const result = await db.query(
-    `select c.cert_no,c.certificate_type,c.issued_date,
-            p.name as participant_name,
+    `select c.cert_no,c.certificate_type,c.certificate_kind,c.issued_date,c.award_title,c.award_category,
+            c.award_period,c.citation,c.status,c.revoked_at,c.revoke_reason,
+            coalesce(c.recipient_name,p.name) as participant_name,
             a.title as activity_title,a.venue,a.facilitator,a.start_date,a.end_date,
             o.name as organization_name,o.logo_url as organization_logo
      from certificates c
-     join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
-     join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
+     left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
+     left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
      join organizations o on o.id=c.organization_id
      where c.access_token=$1
      limit 1`,
