@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import CertificateSignatureGrid from './CertificateSignatureGrid';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -11,6 +12,7 @@ function escapeHtml(value) {
 
 export default function CertificatePreview({ cert, participant, activity, orgName, logoUrl, onClose }) {
   const certRef = useRef(null);
+  const signatories = Array.isArray(cert?.metadata?.signatories) ? cert.metadata.signatories.slice(0, 4) : [];
 
   function fmtDate(iso) {
     if (!iso) return '';
@@ -31,6 +33,11 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
     appreciation: 'Certificate of Appreciation',
   };
 
+  function signatureUrl(_signatory, index) {
+    if (!cert?.access_token) return '';
+    return `/api/public-certificate-signature/${encodeURIComponent(cert.access_token)}/${index}`;
+  }
+
   function downloadPdf() {
     if (!certRef.current) return;
 
@@ -39,16 +46,36 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
     printWindow.opener = null;
 
     const safeOrgName = escapeHtml(orgName || 'Organization');
-    const safeParticipant = escapeHtml(participant?.name || '');
-    const safeActivityTitle = escapeHtml(activity?.title || '');
-    const safeVenue = escapeHtml(activity?.venue || '');
-    const safeFacilitator = escapeHtml(activity?.facilitator || '');
+    const safeParticipant = escapeHtml(participant?.name || cert.recipient_name || '');
+    const safeActivityTitle = escapeHtml(activity?.title || cert.metadata?.activity_title || '');
+    const safeVenue = escapeHtml(activity?.venue || cert.metadata?.activity_venue || '');
+    const safeFacilitator = escapeHtml(activity?.facilitator || cert.metadata?.activity_facilitator || '');
     const safeCertNo = escapeHtml(cert.cert_no || '');
     const safeCertType = escapeHtml(certTypeLabel[cert.certificate_type] || 'Certificate of Completion');
     const safeDate = escapeHtml(fmtDate(cert.issued_date));
-    const safeRange = escapeHtml(fmtRange(activity));
+    const safeRange = escapeHtml(fmtRange(activity || (cert.metadata?.activity_start_date ? {
+      start_date: cert.metadata.activity_start_date,
+      end_date: cert.metadata.activity_end_date || cert.metadata.activity_start_date,
+    } : null)));
     const safeLogo = logoUrl ? escapeHtml(logoUrl) : '';
     const safeTitle = `${safeCertNo} - ${safeParticipant || 'Certificate'}`;
+
+    const signatureHtml = signatories.length
+      ? `<div class="signature-grid">${signatories.map((signatory, index) => {
+          const name = escapeHtml(signatory?.name || '');
+          const title = escapeHtml(signatory?.title || '');
+          const organization = escapeHtml(signatory?.organization || '');
+          const uploadedUrl = signatory?.signature_mode === 'uploaded' && signatory?.signature_key && cert?.access_token
+            ? escapeHtml(signatureUrl(signatory, index))
+            : '';
+          const signatureMark = signatory?.show_signature === false
+            ? ''
+            : uploadedUrl
+              ? `<img src="${uploadedUrl}" class="signature-img" alt="" />`
+              : `<div class="typed-signature">${name}</div>`;
+          return `<div class="signature-block"><div class="signature-mark">${signatureMark}</div><div class="signature-line"></div>${signatory?.show_name === false ? '' : `<div class="signature-name">${name}</div>`}${signatory?.show_title === false || !title ? '' : `<div class="signature-role">${title}</div>`}${signatory?.show_organization === true && organization ? `<div class="signature-org">${organization}</div>` : ''}</div>`;
+        }).join('')}</div><div class="certificate-meta"><div class="cert-no">${safeCertNo}</div><div class="cert-date">Issued ${safeDate}</div></div>`
+      : `<div class="footer"><div style="text-align:left"><div class="sig-line"></div><div class="sig-name">${safeFacilitator}</div><div class="sig-role">Facilitator</div></div><div style="text-align:center"><div class="cert-no">${safeCertNo}</div><div class="cert-date">Issued ${safeDate}</div></div><div style="text-align:right"><div class="sig-line" style="margin-left:auto"></div><div class="sig-name">${safeOrgName}</div><div class="sig-role">Issuing Organization</div></div></div>`;
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -62,21 +89,31 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
           body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
           .cert-wrapper { width: 297mm; height: 210mm; padding: 12mm; box-sizing: border-box; }
           .cert-inner { width: 100%; height: 100%; border: 2.5px solid #002B54; border-radius: 4px; padding: 10px; box-sizing: border-box; }
-          .cert-content { border: 1px solid #FAB72D; width: 100%; height: 100%; padding: 44px 56px 36px; text-align: center; font-family: 'Inter', sans-serif; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+          .cert-content { border: 1px solid #FAB72D; width: 100%; height: 100%; padding: 38px 56px 30px; text-align: center; font-family: 'Inter', sans-serif; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
           .logo-img { max-height: 60px; max-width: 180px; object-fit: contain; margin-bottom: 12px; }
           .org { font-family: 'Merriweather', serif; font-size: 22px; font-weight: 700; color: #002B54; }
           .type-label { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #0E4C8F; margin-top: 16px; }
           .dot { color: #FAB72D; }
-          .presented-to { font-size: 14px; color: #5B6B80; margin-top: 32px; }
+          .presented-to { font-size: 14px; color: #5B6B80; margin-top: 26px; }
           .name { font-family: 'Merriweather', serif; font-size: 40px; font-weight: 700; color: #002B54; margin-top: 12px; padding: 0 24px 12px; border-bottom: 1px solid #FAB72D; display: inline-block; }
-          .for-label { font-size: 14px; color: #5B6B80; margin-top: 18px; }
+          .for-label { font-size: 14px; color: #5B6B80; margin-top: 16px; }
           .activity-title { font-family: 'Merriweather', serif; font-size: 24px; font-weight: 700; color: #002B54; margin-top: 10px; }
           .details { font-size: 14px; color: #5B6B80; margin-top: 10px; }
-          .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; padding: 0 20px; }
+          .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 42px; padding: 0 20px; }
           .sig-line { width: 180px; border-bottom: 1px solid #5B6B80; }
           .sig-name { font-size: 14px; font-weight: 600; color: #002B54; margin-top: 8px; }
           .sig-role, .cert-date { font-size: 12px; color: #5B6B80; }
           .cert-no { font-family: Consolas, monospace; font-size: 13px; color: #002B54; }
+          .signature-grid { display: flex; justify-content: center; align-items: flex-end; gap: 28px; margin-top: 34px; }
+          .signature-block { width: 180px; text-align: center; }
+          .signature-mark { height: 48px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 3px; }
+          .signature-img { max-width: 165px; max-height: 46px; object-fit: contain; }
+          .typed-signature { font-family: cursive; font-size: 22px; line-height: 1; color: #002B54; transform: rotate(-2deg); }
+          .signature-line { border-top: 1px solid #5B6B80; }
+          .signature-name { font-size: 13px; font-weight: 700; color: #002B54; margin-top: 7px; }
+          .signature-role { font-size: 11px; color: #5B6B80; margin-top: 2px; }
+          .signature-org { font-size: 10px; color: #788699; margin-top: 2px; }
+          .certificate-meta { margin-top: 16px; text-align: center; }
         </style>
       </head>
       <body>
@@ -88,12 +125,8 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
           <div class="name">${safeParticipant}</div>
           <div class="for-label">${cert.certificate_type === 'appreciation' ? 'in appreciation for participation in' : 'has successfully completed'}</div>
           <div class="activity-title">${safeActivityTitle}</div>
-          <div class="details">${safeRange} &middot; ${safeVenue}</div>
-          <div class="footer">
-            <div style="text-align:left"><div class="sig-line"></div><div class="sig-name">${safeFacilitator}</div><div class="sig-role">Facilitator</div></div>
-            <div style="text-align:center"><div class="cert-no">${safeCertNo}</div><div class="cert-date">Issued ${safeDate}</div></div>
-            <div style="text-align:right"><div class="sig-line" style="margin-left:auto"></div><div class="sig-name">${safeOrgName}</div><div class="sig-role">Issuing Organization</div></div>
-          </div>
+          <div class="details">${[safeRange, safeVenue].filter(Boolean).join(' &middot; ')}</div>
+          ${signatureHtml}
         </div></div></div>
       </body>
       </html>
@@ -101,6 +134,11 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
     printWindow.document.close();
     printWindow.onload = () => printWindow.print();
   }
+
+  const activityForDisplay = activity || (cert.metadata?.activity_start_date ? {
+    start_date: cert.metadata.activity_start_date,
+    end_date: cert.metadata.activity_end_date || cert.metadata.activity_start_date,
+  } : null);
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.45)', backdropFilter: 'blur(2px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
@@ -111,20 +149,28 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
         </div>
 
         <div ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: 860, maxWidth: '95vw', padding: 10 }}>
-          <div style={{ border: '1px solid var(--color-gold-500)', padding: '44px 56px 36px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+          <div style={{ border: '1px solid var(--color-gold-500)', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-navy-900)' }}>{orgName || 'Organization'}</div>
             <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-navy-700)', marginTop: 14 }}><span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span>&nbsp;&nbsp;{certTypeLabel[cert.certificate_type] || 'Certificate of Completion'}&nbsp;&nbsp;<span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span></div>
-            <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 28 }}>{cert.certificate_type === 'appreciation' ? 'This certificate is presented to' : 'This is to certify that'}</div>
-            <div style={{ display: 'inline-block', fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 10, padding: '0 24px 10px', borderBottom: '1px solid var(--color-gold-500)' }}>{participant?.name || ''}</div>
+            <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 24 }}>{cert.certificate_type === 'appreciation' ? 'This certificate is presented to' : 'This is to certify that'}</div>
+            <div style={{ display: 'inline-block', fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 10, padding: '0 24px 10px', borderBottom: '1px solid var(--color-gold-500)' }}>{participant?.name || cert.recipient_name || ''}</div>
             <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 16 }}>{cert.certificate_type === 'appreciation' ? 'in appreciation for participation in' : 'has successfully completed'}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.title || ''}</div>
-            <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 8 }}>{fmtRange(activity)} &middot; {activity?.venue || ''}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 44 }}>
-              <div style={{ textAlign: 'left' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.facilitator || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Facilitator</div></div>
-              <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
-              <div style={{ textAlign: 'right' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
-            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.title || cert.metadata?.activity_title || ''}</div>
+            <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 8 }}>{[fmtRange(activityForDisplay), activity?.venue || cert.metadata?.activity_venue || ''].filter(Boolean).join(' · ')}</div>
+
+            {signatories.length > 0 ? (
+              <>
+                <div style={{ marginTop: 34 }}><CertificateSignatureGrid signatories={signatories} signatureUrlFor={signatureUrl} /></div>
+                <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 44 }}>
+                <div style={{ textAlign: 'left' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.facilitator || cert.metadata?.activity_facilitator || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Facilitator</div></div>
+                <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
+                <div style={{ textAlign: 'right' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
+              </div>
+            )}
           </div>
         </div>
       </div>
