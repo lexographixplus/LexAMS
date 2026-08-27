@@ -20,6 +20,7 @@ export async function maybeSendAwardedCertificate(args: {
   tenant: TenantLike;
   certificateId: number;
   createdBy?: string | null;
+  force?: boolean;
 }) {
   const { db, request, tenant, certificateId } = args;
   const snapshot = await getBillingSnapshot(db, tenant.organization_id);
@@ -30,7 +31,7 @@ export async function maybeSendAwardedCertificate(args: {
      from organization_communication_settings where organization_id=$1`,
     [tenant.organization_id]
   );
-  if (!settings.rows[0]?.auto_send_certificates) return { attempted: false, reason: 'disabled' };
+  if (!args.force && !settings.rows[0]?.auto_send_certificates) return { attempted: false, reason: 'disabled' };
 
   const monthly = await db.query(
     `select count(*)::int as count from communication_deliveries
@@ -71,8 +72,8 @@ export async function maybeSendAwardedCertificate(args: {
     : `Your certificate — ${descriptor}`;
   const message = await db.query(
     `insert into communication_messages (organization_id,activity_id,kind,subject,body,audience,created_by)
-     values ($1,$2,'certificate',$3,'Automatic certificate delivery',$4::jsonb,$5) returning id`,
-    [tenant.organization_id, cert.activity_id || null, subject, JSON.stringify({ certificateIds: [certificateId], automatic: true }), args.createdBy || tenant.user.id]
+     values ($1,$2,'certificate',$3,$4,$5::jsonb,$6) returning id`,
+    [tenant.organization_id, cert.activity_id || null, subject, args.force ? 'Manual certificate delivery' : 'Automatic certificate delivery', JSON.stringify({ certificateIds: [certificateId], automatic: !args.force }), args.createdBy || tenant.user.id]
   );
   const messageId = Number(message.rows[0].id);
 
