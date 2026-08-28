@@ -162,20 +162,20 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
   } : null);
 
   return (
-    <div onClick={onClose} role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.45)', backdropFilter: 'blur(2px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`${certificateLabel} preview`} tabIndex={-1} onClick={e => e.stopPropagation()} style={{ maxWidth: '95vw', maxHeight: '95vh', display: 'flex', flexDirection: 'column', alignItems: 'center', outline: 'none' }}>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+    <div className="certificate-preview-backdrop" onClick={onClose} role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.45)', backdropFilter: 'blur(2px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <div className="certificate-preview-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-label={`${certificateLabel} preview`} tabIndex={-1} onClick={e => e.stopPropagation()} style={{ maxWidth: '95vw', maxHeight: '95vh', display: 'flex', flexDirection: 'column', alignItems: 'center', outline: 'none' }}>
+        <div className="certificate-preview-actions" style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           {downloadEnabled && <button onClick={downloadPdf} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'var(--color-gold-500)', color: 'var(--color-navy-900)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>Download PDF</button>}
           <button onClick={onClose} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'rgba(255,255,255,0.9)', color: 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>Close</button>
         </div>
 
-        <div ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: 860, maxWidth: '95vw', padding: 10 }}>
-          <div style={{ border: '1px solid var(--color-gold-500)', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+        <div className="certificate-preview-sheet" ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: 860, maxWidth: '95vw', padding: 10 }}>
+          <div className="certificate-preview-content" style={{ border: '1px solid var(--color-gold-500)', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-navy-900)' }}>{orgName || 'Organization'}</div>
             <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-navy-700)', marginTop: 14 }}><span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span>&nbsp;&nbsp;{certificateLabel}&nbsp;&nbsp;<span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span></div>
             <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 24 }}>{presentedLine}</div>
-            <div style={{ display: 'inline-block', fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 10, padding: '0 24px 10px', borderBottom: '1px solid var(--color-gold-500)' }}>{participant?.name || cert.recipient_name || ''}</div>
+            <div className="certificate-preview-recipient" style={{ display: 'inline-block', fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 10, padding: '0 24px 10px', borderBottom: '1px solid var(--color-gold-500)' }}>{participant?.name || cert.recipient_name || ''}</div>
             <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 16 }}>{achievementLine}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--color-navy-900)', marginTop: 8 }}>{mainTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--color-ink-700)', marginTop: 8, maxWidth: 680, marginInline: 'auto' }}>{contextLine || [fmtRange(activityForDisplay), activity?.venue || metadata.activity_venue || ''].filter(Boolean).join(' · ')}</div>
@@ -186,10 +186,10 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
                 <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
               </>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 44 }}>
-                <div style={{ textAlign: 'left' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.facilitator || metadata.activity_facilitator || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Facilitator</div></div>
-                <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
-                <div style={{ textAlign: 'right' }}><div style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
+              <div className="certificate-preview-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 44 }}>
+                <div className="certificate-preview-signature" style={{ textAlign: 'left' }}><div className="certificate-preview-signature-line" style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.facilitator || metadata.activity_facilitator || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Facilitator</div></div>
+                <div className="certificate-preview-meta" style={{ textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
+                <div className="certificate-preview-signature" style={{ textAlign: 'right' }}><div className="certificate-preview-signature-line" style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
               </div>
             )}
           </div>
