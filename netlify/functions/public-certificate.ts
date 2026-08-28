@@ -9,7 +9,7 @@ export default async (request: Request, context: Context) => {
   const db = getPool();
   const result = await db.query(
     `select c.cert_no,c.certificate_type,c.certificate_kind,c.issued_date,c.award_title,c.award_category,
-            c.award_period,c.citation,c.status,c.revoked_at,c.revoke_reason,
+            c.award_period,c.citation,c.status,c.revoked_at,c.revoke_reason,c.metadata,
             coalesce(c.recipient_name,p.name) as participant_name,
             coalesce(a.title,c.metadata->>'activity_title') as activity_title,
             coalesce(a.venue,c.metadata->>'activity_venue') as venue,
@@ -26,7 +26,25 @@ export default async (request: Request, context: Context) => {
     [token]
   );
   if (!result.rowCount) return Response.json({ error: 'Certificate not found' }, { status: 404 });
-  return Response.json({ certificate: result.rows[0] }, { headers: { 'cache-control': 'private, max-age=300' } });
+
+  const row = result.rows[0];
+  const snapshots = Array.isArray(row.metadata?.signatories) ? row.metadata.signatories.slice(0, 4) : [];
+  const signatories = snapshots.map((signatory: any, index: number) => ({
+    name: String(signatory?.name || ''),
+    title: String(signatory?.title || ''),
+    organization: String(signatory?.organization || ''),
+    signature_mode: signatory?.signature_mode === 'uploaded' ? 'uploaded' : 'typed',
+    show_signature: signatory?.show_signature !== false,
+    show_name: signatory?.show_name !== false,
+    show_title: signatory?.show_title !== false,
+    show_organization: signatory?.show_organization === true,
+    signature_url: signatory?.signature_mode === 'uploaded' && signatory?.signature_key && signatory?.show_signature !== false
+      ? `/api/public-certificate-signature/${encodeURIComponent(token)}/${index}`
+      : null,
+  }));
+
+  const { metadata: _metadata, ...certificate } = row;
+  return Response.json({ certificate: { ...certificate, signatories } }, { headers: { 'cache-control': 'private, max-age=300' } });
 };
 
 export const config: Config = { path: '/api/public-certificate/:token' };

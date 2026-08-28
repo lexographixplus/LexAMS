@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
+import CertificateSignatureGrid from '../../components/CertificateSignatureGrid';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -50,6 +51,7 @@ export default function CertificatePublic() {
   const inactive = certificate.status && certificate.status !== 'active';
   const activityLine = [certificate.activity_title, certificate.award_period].filter(Boolean).join(' · ');
   const detailsLine = [fmtRange(certificate), certificate.venue].filter(Boolean).join(' · ');
+  const signatories = Array.isArray(certificate.signatories) ? certificate.signatories : [];
 
   return (
     <PublicExperienceLayout eyebrow={isAward ? 'Verified recognition' : 'Verified certificate'} title={type} organizationName={certificate.organization_name} organizationLogo={certificate.organization_logo}>
@@ -79,11 +81,18 @@ export default function CertificatePublic() {
               </>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 42, alignItems: 'flex-end' }}>
-              <div style={{ textAlign: 'left', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.facilitator || certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>{certificate.facilitator ? 'Facilitator' : 'Authorized Signatory'}</div></div>
-              <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#8793a3', fontSize: 11 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
-              <div style={{ textAlign: 'right', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>Issuing Organization</div></div>
-            </div>
+            {signatories.length > 0 ? (
+              <>
+                <div style={{ marginTop: 38 }}><CertificateSignatureGrid signatories={signatories} /></div>
+                <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#8793a3', fontSize: 11 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 42, alignItems: 'flex-end' }}>
+                <div style={{ textAlign: 'left', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.facilitator || certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>{certificate.facilitator ? 'Facilitator' : 'Authorized Signatory'}</div></div>
+                <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#8793a3', fontSize: 11 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
+                <div style={{ textAlign: 'right', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>Issuing Organization</div></div>
+              </div>
+            )}
           </div>
         </div>
         <div className="lex-public-actions" style={{ marginTop: 18 }}>
