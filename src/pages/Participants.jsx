@@ -3,11 +3,13 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { initials as getInitials, fmtRange } from '../lib/format';
 import CertificatePreview from '../components/CertificatePreview';
+import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
 
 export default function Participants() {
   const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct, isAdmin } = useData();
   const { profile } = useAuth();
+  const previewReadOnly = isReportingPreviewDemo();
   const [q, setQ] = useState('');
   const [catF, setCatF] = useState('all');
   const [showNew, setShowNew] = useState(false);
@@ -19,6 +21,7 @@ export default function Participants() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewAward, setPreviewAward] = useState(null);
+  const [sharingAwardId, setSharingAwardId] = useState(null);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
 
@@ -68,22 +71,37 @@ export default function Participants() {
     .sort((a, b) => String(b.issued_date || '').localeCompare(String(a.issued_date || ''))) : [];
 
   async function shareAward(certificate) {
-    if (!certificate.access_token) {
-      showToast('A public verification link is not available for this award.');
+    if (previewReadOnly) {
+      showToast('Recognition delivery is disabled in the read-only preview.');
       return;
     }
-    const url = `${window.location.origin}/certificate/${encodeURIComponent(certificate.access_token)}`;
-    const title = certificate.award_title || certificate.certificate_type || 'Recognition award';
+    setSharingAwardId(certificate.id);
     try {
-      if (navigator.share) {
-        await navigator.share({ title, text: `${title} awarded by ${profile?.org_name || 'our organization'}.`, url });
+      const response = await fetch('/api/award-delivery', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ certificateIds: [certificate.id] }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'LexAMS could not send this recognition.');
+      if (Number(body.sent) > 0) {
+        showToast('Recognition sent and recorded in Communications history.');
         return;
       }
-      await navigator.clipboard.writeText(url);
-      showToast('Public verification link copied.');
+      const reason = body.skipped?.[0]?.reason;
+      const messages = {
+        pro_required: 'Recognition delivery is available on LexAMS Pro.',
+        monthly_limit: 'The monthly participant-email limit has been reached.',
+        missing_email: 'Add a valid participant email address before sharing.',
+        suppressed: 'This participant cannot receive email from this workspace.',
+        certificate_inactive: 'Only active recognition certificates can be shared.',
+        certificate_not_found: 'This recognition certificate is no longer available.',
+      };
+      throw new Error(messages[reason] || 'LexAMS could not deliver this recognition. Check Communications history for details.');
     } catch (error) {
-      if (error?.name !== 'AbortError') showToast('The link could not be shared.');
-    }
+      showToast(error.message || 'LexAMS could not deliver this recognition.');
+    } finally { setSharingAwardId(null); }
   }
 
   const inputStyle = { width: '100%', padding: '10px 14px', fontSize: 14, border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none' };
@@ -143,7 +161,12 @@ export default function Participants() {
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{c.award_period || c.cert_no} · {c.status || 'active'}</div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                   <button className="button-link" onClick={() => setPreviewAward(c)}>View certificate</button>
-                  <button className="button-link" disabled={!c.access_token} title={c.access_token ? 'Share public verification link' : 'Public verification link unavailable'} onClick={() => shareAward(c)}>Share</button>
+                  <button
+                    className="button-link"
+                    disabled={previewReadOnly || sharingAwardId !== null || !c.access_token || c.status !== 'active'}
+                    title={previewReadOnly ? 'Delivery disabled in read-only preview' : c.status !== 'active' ? 'Only active recognition can be shared' : c.access_token ? 'Send through LexAMS Communications' : 'Public verification link unavailable'}
+                    onClick={() => shareAward(c)}
+                  >{sharingAwardId === c.id ? 'Sending…' : 'Share via LexAMS'}</button>
                 </div>
               </div>)}
             </div>
@@ -167,6 +190,6 @@ export default function Participants() {
       onClose={() => setPreviewAward(null)}
     />}
 
-    {toast && <div style={{ position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 13, fontWeight: 500, padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300 }}>{toast}</div>}
+    {toast && <div role="status" aria-live="polite" style={{ position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 13, fontWeight: 500, padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300 }}>{toast}</div>}
   </div>;
 }
