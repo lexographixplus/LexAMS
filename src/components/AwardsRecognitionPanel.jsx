@@ -43,12 +43,12 @@ function downloadCsv(rows) {
   URL.revokeObjectURL(link.href);
 }
 
-function Dialog({ title, children, confirmLabel, danger = false, busy, confirmDisabled = false, onConfirm, onClose }) {
+function Dialog({ title, children, confirmLabel, danger = false, busy, confirmDisabled = false, showCancel = true, onConfirm, onClose }) {
   return <div className="awards-dialog-backdrop" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
     <section className="awards-dialog" role="dialog" aria-modal="true" aria-labelledby="awards-dialog-title">
       <div className="awards-dialog__header"><h4 id="awards-dialog-title">{title}</h4><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={17}/></button></div>
       <div className="awards-dialog__body">{children}</div>
-      <div className="awards-dialog__actions"><button className="button secondary" onClick={onClose}>Cancel</button><button className={`button ${danger ? 'danger' : 'primary'}`} disabled={busy || confirmDisabled} onClick={onConfirm}>{busy ? 'Working…' : confirmLabel}</button></div>
+      <div className="awards-dialog__actions">{showCancel && <button className="button secondary" onClick={onClose}>Cancel</button>}<button className={`button ${danger ? 'danger' : 'primary'}`} disabled={busy || confirmDisabled} onClick={onConfirm}>{busy ? 'Working…' : confirmLabel}</button></div>
     </section>
   </div>;
 }
@@ -259,6 +259,6 @@ export default function AwardsRecognitionPanel() {
     {dialog?.type === 'issue' && <Dialog title="Review recognition certificates" confirmLabel={`Issue ${selectedCount} certificate${selectedCount === 1 ? '' : 's'}`} busy={busy} onClose={() => setDialog(null)} onConfirm={issueAward}><dl className="review-list"><div><dt>Recognition</dt><dd>{form.awardTitle}</dd></div><div><dt>Recipients</dt><dd>{selectedCount}</dd></div><div><dt>Date</dt><dd>{fmtDate(form.issuedDate)}</dd></div><div><dt>Delivery</dt><dd>{form.emailNow ? 'Email immediately when possible' : 'Issue only'}</dd></div></dl><p>Each recipient receives an independently verifiable certificate record.</p></Dialog>}
     {dialog?.type === 'revoke' && <Dialog title={`Revoke ${dialog.row.cert_no}`} confirmLabel="Revoke certificate" danger busy={busy} confirmDisabled={!dialog.reason.trim()} onClose={() => setDialog(null)} onConfirm={performCertificateAction}><p>Revocation is visible during verification and remains in the audit history.</p><label>Reason<textarea autoFocus value={dialog.reason} onChange={event => setDialog(current => ({ ...current, reason: event.target.value }))} placeholder="Required for the audit trail"/></label>{!dialog.reason.trim() && <small>A reason is required.</small>}</Dialog>}
     {dialog?.type === 'reissue' && <Dialog title={`Reissue ${dialog.row.cert_no}`} confirmLabel="Issue replacement" busy={busy} onClose={() => setDialog(null)} onConfirm={performCertificateAction}><p>A replacement certificate number will be created. This certificate will remain visible as superseded.</p></Dialog>}
-    {dialog?.type === 'details' && <Dialog title="Recognition audit details" confirmLabel="Close" onClose={() => setDialog(null)} onConfirm={() => setDialog(null)}><dl className="review-list">{[['Certificate', dialog.row.cert_no], ['Recipient', dialog.row.display_recipient_name], ['Award', dialog.row.award_title], ['Status', dialog.row.status], ['Issued', fmtDate(dialog.row.issued_date)], ['Delivery', dialog.row.delivery_status || 'Not sent'], ['Citation', dialog.row.citation || '—'], ['Revocation reason', dialog.row.revoke_reason || '—']].map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl></Dialog>}
+    {dialog?.type === 'details' && <Dialog title="Recognition audit details" confirmLabel="Close" showCancel={false} onClose={() => setDialog(null)} onConfirm={() => setDialog(null)}><dl className="review-list">{[['Certificate', dialog.row.cert_no], ['Recipient', dialog.row.display_recipient_name], ['Award', dialog.row.award_title], ['Status', dialog.row.status], ['Issued', fmtDate(dialog.row.issued_date)], ['Delivery', dialog.row.delivery_status || 'Not sent'], ['Citation', dialog.row.citation || '—'], ['Revocation reason', dialog.row.revoke_reason || '—']].map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl></Dialog>}
   </section>;
 }

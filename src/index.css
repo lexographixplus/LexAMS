@@ -42,6 +42,14 @@
   --shadow-focus: 0 0 0 3px rgba(14,76,143,0.18);
 }
 
+.awards-tabs {
+  scrollbar-width: none;
+}
+
+.awards-tabs::-webkit-scrollbar {
+  display: none;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
