@@ -18,7 +18,17 @@ export default function Certificates() {
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading certificates...</div>;
 
-  const completionCertificates = certificates.filter(c => !c.certificate_kind || c.certificate_kind === 'completion');
+  function isRecognitionCertificate(c) {
+    const recognitionKind = c?.certificate_kind === 'award' || c?.certificate_kind === 'standalone';
+    const hasRecognitionEvidence = Boolean(
+      String(c?.award_title || '').trim()
+      || c?.template_id
+      || c?.metadata?.source === 'awards_recognition'
+    );
+    return recognitionKind && hasRecognitionEvidence;
+  }
+
+  const completionCertificates = certificates.filter(c => !isRecognitionCertificate(c));
   const uniqueActs = new Set(completionCertificates.map(c => c.activity_id).filter(Boolean)).size;
   const orgName = profile?.org_name || 'Organization';
 
