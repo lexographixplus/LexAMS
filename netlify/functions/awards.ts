@@ -38,7 +38,7 @@ export default async (request: Request) => {
         `select c.id,c.cert_no,c.certificate_kind,c.certificate_type,c.issued_date,c.access_token,
                 c.activity_id,c.participant_id,c.award_title,c.award_category,c.award_period,c.citation,
                 c.recipient_name,c.recipient_email,c.template_id,c.status,c.revoked_at,c.revoke_reason,
-                c.reissued_from_id,c.created_at,
+                c.reissued_from_id,c.created_at,c.metadata,
                 coalesce(c.recipient_name,p.name) as display_recipient_name,
                 coalesce(c.recipient_email,lower(p.email)) as display_recipient_email,
                 coalesce(a.title,c.metadata->>'activity_title') as activity_title,
@@ -47,9 +47,9 @@ export default async (request: Request) => {
          left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
          left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
          where c.organization_id=$1
-           and c.certificate_kind in ('award','standalone')
            and (
-             nullif(btrim(c.award_title), '') is not null
+             lower(coalesce(c.certificate_type, '')) = 'recognition'
+             or nullif(btrim(c.award_title), '') is not null
              or c.template_id is not null
              or c.metadata->>'source' = 'awards_recognition'
            )
