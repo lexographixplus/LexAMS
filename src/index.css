@@ -50,6 +50,59 @@
   display: none;
 }
 
+.classification-health {
+  margin: 18px 22px 0;
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: #edf8f0;
+  color: #176b3a;
+}
+
+.classification-health.attention {
+  background: #fff8e8;
+  color: #8a5b00;
+}
+
+.classification-health p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.classification-health small {
+  font-size: 10px;
+}
+
+.award-preview-bar {
+  margin: 0 22px 22px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.award-preview-bar strong,
+.award-preview-bar span {
+  display: block;
+}
+
+.award-preview-bar span {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .award-preview-bar {
+    margin-inline: 14px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
