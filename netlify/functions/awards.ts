@@ -46,7 +46,14 @@ export default async (request: Request) => {
          from certificates c
          left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
          left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
-         where c.organization_id=$1 and c.certificate_kind in ('award','standalone') ${activityFilter}
+         where c.organization_id=$1
+           and c.certificate_kind in ('award','standalone')
+           and (
+             nullif(btrim(c.award_title), '') is not null
+             or c.template_id is not null
+             or c.metadata->>'source' = 'awards_recognition'
+           )
+           ${activityFilter}
          order by c.issued_date desc,c.id desc limit 1000`, values),
     ]);
     return json({ pro, templates: templates.rows, awards: awards.rows });
