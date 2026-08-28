@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { AlertTriangle, CheckCircle2, History, Mail, Search, Send, Settings as SettingsIcon, Sparkles, Users } from 'lucide-react';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
@@ -21,6 +21,14 @@ const templates = {
   },
 };
 const EMPTY_HISTORY = [];
+const PREVIEW_COMMUNICATIONS = {
+  settings: { auto_send_certificates: false, reply_to_email: '' },
+  history: [
+    { id: -9101, kind: 'certificate', subject: 'Your award — Outstanding Project Award', recipients: 1, sent: 1, delivered: 1, failed: 0, queued: 0, created_at: '2026-08-28T14:20:00Z' },
+    { id: -9102, kind: 'announcement', subject: 'September programme schedule', recipients: 8, sent: 8, delivered: 7, failed: 1, queued: 0, created_at: '2026-08-27T09:15:00Z' },
+    { id: -9103, kind: 'certificate', subject: 'Your certificate — Youth Digital Skills Bootcamp', recipients: 4, sent: 4, delivered: 3, failed: 0, queued: 1, created_at: '2026-08-26T16:40:00Z' },
+  ],
+};
 
 function communicationKind(item) {
   if (item.kind !== 'certificate') return item.kind || 'message';
@@ -60,9 +68,15 @@ export default function Communications() {
   const [historyKind, setHistoryKind] = useState('all');
   const [historyHealth, setHistoryHealth] = useState('all');
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
+      if (previewReadOnly) {
+        setMeta(PREVIEW_COMMUNICATIONS);
+        setAutoSendCertificates(false);
+        setReplyToEmail('');
+        return;
+      }
       const response = await fetch('/api/communications', { credentials: 'include' });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not load communications');
@@ -74,9 +88,9 @@ export default function Communications() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [previewReadOnly]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const categories = useMemo(() => [...new Set(participants.map(p => p.category).filter(Boolean))].sort(), [participants]);
   const organizations = useMemo(() => [...new Set(participants.map(p => p.org).filter(Boolean))].sort(), [participants]);
@@ -216,7 +230,7 @@ export default function Communications() {
             <input value={subject} onChange={e => setSubject(e.target.value)} style={{ ...input, marginTop: 6 }}/>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 14 }}>Message</label>
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={9} style={{ ...input, marginTop: 6, resize: 'vertical', lineHeight: 1.55 }}/>
-            <button onClick={() => setShowSendReview(true)} disabled={previewReadOnly || sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: previewReadOnly || sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{previewReadOnly ? 'Email disabled in preview' : `Review message to ${matchedParticipants.length}`}</button>
+            <button onClick={() => setShowSendReview(true)} disabled={sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>Review message to {matchedParticipants.length}</button>
           </section>
 
           <aside style={{ padding: 20, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
@@ -279,13 +293,13 @@ export default function Communications() {
       {showSendReview && <div className="lex-comm-review-backdrop" role="presentation" onMouseDown={event => event.target === event.currentTarget && setShowSendReview(false)}>
         <section className="lex-comm-review" role="dialog" aria-modal="true" aria-labelledby="communication-review-title">
           <h3 id="communication-review-title" style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--color-navy-900)' }}>Review before sending</h3>
-          <p style={{ marginTop: 8, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55 }}>LexAMS will send this branded message and record its delivery status in Communications history.</p>
+          <p style={{ marginTop: 8, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55 }}>{previewReadOnly ? 'This review uses demo recipients. Sending remains disabled in this preview.' : 'LexAMS will send this branded message and record its delivery status in Communications history.'}</p>
           <dl style={{ display: 'grid', gap: 10, marginTop: 18, padding: 16, borderRadius: 10, background: 'var(--surface-muted)', fontSize: 13 }}>
             <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Recipients</dt><dd style={{ marginTop: 3, fontWeight: 800 }}>{matchedParticipants.length} participant{matchedParticipants.length === 1 ? '' : 's'}</dd></div>
             <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Subject</dt><dd style={{ marginTop: 3, fontWeight: 700 }}>{subject}</dd></div>
             <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Audience</dt><dd style={{ marginTop: 3 }}>{audience.participantId !== 'all' ? participants.find(participant => String(participant.id) === audience.participantId)?.name : 'Everyone matching the selected filters'}</dd></div>
           </dl>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}><button onClick={() => setShowSendReview(false)} disabled={sending} style={{ padding: '10px 16px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--surface-card)', color: 'var(--text-secondary)', fontWeight: 700 }}>Cancel</button><button onClick={sendAnnouncement} disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}><Send size={15}/>{sending ? 'Sending…' : `Send to ${matchedParticipants.length}`}</button></div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}><button onClick={() => setShowSendReview(false)} disabled={sending} style={{ padding: '10px 16px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--surface-card)', color: 'var(--text-secondary)', fontWeight: 700 }}>Cancel</button><button onClick={sendAnnouncement} disabled={previewReadOnly || sending} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: previewReadOnly ? .5 : 1 }}><Send size={15}/>{previewReadOnly ? 'Sending disabled in preview' : sending ? 'Sending…' : `Send to ${matchedParticipants.length}`}</button></div>
         </section>
       </div>}
     </div>
