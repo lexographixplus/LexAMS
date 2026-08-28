@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
 const AuthContext = createContext(null);
 
@@ -25,6 +26,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = useCallback(async () => {
+    if (isReportingPreviewDemo()) {
+      const preview = {
+        user: { id: 'preview-user', name: 'Preview Administrator', email: 'preview@example.invalid' },
+        profile: { full_name: 'Preview Administrator', org_name: 'LexAMS Demo Workspace', role: 'owner', team_role: 'admin', platform_admin: false },
+        billing: { subscription: { plan: 'pro', status: 'active' } },
+      };
+      setUser(preview.user); setProfile(preview.profile); setBilling(preview.billing); setLoading(false);
+      return preview;
+    }
     const response = await fetch('/api/me', { credentials: 'include' });
     if (!response.ok) {
       setUser(null); setProfile(null); setBilling(null); setLoading(false); return null;
@@ -100,7 +110,7 @@ export function AuthProvider({ children }) {
   const isAdmin = ['owner', 'admin'].includes(profile?.team_role);
   const isPro = billing?.subscription?.plan === 'pro';
 
-  return <AuthContext.Provider value={{ user, profile, billing, loading, signUp, signIn, signOut, isDemo: false, isAdmin, isPro, refreshProfile }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, profile, billing, loading, signUp, signIn, signOut, isDemo: isReportingPreviewDemo(), isAdmin, isPro, refreshProfile }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

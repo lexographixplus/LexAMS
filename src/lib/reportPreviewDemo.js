@@ -13,14 +13,14 @@ export const reportPreviewDemo = {
     { id: -8103, title: 'Monitoring & Evaluation Clinic', type: 'Clinic', start_date: '2026-08-18', end_date: '2026-08-19' },
   ],
   participants: [
-    { id: -8201, name: 'Aminata Jallow', email: 'justformodapps@gmail.com', phone: '+220 300 1001', org: 'Young Changemakers Network', category: 'Youth' },
-    { id: -8202, name: 'Lamin Touray', email: 'bepro01589@gmail.com', phone: '+220 300 1002', org: 'Community Action Hub', category: 'Community leader' },
-    { id: -8203, name: 'Fatou Ceesay', email: 'fatou.demo@example.com', phone: '+220 300 1003', org: 'Women in Enterprise', category: 'Entrepreneur' },
-    { id: -8204, name: 'Ousman Bah', email: 'ousman.demo@example.com', phone: '+220 300 1004', org: 'Community Action Hub', category: 'Youth' },
-    { id: -8205, name: 'Mariama Sanyang', email: 'mariama.demo@example.com', phone: '+220 300 1005', org: 'Education Forward', category: 'Teacher' },
-    { id: -8206, name: 'Ebrima Njie', email: 'ebrima.demo@example.com', phone: '+220 300 1006', org: 'Education Forward', category: 'Trainer' },
-    { id: -8207, name: 'Binta Manneh', email: 'binta.demo@example.com', phone: '+220 300 1007', org: 'Women in Enterprise', category: 'Entrepreneur' },
-    { id: -8208, name: 'Modou Faal', email: 'modou.demo@example.com', phone: '+220 300 1008', org: 'Young Changemakers Network', category: 'Youth' },
+    { id: -8201, name: 'Aminata Jallow', email: 'aminata.jallow@example.invalid', phone: '+1 202-555-0101', org: 'Young Changemakers Network', category: 'Youth' },
+    { id: -8202, name: 'Lamin Touray', email: 'lamin.touray@example.invalid', phone: '+1 202-555-0102', org: 'Community Action Hub', category: 'Community leader' },
+    { id: -8203, name: 'Fatou Ceesay', email: 'fatou.ceesay@example.invalid', phone: '+1 202-555-0103', org: 'Women in Enterprise', category: 'Entrepreneur' },
+    { id: -8204, name: 'Ousman Bah', email: 'ousman.bah@example.invalid', phone: '+1 202-555-0104', org: 'Community Action Hub', category: 'Youth' },
+    { id: -8205, name: 'Mariama Sanyang', email: 'mariama.sanyang@example.invalid', phone: '+1 202-555-0105', org: 'Education Forward', category: 'Teacher' },
+    { id: -8206, name: 'Ebrima Njie', email: 'ebrima.njie@example.invalid', phone: '+1 202-555-0106', org: 'Education Forward', category: 'Trainer' },
+    { id: -8207, name: 'Binta Manneh', email: 'binta.manneh@example.invalid', phone: '+1 202-555-0107', org: 'Women in Enterprise', category: 'Entrepreneur' },
+    { id: -8208, name: 'Modou Faal', email: 'modou.faal@example.invalid', phone: '+1 202-555-0108', org: 'Young Changemakers Network', category: 'Youth' },
   ],
   registrations: [
     { id: -8301, activity_id: -8101, participant_id: -8201 }, { id: -8302, activity_id: -8101, participant_id: -8203 },
@@ -77,6 +77,8 @@ export const reportPreviewDemo = {
     { id: -8505, cert_no: 'DEMO-2026-005', activity_id: -8102, participant_id: -8206, certificate_type: 'completion', issued_date: '2026-08-14' },
     { id: -8506, cert_no: 'DEMO-2026-006', activity_id: -8103, participant_id: -8204, certificate_type: 'completion', issued_date: '2026-08-20' },
     { id: -8507, cert_no: 'DEMO-2026-007', activity_id: -8103, participant_id: -8205, certificate_type: 'participation', issued_date: '2026-08-20' },
+    { id: -8508, cert_no: 'DEMO-AWD-2026-008', activity_id: -8101, participant_id: -8203, certificate_kind: 'award', certificate_type: 'recognition', award_title: 'Outstanding Project Award', award_category: 'Performance', award_period: 'August 2026', status: 'active', issued_date: '2026-08-21' },
+    { id: -8509, cert_no: 'DEMO-REC-2026-009', participant_id: -8207, certificate_kind: 'standalone', certificate_type: 'recognition', award_title: 'Community Leadership Recognition', award_category: 'Leadership', status: 'active', issued_date: '2026-08-22' },
   ],
   surveys: [
     { id: -8601, title: 'Bootcamp Participant Feedback', activity_id: -8101, status: 'closed', created_at: '2026-08-03T09:00:00Z' },
@@ -92,26 +94,26 @@ export const reportPreviewDemo = {
 const participantById = new Map(reportPreviewDemo.participants.map(item => [item.id, item]));
 
 const surveyResponses = [
-  { id: -8801, surveyId: -8601, activityId: -8101, survey: 'Bootcamp Participant Feedback', activity: 'Youth Digital Skills Bootcamp', participantId: -8201, respondent: 'Aminata Jallow', email: 'justformodapps@gmail.com', submittedAt: '2026-08-07T16:30:00Z', rating: 5, pace: 'Just right', recommend: 'Yes', comment: 'Very practical sessions and clear examples.' },
+  { id: -8801, surveyId: -8601, activityId: -8101, survey: 'Bootcamp Participant Feedback', activity: 'Youth Digital Skills Bootcamp', participantId: -8201, respondent: 'Aminata Jallow', email: 'aminata.jallow@example.invalid', submittedAt: '2026-08-07T16:30:00Z', rating: 5, pace: 'Just right', recommend: 'Yes', comment: 'Very practical sessions and clear examples.' },
   { id: -8802, surveyId: -8601, activityId: -8101, survey: 'Bootcamp Participant Feedback', activity: 'Youth Digital Skills Bootcamp', participantId: -8203, respondent: 'Fatou Ceesay', email: 'fatou.demo@example.com', submittedAt: '2026-08-07T16:35:00Z', rating: 4, pace: 'Just right', recommend: 'Yes', comment: 'The exercises helped me understand the tools.' },
   { id: -8803, surveyId: -8601, activityId: -8101, survey: 'Bootcamp Participant Feedback', activity: 'Youth Digital Skills Bootcamp', participantId: -8204, respondent: 'Ousman Bah', email: 'ousman.demo@example.com', submittedAt: '2026-08-07T16:40:00Z', rating: 3, pace: 'Fast', recommend: 'Yes', comment: 'More time for practice would improve the course.' },
   { id: -8804, surveyId: -8601, activityId: -8101, survey: 'Bootcamp Participant Feedback', activity: 'Youth Digital Skills Bootcamp', participantId: -8208, respondent: 'Modou Faal', email: 'modou.demo@example.com', submittedAt: '2026-08-07T16:42:00Z', rating: 5, pace: 'Just right', recommend: 'Yes', comment: 'Useful and engaging from start to finish.' },
-  { id: -8805, surveyId: -8602, activityId: -8102, survey: 'Leadership Workshop Feedback', activity: 'Community Leadership Workshop', participantId: -8202, respondent: 'Lamin Touray', email: 'bepro01589@gmail.com', submittedAt: '2026-08-13T15:20:00Z', rating: 4, pace: 'Just right', recommend: 'Yes', comment: 'Strong facilitation and relevant group discussions.' },
+  { id: -8805, surveyId: -8602, activityId: -8102, survey: 'Leadership Workshop Feedback', activity: 'Community Leadership Workshop', participantId: -8202, respondent: 'Lamin Touray', email: 'lamin.touray@example.invalid', submittedAt: '2026-08-13T15:20:00Z', rating: 4, pace: 'Just right', recommend: 'Yes', comment: 'Strong facilitation and relevant group discussions.' },
   { id: -8806, surveyId: -8602, activityId: -8102, survey: 'Leadership Workshop Feedback', activity: 'Community Leadership Workshop', participantId: -8203, respondent: 'Fatou Ceesay', email: 'fatou.demo@example.com', submittedAt: '2026-08-13T15:25:00Z', rating: 4, pace: 'Slow', recommend: 'Yes', comment: 'Good content; a shorter opening would help.' },
   { id: -8807, surveyId: -8602, activityId: -8102, survey: 'Leadership Workshop Feedback', activity: 'Community Leadership Workshop', participantId: -8206, respondent: 'Ebrima Njie', email: 'ebrima.demo@example.com', submittedAt: '2026-08-13T15:30:00Z', rating: 5, pace: 'Just right', recommend: 'Yes', comment: 'The scenarios were excellent for trainers.' },
   { id: -8808, surveyId: -8602, activityId: -8102, survey: 'Leadership Workshop Feedback', activity: 'Community Leadership Workshop', participantId: -8207, respondent: 'Binta Manneh', email: 'binta.demo@example.com', submittedAt: '2026-08-13T15:34:00Z', rating: 4, pace: 'Just right', recommend: 'No', comment: 'I would add more examples for small organisations.' },
 ];
 
 const assessmentSubmissions = [
-  { id: -8901, assessmentId: -8701, activityId: -8101, assessment: 'Digital Skills Pre-test', activity: 'Youth Digital Skills Bootcamp', type: 'pre_test', participantId: -8201, respondent: 'Aminata Jallow', email: 'justformodapps@gmail.com', percentage: 52, passed: false, submittedAt: '2026-08-03T09:20:00Z' },
+  { id: -8901, assessmentId: -8701, activityId: -8101, assessment: 'Digital Skills Pre-test', activity: 'Youth Digital Skills Bootcamp', type: 'pre_test', participantId: -8201, respondent: 'Aminata Jallow', email: 'aminata.jallow@example.invalid', percentage: 52, passed: false, submittedAt: '2026-08-03T09:20:00Z' },
   { id: -8902, assessmentId: -8701, activityId: -8101, assessment: 'Digital Skills Pre-test', activity: 'Youth Digital Skills Bootcamp', type: 'pre_test', participantId: -8203, respondent: 'Fatou Ceesay', email: 'fatou.demo@example.com', percentage: 64, passed: true, submittedAt: '2026-08-03T09:22:00Z' },
   { id: -8903, assessmentId: -8701, activityId: -8101, assessment: 'Digital Skills Pre-test', activity: 'Youth Digital Skills Bootcamp', type: 'pre_test', participantId: -8204, respondent: 'Ousman Bah', email: 'ousman.demo@example.com', percentage: 48, passed: false, submittedAt: '2026-08-03T09:25:00Z' },
   { id: -8904, assessmentId: -8701, activityId: -8101, assessment: 'Digital Skills Pre-test', activity: 'Youth Digital Skills Bootcamp', type: 'pre_test', participantId: -8208, respondent: 'Modou Faal', email: 'modou.demo@example.com', percentage: 58, passed: false, submittedAt: '2026-08-03T09:28:00Z' },
-  { id: -8905, assessmentId: -8702, activityId: -8101, assessment: 'Digital Skills Post-test', activity: 'Youth Digital Skills Bootcamp', type: 'post_test', participantId: -8201, respondent: 'Aminata Jallow', email: 'justformodapps@gmail.com', percentage: 86, passed: true, submittedAt: '2026-08-07T14:10:00Z' },
+  { id: -8905, assessmentId: -8702, activityId: -8101, assessment: 'Digital Skills Post-test', activity: 'Youth Digital Skills Bootcamp', type: 'post_test', participantId: -8201, respondent: 'Aminata Jallow', email: 'aminata.jallow@example.invalid', percentage: 86, passed: true, submittedAt: '2026-08-07T14:10:00Z' },
   { id: -8906, assessmentId: -8702, activityId: -8101, assessment: 'Digital Skills Post-test', activity: 'Youth Digital Skills Bootcamp', type: 'post_test', participantId: -8203, respondent: 'Fatou Ceesay', email: 'fatou.demo@example.com', percentage: 92, passed: true, submittedAt: '2026-08-07T14:12:00Z' },
   { id: -8907, assessmentId: -8702, activityId: -8101, assessment: 'Digital Skills Post-test', activity: 'Youth Digital Skills Bootcamp', type: 'post_test', participantId: -8204, respondent: 'Ousman Bah', email: 'ousman.demo@example.com', percentage: 74, passed: true, submittedAt: '2026-08-07T14:15:00Z' },
   { id: -8908, assessmentId: -8702, activityId: -8101, assessment: 'Digital Skills Post-test', activity: 'Youth Digital Skills Bootcamp', type: 'post_test', participantId: -8208, respondent: 'Modou Faal', email: 'modou.demo@example.com', percentage: 80, passed: true, submittedAt: '2026-08-07T14:18:00Z' },
-  { id: -8909, assessmentId: -8703, activityId: -8103, assessment: 'M&E Clinic Knowledge Check', activity: 'Monitoring & Evaluation Clinic', type: 'quiz', participantId: -8202, respondent: 'Lamin Touray', email: 'bepro01589@gmail.com', percentage: 88, passed: true, submittedAt: '2026-08-19T15:00:00Z' },
+  { id: -8909, assessmentId: -8703, activityId: -8103, assessment: 'M&E Clinic Knowledge Check', activity: 'Monitoring & Evaluation Clinic', type: 'quiz', participantId: -8202, respondent: 'Lamin Touray', email: 'lamin.touray@example.invalid', percentage: 88, passed: true, submittedAt: '2026-08-19T15:00:00Z' },
   { id: -8910, assessmentId: -8703, activityId: -8103, assessment: 'M&E Clinic Knowledge Check', activity: 'Monitoring & Evaluation Clinic', type: 'quiz', participantId: -8204, respondent: 'Ousman Bah', email: 'ousman.demo@example.com', percentage: 72, passed: true, submittedAt: '2026-08-19T15:03:00Z' },
   { id: -8911, assessmentId: -8703, activityId: -8103, assessment: 'M&E Clinic Knowledge Check', activity: 'Monitoring & Evaluation Clinic', type: 'quiz', participantId: -8205, respondent: 'Mariama Sanyang', email: 'mariama.demo@example.com', percentage: 66, passed: false, submittedAt: '2026-08-19T15:05:00Z' },
   { id: -8912, assessmentId: -8703, activityId: -8103, assessment: 'M&E Clinic Knowledge Check', activity: 'Monitoring & Evaluation Clinic', type: 'quiz', participantId: -8208, respondent: 'Modou Faal', email: 'modou.demo@example.com', percentage: 78, passed: true, submittedAt: '2026-08-19T15:08:00Z' },

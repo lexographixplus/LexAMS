@@ -3,6 +3,7 @@ import { getPool } from './_shared/db';
 import { maybeSendAwardedCertificate } from './_shared/certificate-delivery';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
+import { recognitionSql } from './_shared/recognition';
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -21,9 +22,9 @@ export default async (request: Request) => {
 
   const db = getPool();
   const owned = await db.query(
-    `select id from certificates
-     where organization_id=$1 and id=any($2::bigint[])
-       and certificate_kind in ('award','standalone')`,
+    `select c.id from certificates c
+     where c.organization_id=$1 and c.id=any($2::bigint[])
+       and ${recognitionSql('c')}`,
     [tenant.organization_id, ids]
   );
   if (owned.rowCount !== ids.length) return Response.json({ error: 'One or more award certificates are invalid.' }, { status: 400 });

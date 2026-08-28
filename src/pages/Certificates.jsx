@@ -6,6 +6,7 @@ import CertificatePreview from '../components/CertificatePreview';
 import AwardsRecognitionPanel from '../components/AwardsRecognitionPanel';
 import { Eye, Mail, Send } from 'lucide-react';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
+import { isRecognitionCertificate } from '../../shared/recognition.js';
 
 export default function Certificates() {
   const { certificates, loading, getActivity, getParticipant } = useData();
@@ -17,15 +18,6 @@ export default function Certificates() {
   const [notice, setNotice] = useState('');
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading certificates...</div>;
-
-  function isRecognitionCertificate(c) {
-    return Boolean(
-      String(c?.certificate_type || '').toLowerCase() === 'recognition'
-      || String(c?.award_title || '').trim()
-      || c?.template_id
-      || c?.metadata?.source === 'awards_recognition'
-    );
-  }
 
   const completionCertificates = certificates.filter(c => !isRecognitionCertificate(c));
   const uniqueActs = new Set(completionCertificates.map(c => c.activity_id).filter(Boolean)).size;

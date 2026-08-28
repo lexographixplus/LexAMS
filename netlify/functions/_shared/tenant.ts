@@ -8,6 +8,10 @@ function slugify(value: string) {
 }
 
 export async function requireTenant(request: Request) {
+  // Deploy previews use a synthetic client-side workspace. Do not even look up
+  // production memberships from a preview function invocation.
+  if (isPreviewDeployment(request)) return null;
+
   const user = await requireUser(request);
   if (!user) return null;
 
@@ -29,10 +33,6 @@ export async function requireTenant(request: Request) {
   );
 
   if (membership.rowCount) return { user, ...membership.rows[0] };
-
-  // A preview can read the workspace of an existing member, but must never
-  // create a real organization as a side effect of loading the app.
-  if (isPreviewDeployment(request)) return null;
 
   const baseName = user.name?.trim() || user.email?.split('@')[0] || 'My Organization';
   const suffix = String(user.id).slice(0, 8);
