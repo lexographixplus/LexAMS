@@ -19,13 +19,12 @@ export default function Certificates() {
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading certificates...</div>;
 
   function isRecognitionCertificate(c) {
-    const recognitionKind = c?.certificate_kind === 'award' || c?.certificate_kind === 'standalone';
-    const hasRecognitionEvidence = Boolean(
-      String(c?.award_title || '').trim()
+    return Boolean(
+      String(c?.certificate_type || '').toLowerCase() === 'recognition'
+      || String(c?.award_title || '').trim()
       || c?.template_id
       || c?.metadata?.source === 'awards_recognition'
     );
-    return recognitionKind && hasRecognitionEvidence;
   }
 
   const completionCertificates = certificates.filter(c => !isRecognitionCertificate(c));
