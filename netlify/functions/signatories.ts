@@ -12,6 +12,8 @@ type SignatoryConfigItem = {
   show_organization: boolean;
 };
 
+const MAX_SIGNATURE_BYTES = 3 * 1024 * 1024;
+
 const allowedImageTypes = new Map([
   ['image/png', 'png'],
   ['image/jpeg', 'jpg'],
@@ -50,6 +52,26 @@ function normalizeConfig(value: unknown): SignatoryConfigItem[] {
     });
   }
   return normalized;
+}
+
+function ascii(bytes: Uint8Array, start: number, length: number) {
+  return String.fromCharCode(...bytes.slice(start, start + length));
+}
+
+async function detectSignatureContentType(file: Blob) {
+  const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (bytes.length >= 8
+      && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+      && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) {
+    return 'image/png';
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (bytes.length >= 12 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') {
+    return 'image/webp';
+  }
+  return '';
 }
 
 async function assertConfigOwned(db: ReturnType<typeof getPool>, organizationId: string, config: SignatoryConfigItem[]) {
@@ -152,11 +174,20 @@ export default async (request: Request) => {
       if (action !== 'upload_signature') return json({ error: 'Unsupported upload action' }, 400);
 
       const signatoryId = Number(form.get('signatoryId'));
-      const file = form.get('file');
+      const fileValue = form.get('file');
       if (!Number.isSafeInteger(signatoryId) || signatoryId <= 0) return json({ error: 'Invalid signatory' }, 400);
-      if (!(file instanceof File)) return json({ error: 'Signature image is required' }, 400);
-      if (!allowedImageTypes.has(file.type)) return json({ error: 'Only PNG, JPEG, and WebP signatures are allowed' }, 400);
-      if (file.size > 1024 * 1024) return json({ error: 'Signature image must be under 1MB' }, 400);
+      if (!fileValue || typeof fileValue === 'string' || typeof fileValue.arrayBuffer !== 'function') {
+        return json({ error: 'Signature image is required' }, 400);
+      }
+
+      const file = fileValue as File;
+      if (file.size <= 0) return json({ error: 'The selected signature image is empty' }, 400);
+      if (file.size > MAX_SIGNATURE_BYTES) return json({ error: 'Signature image must be 3MB or smaller' }, 400);
+
+      const detectedContentType = await detectSignatureContentType(file);
+      if (!allowedImageTypes.has(detectedContentType)) {
+        return json({ error: 'Only PNG, JPEG, and WebP signature images are supported. HEIC/HEIF photos must be converted first.' }, 400);
+      }
 
       const owned = await db.query(
         `select id from organization_signatories where id=$1 and organization_id=$2`,
@@ -166,16 +197,25 @@ export default async (request: Request) => {
 
       const key = `organizations/${organizationId}/signatories/${signatoryId}/signature`;
       await store.set(key, await file.arrayBuffer(), {
-        metadata: { contentType: file.type, uploadedAt: new Date().toISOString() },
+        metadata: { contentType: detectedContentType, uploadedAt: new Date().toISOString() },
       });
       const updated = await db.query(
         `update organization_signatories
          set signature_mode='uploaded',signature_blob_key=$3,signature_content_type=$4,updated_at=now()
          where id=$1 and organization_id=$2
          returning id,full_name,title,organization_label,signature_mode,active,updated_at`,
-        [signatoryId, organizationId, key, file.type]
+        [signatoryId, organizationId, key, detectedContentType]
       );
-      await audit(db, organizationId, tenant.user.id, 'signatory.signature_uploaded', 'organization_signatory', String(signatoryId), { contentType: file.type });
+
+      try {
+        await audit(db, organizationId, tenant.user.id, 'signatory.signature_uploaded', 'organization_signatory', String(signatoryId), {
+          contentType: detectedContentType,
+          bytes: file.size,
+        });
+      } catch (auditError) {
+        console.error('Signature upload succeeded but audit logging failed', { signatoryId, auditError });
+      }
+
       return json({
         signatory: {
           ...updated.rows[0],
