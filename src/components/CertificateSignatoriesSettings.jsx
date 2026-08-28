@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, PenLine, Plus, Save, Upload, UserRoundCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+const MAX_SIGNATURE_BYTES = 3 * 1024 * 1024;
+const signatureMimeTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
+const signatureExtensions = new Set(['png', 'jpg', 'jpeg', 'webp']);
+
 const card = {
   background: 'var(--surface-card)',
   border: '1px solid var(--border-default)',
@@ -41,6 +45,18 @@ async function request(options = {}) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || 'Could not update certificate signatories');
   return body;
+}
+
+function validateSignatureFile(file) {
+  if (!file) return 'Choose a signature image to upload.';
+  if (!file.size) return 'The selected signature image is empty.';
+  if (file.size > MAX_SIGNATURE_BYTES) return 'Signature image must be 3MB or smaller.';
+  const mime = String(file.type || '').toLowerCase();
+  const extension = String(file.name || '').toLowerCase().split('.').pop() || '';
+  if ((mime && !signatureMimeTypes.has(mime)) || (!mime && !signatureExtensions.has(extension))) {
+    return 'Use a PNG, JPEG, or WebP signature image. HEIC/HEIF photos need to be converted first.';
+  }
+  return '';
 }
 
 function defaultConfigItem(id) {
@@ -228,16 +244,27 @@ export default function CertificateSignatoriesSettings() {
 
   async function uploadSignature(id, file) {
     if (!file || busy) return;
+    const validationError = validateSignatureFile(file);
+    if (validationError) {
+      setError(validationError);
+      setNotice('');
+      return;
+    }
+
     const form = new FormData();
     form.append('action', 'upload_signature');
     form.append('signatoryId', String(id));
     form.append('file', file);
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setNotice('Uploading signature…');
     try {
       await request({ method: 'POST', body: form });
-      await load(); show('Signature image uploaded securely.');
-    } catch (err) { setError(err.message); }
-    finally { setBusy(false); }
+      await load(); show('Signature image uploaded securely. It will be used on newly issued certificates.');
+    } catch (err) {
+      setNotice('');
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveDefaults() {
@@ -274,13 +301,14 @@ export default function CertificateSignatoriesSettings() {
       </div>
 
       {error && <div role="alert" style={{ margin: '16px 24px 0', padding: 11, borderRadius: 8, background: '#FFF1F0', color: '#9B2C2C', fontSize: 13 }}>{error}</div>}
-      {notice && <div role="status" style={{ margin: '16px 24px 0', padding: 11, borderRadius: 8, background: '#EDF8F0', color: '#176B3A', fontSize: 13 }}>{notice}</div>}
+      {notice && <div role="status" aria-live="polite" style={{ margin: '16px 24px 0', padding: 11, borderRadius: 8, background: '#EDF8F0', color: '#176B3A', fontSize: 13 }}>{notice}</div>}
       {!isAdmin && <div style={{ margin: '16px 24px 0', padding: 11, borderRadius: 8, background: 'var(--surface-muted)', color: 'var(--text-secondary)', fontSize: 13 }}>Only workspace owners and administrators can change signatories or signature files.</div>}
 
       <div className="lex-signatory-settings-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(300px,.9fr)', gap: 20, padding: 24 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 800 }}>Signatory directory</div>
-          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)' }}>Use transparent PNG signatures when available. Typed display signatures remain clearly distinct from uploaded handwritten signatures.</div>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>Upload PNG, JPEG, or WebP signatures up to 3MB. Transparent PNG is recommended. HEIC/HEIF phone photos should be converted first.</div>
+          <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>Uploaded signatures are captured when a new certificate is issued. Certificates already issued keep their original signature snapshot.</div>
 
           {isAdmin && (
             <div style={{ marginTop: 14, padding: 14, border: '1px solid var(--border-default)', borderRadius: 10, background: 'var(--surface-muted)' }}>
@@ -317,7 +345,7 @@ export default function CertificateSignatoriesSettings() {
                       {isAdmin && (
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 9 }}>
                           <button type="button" onClick={() => saveSignatory(item.id)} disabled={busy} style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 7, background: '#fff', fontSize: 12, fontWeight: 800 }}><Save size={13} />Save</button>
-                          <label style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 7, background: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}><Upload size={13} />{item.has_signature ? 'Replace signature' : 'Upload signature'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => { uploadSignature(item.id, event.target.files?.[0]); event.target.value = ''; }} style={{ display: 'none' }} /></label>
+                          <label aria-disabled={busy} style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 7, background: '#fff', fontSize: 12, fontWeight: 800, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .55 : 1 }}><Upload size={13} />{busy ? 'Please wait…' : item.has_signature ? 'Replace signature' : 'Upload signature'}<input type="file" disabled={busy} accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" onChange={event => { uploadSignature(item.id, event.target.files?.[0]); event.target.value = ''; }} style={{ display: 'none' }} /></label>
                           <button type="button" onClick={() => setActive(item.id, !item.active)} disabled={busy} style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 7, background: '#fff', fontSize: 12, fontWeight: 800 }}>{item.active ? 'Deactivate' : 'Activate'}</button>
                         </div>
                       )}
