@@ -49,12 +49,15 @@ export function DataProvider({ children }) {
   const [surveys, setSurveys] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchAll = useCallback(async () => {
     if (!user) { setLoading(false); return; }
-    setLoading(true);
+    setLoading(true); setError('');
     try {
-      const data = mixReportingPreviewData(await apiFetch('/api/bootstrap'));
+      const data = isReportingPreviewDemo()
+        ? mixReportingPreviewData({ organization: { name: 'LexAMS Demo Workspace' } })
+        : await apiFetch('/api/bootstrap');
       setOrganization(data.organization || null);
       setActivities(data.activities || []);
       setParticipants(data.participants || []);
@@ -63,6 +66,8 @@ export function DataProvider({ children }) {
       setCertificates(data.certificates || []);
       setSurveys(data.surveys || []);
       setAssessments(data.assessments || []);
+    } catch (loadError) {
+      setError(loadError.message || 'LexAMS could not load your workspace.');
     } finally { setLoading(false); }
   }, [user]);
 
@@ -162,7 +167,7 @@ export function DataProvider({ children }) {
   }, [mutate]);
 
   return <DataContext.Provider value={{
-    loading, refetch: fetchAll, organization,
+    loading, error, refetch: fetchAll, organization,
     activities, participants, registrations, attendance, certificates, surveys, assessments,
     getActivity, getParticipant, getRegsForActivity, getAttForActivity, getDoneSessions, getAttendancePct,
     addActivity, updateActivity, deleteActivity, addParticipant, updateParticipant, deleteParticipant,

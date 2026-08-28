@@ -1,5 +1,6 @@
 import { getBillingSnapshot } from './billing';
 import { appBaseUrl, brandedEmail, sendEmailBatch } from './communications';
+import { isRecognitionCertificate } from './recognition';
 
 type Queryable = { query: (...args: any[]) => Promise<any> };
 
@@ -67,7 +68,8 @@ export async function maybeSendAwardedCertificate(args: {
   if (suppressed.rowCount) return { attempted: false, reason: 'suppressed', suppressionReason: suppressed.rows[0].reason };
 
   const descriptor = cert.award_title || cert.activity_title || 'your certificate';
-  const subject = cert.certificate_kind === 'award' || cert.certificate_kind === 'standalone'
+  const isAward = isRecognitionCertificate(cert);
+  const subject = isAward
     ? `Your award — ${descriptor}`
     : `Your certificate — ${descriptor}`;
   const message = await db.query(
@@ -87,7 +89,6 @@ export async function maybeSendAwardedCertificate(args: {
 
   try {
     const base = appBaseUrl(request);
-    const isAward = cert.certificate_kind === 'award' || cert.certificate_kind === 'standalone';
     const contextLine = cert.activity_title ? ` during ${cert.activity_title}` : '';
     const periodLine = cert.award_period ? ` (${cert.award_period})` : '';
     const sentResult = await sendEmailBatch([{

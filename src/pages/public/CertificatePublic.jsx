@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import CertificateSignatureGrid from '../../components/CertificateSignatureGrid';
+import { isRecognitionCertificate } from '../../../shared/recognition.js';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -45,7 +46,7 @@ export default function CertificatePublic() {
   if (loading) return <PublicExperienceLayout eyebrow="Certificate" title="Loading certificate…" />;
   if (!certificate) return <PublicExperienceLayout eyebrow="Certificate" title="Certificate unavailable" narrow><PublicNotice tone="error">{error}</PublicNotice></PublicExperienceLayout>;
 
-  const isAward = ['award', 'standalone'].includes(certificate.certificate_kind);
+  const isAward = isRecognitionCertificate(certificate);
   const type = isAward ? (certificate.award_title || labels.recognition) : (labels[certificate.certificate_type] || labels.completion);
   const appreciation = certificate.certificate_type === 'appreciation';
   const inactive = certificate.status && certificate.status !== 'active';

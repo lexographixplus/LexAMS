@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { fmtDate, fmtRange } from '../lib/format';
 import { downloadXlsx } from '../lib/xlsxExport';
+import { isRecognitionCertificate, recognitionTitle } from '../../shared/recognition.js';
 import {
   Activity, AlertTriangle, Award, BarChart3, CheckCircle2, ClipboardList,
   Download, FileSpreadsheet, Filter, GraduationCap, LockKeyhole, Printer,
@@ -278,8 +279,16 @@ export default function ReportsV2() {
       rows: scope.assessments.filter(item => filters.assessment === 'all' || String(item.id) === filters.assessment).map(item => [item.title || 'Untitled assessment', getActivity(item.activity_id)?.title || 'Standalone', titleCase(item.assessment_type), `${item.passing_score ?? 70}%`, titleCase(item.status)]),
     };
     if (reportType === 'certificates') return {
-      title: 'Certificate report', columns: ['Certificate no.', 'Participant', 'Activity', 'Type', 'Issued'],
-      rows: scope.certificates.map(item => [item.cert_no, getParticipant(item.participant_id)?.name || '', getActivity(item.activity_id)?.title || '', titleCase(item.certificate_type || 'completion'), fmtDate(item.issued_date)]),
+      title: 'Certificate and recognition report', columns: ['Certificate no.', 'Recipient', 'Activity / period', 'Certificate / award', 'Category', 'Status', 'Issued'],
+      rows: scope.certificates.map(item => [
+        item.cert_no,
+        item.recipient_name || getParticipant(item.participant_id)?.name || '',
+        [getActivity(item.activity_id)?.title || item.metadata?.activity_title || '', item.award_period || ''].filter(Boolean).join(' · '),
+        isRecognitionCertificate(item) ? recognitionTitle(item) : titleCase(item.certificate_type || 'completion'),
+        isRecognitionCertificate(item) ? (item.award_category || 'Recognition') : '',
+        titleCase(item.status || 'active'),
+        fmtDate(item.issued_date),
+      ]),
     };
     return {
       title: reportType === 'activities' ? 'Activity report' : 'Programme overview',
@@ -351,8 +360,16 @@ export default function ReportsV2() {
       rows: scope.assessments.filter(item => filters.assessment === 'all' || String(item.id) === filters.assessment).map(item => [item.title || 'Untitled assessment', getActivity(item.activity_id)?.title || 'Standalone', titleCase(item.assessment_type), Number(item.passing_score ?? 70), titleCase(item.status)]),
     };
     if (reportType === 'certificates') return {
-      columns: ['Certificate no.', 'Participant', 'Activity', 'Type', 'Issued'],
-      rows: scope.certificates.map(item => [item.cert_no, getParticipant(item.participant_id)?.name || '', getActivity(item.activity_id)?.title || '', titleCase(item.certificate_type || 'completion'), safeDate(item.issued_date) || '']),
+      columns: ['Certificate no.', 'Recipient', 'Activity / period', 'Certificate / award', 'Category', 'Status', 'Issued'],
+      rows: scope.certificates.map(item => [
+        item.cert_no,
+        item.recipient_name || getParticipant(item.participant_id)?.name || '',
+        [getActivity(item.activity_id)?.title || item.metadata?.activity_title || '', item.award_period || ''].filter(Boolean).join(' · '),
+        isRecognitionCertificate(item) ? recognitionTitle(item) : titleCase(item.certificate_type || 'completion'),
+        isRecognitionCertificate(item) ? (item.award_category || 'Recognition') : '',
+        titleCase(item.status || 'active'),
+        safeDate(item.issued_date) || '',
+      ]),
     };
     return {
       columns: ['Activity', 'Type', 'Start date', 'End date', 'Registered', 'Attendance (%)', 'Certificates'],

@@ -5,6 +5,7 @@ import { getBillingSnapshot } from './_shared/billing';
 import { maybeSendAwardedCertificate } from './_shared/certificate-delivery';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
+import { canonicalRecognitionKind, recognitionSql } from './_shared/recognition';
 
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { 'cache-control': 'no-store' } }); }
 function clean(value: unknown, max = 500) { return String(value ?? '').trim().slice(0, max); }
@@ -29,11 +30,47 @@ export default async (request: Request) => {
 
   if (request.method === 'GET') {
     const url = new URL(request.url);
-    const requestedActivityId = Number(url.searchParams.get('activityId'));
+    const activityFilter = clean(url.searchParams.get('activityId'), 40);
+    const requestedActivityId = Number(activityFilter);
+    const requestedPage = Number(url.searchParams.get('page'));
+    const requestedPageSize = Number(url.searchParams.get('pageSize'));
+    const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const pageSize = Number.isSafeInteger(requestedPageSize) ? Math.min(100, Math.max(10, requestedPageSize)) : 50;
+    const search = clean(url.searchParams.get('search'), 120);
+    const requestedStatus = clean(url.searchParams.get('status'), 20).toLowerCase();
+    const status = ['active', 'revoked', 'superseded'].includes(requestedStatus) ? requestedStatus : '';
+    const dateFrom = /^\d{4}-\d{2}-\d{2}$/.test(String(url.searchParams.get('dateFrom') || '')) ? String(url.searchParams.get('dateFrom')) : '';
+    const dateTo = /^\d{4}-\d{2}-\d{2}$/.test(String(url.searchParams.get('dateTo') || '')) ? String(url.searchParams.get('dateTo')) : '';
     const values: unknown[] = [orgId];
-    const activityFilter = Number.isSafeInteger(requestedActivityId) ? `and c.activity_id=$${values.push(requestedActivityId)}` : '';
-    const [templates, awards] = await Promise.all([
+    const conditions = [`c.organization_id=$1`, recognitionSql('c')];
+    if (activityFilter === 'standalone') conditions.push('c.activity_id is null');
+    else if (Number.isSafeInteger(requestedActivityId) && requestedActivityId > 0) conditions.push(`c.activity_id=$${values.push(requestedActivityId)}`);
+    if (status) conditions.push(`c.status=$${values.push(status)}`);
+    if (dateFrom) conditions.push(`c.issued_date >= $${values.push(dateFrom)}::date`);
+    if (dateTo) conditions.push(`c.issued_date <= $${values.push(dateTo)}::date`);
+    if (search) {
+      const searchPlaceholder = `$${values.push(`%${search}%`)}`;
+      conditions.push(`(
+        c.cert_no ilike ${searchPlaceholder}
+        or coalesce(c.recipient_name,p.name,'') ilike ${searchPlaceholder}
+        or coalesce(c.recipient_email,p.email,'') ilike ${searchPlaceholder}
+        or coalesce(c.award_title,'') ilike ${searchPlaceholder}
+        or coalesce(c.award_category,'') ilike ${searchPlaceholder}
+        or coalesce(c.award_period,'') ilike ${searchPlaceholder}
+        or coalesce(a.title,c.metadata->>'activity_title','') ilike ${searchPlaceholder}
+      )`);
+    }
+    const joins = `
+      from certificates c
+      left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
+      left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id`;
+    const where = `where ${conditions.join('\n and ')}`;
+    const rowValues = [...values, pageSize, (page - 1) * pageSize];
+    const limitPlaceholder = `$${values.length + 1}`;
+    const offsetPlaceholder = `$${values.length + 2}`;
+    const [templates, totalResult, awards] = await Promise.all([
       db.query(`select id,name,certificate_title,category,citation_template,active,created_at,updated_at from award_templates where organization_id=$1 order by active desc,lower(name)`, [orgId]),
+      db.query(`select count(*)::int as total ${joins} ${where}`, values),
       db.query(
         `select c.id,c.cert_no,c.certificate_kind,c.certificate_type,c.issued_date,c.access_token,
                 c.activity_id,c.participant_id,c.award_title,c.award_category,c.award_period,c.citation,
@@ -42,21 +79,27 @@ export default async (request: Request) => {
                 coalesce(c.recipient_name,p.name) as display_recipient_name,
                 coalesce(c.recipient_email,lower(p.email)) as display_recipient_email,
                 coalesce(a.title,c.metadata->>'activity_title') as activity_title,
-                coalesce(a.venue,c.metadata->>'activity_venue') as activity_venue
-         from certificates c
-         left join participants p on p.id=c.participant_id and p.organization_id=c.organization_id
-         left join activities a on a.id=c.activity_id and a.organization_id=c.organization_id
-         where c.organization_id=$1
-           and (
-             lower(coalesce(c.certificate_type, '')) = 'recognition'
-             or nullif(btrim(c.award_title), '') is not null
-             or c.template_id is not null
-             or c.metadata->>'source' = 'awards_recognition'
-           )
-           ${activityFilter}
-         order by c.issued_date desc,c.id desc limit 1000`, values),
+                coalesce(a.venue,c.metadata->>'activity_venue') as activity_venue,
+                delivery.status as delivery_status,delivery.updated_at as delivery_sent_at
+         ${joins}
+         left join lateral (
+           select d.status,d.updated_at
+           from communication_deliveries d
+           where d.certificate_id=c.id and d.organization_id=c.organization_id
+           order by d.created_at desc,d.id desc
+           limit 1
+         ) delivery on true
+         ${where}
+         order by c.issued_date desc,c.id desc
+         limit ${limitPlaceholder} offset ${offsetPlaceholder}`, rowValues),
     ]);
-    return json({ pro, templates: templates.rows, awards: awards.rows });
+    const total = Number(totalResult.rows[0]?.total || 0);
+    return json({
+      pro,
+      templates: templates.rows,
+      awards: awards.rows,
+      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+    });
   }
 
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -174,7 +217,7 @@ export default async (request: Request) => {
     const certificateId = Number(body.certificateId);
     const reason = clean(body.reason, 500);
     if (!Number.isSafeInteger(certificateId) || !reason) return json({ error: 'Certificate and revocation reason are required.' }, 400);
-    const result = await db.query(`update certificates set status='revoked',revoked_at=now(),revoked_by=$3,revoke_reason=$4 where id=$1 and organization_id=$2 and certificate_kind in ('award','standalone') and status='active' returning *`, [certificateId, orgId, tenant.user.id, reason]);
+    const result = await db.query(`update certificates c set status='revoked',revoked_at=now(),revoked_by=$3,revoke_reason=$4 where c.id=$1 and c.organization_id=$2 and ${recognitionSql('c')} and c.status='active' returning *`, [certificateId, orgId, tenant.user.id, reason]);
     if (!result.rowCount) return json({ error: 'Active award certificate not found.' }, 404);
     await db.query(`insert into audit_log (organization_id,user_id,action,entity_type,entity_id,metadata) values ($1,$2,'award.revoke','certificate',$3,$4::jsonb)`, [orgId, tenant.user.id, String(certificateId), JSON.stringify({ reason })]);
     return json({ certificate: result.rows[0] });
@@ -184,9 +227,10 @@ export default async (request: Request) => {
     if (!isAdmin) return json({ error: 'Admin permission required to reissue an award.' }, 403);
     const certificateId = Number(body.certificateId);
     if (!Number.isSafeInteger(certificateId)) return json({ error: 'Invalid certificate.' }, 400);
-    const oldResult = await db.query(`select * from certificates where id=$1 and organization_id=$2 and certificate_kind in ('award','standalone') limit 1`, [certificateId, orgId]);
+    const oldResult = await db.query(`select c.* from certificates c where c.id=$1 and c.organization_id=$2 and ${recognitionSql('c')} limit 1`, [certificateId, orgId]);
     if (!oldResult.rowCount) return json({ error: 'Award certificate not found.' }, 404);
     const old = oldResult.rows[0];
+    const canonicalKind = canonicalRecognitionKind(old);
     const client = await db.connect();
     let replacement: any;
     try {
@@ -197,12 +241,12 @@ export default async (request: Request) => {
          (organization_id,cert_no,activity_id,participant_id,certificate_type,issued_date,issued_by,certificate_kind,
           award_title,award_category,award_period,citation,recipient_name,recipient_email,template_id,reissued_from_id,metadata)
          values ($1,$2,$3,$4,$5,current_date,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) returning *`,
-        [orgId, `PENDING-${randomUUID()}`, old.activity_id, old.participant_id, old.certificate_type, tenant.user.id, old.certificate_kind,
+        [orgId, `PENDING-${randomUUID()}`, old.activity_id, old.participant_id, old.certificate_type || 'recognition', tenant.user.id, canonicalKind,
          old.award_title, old.award_category, old.award_period, old.citation, old.recipient_name, old.recipient_email,
-         old.template_id, old.id, JSON.stringify({ ...(old.metadata || {}), reissued: true })]
+         old.template_id, old.id, JSON.stringify({ ...(old.metadata || {}), source: 'awards_recognition', reissued: true })]
       );
       const cert = inserted.rows[0];
-      replacement = (await client.query(`update certificates set cert_no=$2 where id=$1 returning *`, [cert.id, certificateNumber(old.certificate_kind, Number(cert.id))])).rows[0];
+      replacement = (await client.query(`update certificates set cert_no=$2 where id=$1 returning *`, [cert.id, certificateNumber(canonicalKind, Number(cert.id))])).rows[0];
       await client.query('commit');
     } catch (error) { await client.query('rollback').catch(() => undefined); throw error; }
     finally { client.release(); }

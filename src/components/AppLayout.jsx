@@ -40,7 +40,7 @@ const pageTitles = {
 
 export default function AppLayout() {
   const { user, profile, signOut, isPro } = useAuth();
-  const { activities, participants, certificates, surveys, assessments } = useData();
+  const { activities, participants, certificates, surveys, assessments, error: dataError, refetch } = useData();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -152,6 +152,7 @@ export default function AppLayout() {
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <div className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
+              {dataError && <div role="alert" style={{ marginBottom: 18, padding: 14, border: '1px solid #F1B7B2', borderRadius: 9, background: '#FFF1F0', color: '#8B2727', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13 }}><span><strong>Workspace data could not be loaded.</strong> {dataError}</span><button onClick={refetch} style={{ border: '1px solid currentColor', borderRadius: 7, background: 'transparent', color: 'inherit', padding: '7px 10px', fontWeight: 800, cursor: 'pointer' }}>Try again</button></div>}
               <Outlet />
             </div>
           </div>

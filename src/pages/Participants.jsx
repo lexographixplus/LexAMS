@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { initials as getInitials, fmtRange } from '../lib/format';
+import { isRecognitionCertificate } from '../../shared/recognition.js';
 
 export default function Participants() {
   const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct, isAdmin } = useData();
@@ -58,7 +59,7 @@ export default function Participants() {
     const cert = certificates.find(c => c.activity_id === r.activity_id && c.participant_id === selectedPid && (!c.certificate_kind || c.certificate_kind === 'completion'));
     return { ...a, pct, cert };
   }).filter(Boolean) : [];
-  const selectedAwards = selectedP ? certificates.filter(c => c.participant_id === selectedPid && ['award', 'standalone'].includes(c.certificate_kind)) : [];
+  const selectedAwards = selectedP ? certificates.filter(c => c.participant_id === selectedPid && isRecognitionCertificate(c)) : [];
 
   const inputStyle = { width: '100%', padding: '10px 14px', fontSize: 14, border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none' };
 
