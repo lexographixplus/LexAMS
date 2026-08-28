@@ -30,3 +30,26 @@ test('recognition title has a safe fallback', () => {
   assert.equal(recognitionTitle({ award_title: 'Leadership Award' }), 'Leadership Award');
   assert.equal(recognitionTitle({ certificate_kind: 'award' }), 'Certificate of Recognition');
 });
+
+test('appreciation and activity snapshots remain completion history without recognition evidence', () => {
+  const certificate = {
+    certificate_kind: 'completion',
+    certificate_type: 'appreciation',
+    metadata: { activity_title: 'Community outreach', recipient_name: 'Archived participant' },
+  };
+  assert.equal(hasRecognitionEvidence(certificate), false);
+  assert.equal(isRecognitionCertificate(certificate), false);
+  assert.equal(canonicalRecognitionKind(certificate), 'completion');
+});
+
+test('legacy evidence stays recognizable after linked records are deleted', () => {
+  const certificate = {
+    activity_id: null,
+    participant_id: null,
+    award_title: 'Community Impact Award',
+    metadata: { activity_title: 'Annual service day', recipient_name: 'A. Volunteer' },
+  };
+  assert.equal(isRecognitionCertificate(certificate), true);
+  assert.equal(canonicalRecognitionKind(certificate), 'standalone');
+  assert.equal(recognitionTitle(certificate), 'Community Impact Award');
+});

@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { initials as getInitials, fmtRange } from '../lib/format';
+import CertificatePreview from '../components/CertificatePreview';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
 
 export default function Participants() {
   const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct, isAdmin } = useData();
+  const { profile } = useAuth();
   const [q, setQ] = useState('');
   const [catF, setCatF] = useState('all');
   const [showNew, setShowNew] = useState(false);
@@ -15,6 +18,7 @@ export default function Participants() {
   const [editForm, setEditForm] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState(null);
+  const [previewAward, setPreviewAward] = useState(null);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
 
@@ -59,7 +63,28 @@ export default function Participants() {
     const cert = certificates.find(c => c.activity_id === r.activity_id && c.participant_id === selectedPid && (!c.certificate_kind || c.certificate_kind === 'completion'));
     return { ...a, pct, cert };
   }).filter(Boolean) : [];
-  const selectedAwards = selectedP ? certificates.filter(c => c.participant_id === selectedPid && isRecognitionCertificate(c)) : [];
+  const selectedAwards = selectedP ? certificates
+    .filter(c => c.participant_id === selectedPid && isRecognitionCertificate(c))
+    .sort((a, b) => String(b.issued_date || '').localeCompare(String(a.issued_date || ''))) : [];
+
+  async function shareAward(certificate) {
+    if (!certificate.access_token) {
+      showToast('A public verification link is not available for this award.');
+      return;
+    }
+    const url = `${window.location.origin}/certificate/${encodeURIComponent(certificate.access_token)}`;
+    const title = certificate.award_title || certificate.certificate_type || 'Recognition award';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: `${title} awarded by ${profile?.org_name || 'our organization'}.`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showToast('Public verification link copied.');
+    } catch (error) {
+      if (error?.name !== 'AbortError') showToast('The link could not be shared.');
+    }
+  }
 
   const inputStyle = { width: '100%', padding: '10px 14px', fontSize: 14, border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none' };
 
@@ -98,7 +123,7 @@ export default function Participants() {
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-tertiary)' }}>Email</span><span>{selectedP.email}</span></div><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-tertiary)' }}>Phone</span><span>{selectedP.phone || '—'}</span></div><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-tertiary)' }}>Activities</span><span style={{ fontWeight: 600 }}>{selectedActs.length}</span></div><div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-tertiary)' }}>Recognition awards</span><span style={{ fontWeight: 600 }}>{selectedAwards.length}</span></div></div>
 
         <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-default)', display: 'grid', gridTemplateColumns: '1.15fr 1fr 1fr', gap: 8 }}>
-          <a href={`/certificates?awardParticipant=${encodeURIComponent(selectedP.id)}#awards-recognition`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', fontSize: 13, fontWeight: 800, textDecoration: 'none', background: '#FFF4D6', border: '1.5px solid var(--color-gold-500)', borderRadius: 'var(--radius-sm)', color: 'var(--color-navy-900)' }}>Give award</a>
+          <a href={`/app/certificates?awardParticipant=${encodeURIComponent(selectedP.id)}#awards-recognition`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', fontSize: 13, fontWeight: 800, textDecoration: 'none', background: '#FFF4D6', border: '1.5px solid var(--color-gold-500)', borderRadius: 'var(--radius-sm)', color: 'var(--color-navy-900)' }}>Give award</a>
           <button onClick={() => { setEditForm({ name: selectedP.name, email: selectedP.email, phone: selectedP.phone || '', org: selectedP.org || '', category: selectedP.category }); setEditing(true); }} style={{ padding: '8px', fontSize: 13, fontWeight: 600, background: 'transparent', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', color: 'var(--color-navy-700)', cursor: 'pointer' }}>Edit</button>
           <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '8px', fontSize: 13, fontWeight: 600, background: 'transparent', border: '1.5px solid var(--color-danger)', borderRadius: 'var(--radius-sm)', color: 'var(--color-danger)', cursor: 'pointer' }}>{isAdmin ? 'Delete' : 'Request deletion'}</button>
         </div>
@@ -110,7 +135,19 @@ export default function Participants() {
         {showDeleteConfirm && <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)', background: '#FEF2F2' }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-danger)' }}>{isAdmin ? `Delete ${selectedP.name}?` : `Request deletion of ${selectedP.name}?`}</div><p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.5 }}>{isAdmin ? 'This removes the participant and their registrations and attendance. Previously issued certificates and awards are preserved as historical records.' : 'An administrator must approve this request. Previously issued certificates and awards remain preserved in the recognition audit trail.'}</p><div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}><button onClick={() => setShowDeleteConfirm(false)} style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, background: 'transparent', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button><button onClick={async () => { try { const result = await deleteParticipant(selectedPid); setShowDeleteConfirm(false); setSelectedPid(null); showToast(result?.pending ? 'Deletion submitted for admin approval' : 'Participant deleted'); } catch (err) { showToast('Error: ' + err.message); } }} style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, background: 'var(--color-danger)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>{isAdmin ? 'Delete' : 'Submit request'}</button></div></div>}
 
         <div style={{ padding: '20px 24px' }}><div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Participation history</div><div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>{selectedActs.map(a => <div key={a.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div><div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{fmtRange({ start: a.start_date, end: a.end_date })} · Attendance: {a.pct !== null ? a.pct + '%' : '—'} · {a.cert ? a.cert.cert_no : 'No completion certificate'}</div></div>)}</div>
-          {selectedAwards.length > 0 && <><div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginTop: 22 }}>Awards & recognition</div><div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>{selectedAwards.slice(0, 8).map(c => <div key={c.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{c.award_title || c.certificate_type || 'Recognition'}</div><div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{c.award_period || c.cert_no} · {c.status || 'active'}</div></div>)}</div></>}
+          {selectedAwards.length > 0 && <>
+            <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginTop: 22 }}>Awards & recognition</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              {selectedAwards.slice(0, 8).map(c => <div key={c.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{c.award_title || c.certificate_type || 'Recognition'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{c.award_period || c.cert_no} · {c.status || 'active'}</div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                  <button className="button-link" onClick={() => setPreviewAward(c)}>View certificate</button>
+                  <button className="button-link" disabled={!c.access_token} title={c.access_token ? 'Share public verification link' : 'Public verification link unavailable'} onClick={() => shareAward(c)}>Share</button>
+                </div>
+              </div>)}
+            </div>
+          </>}
         </div>
       </div>
     </>}
@@ -120,6 +157,15 @@ export default function Participants() {
       {activities.length > 0 && <div><label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}>Assign to activities</label><div style={{ border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', maxHeight: 160, overflowY: 'auto', background: 'var(--surface-card)' }}>{activities.map(a => <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--border-default)', background: form.activityIds.includes(a.id) ? 'var(--surface-muted)' : 'transparent' }}><input type="checkbox" checked={form.activityIds.includes(a.id)} onChange={() => toggleActivity(a.id)} style={{ accentColor: 'var(--color-navy-900)' }}/><div style={{ flex: 1 }}><div style={{ fontWeight: 500 }}>{a.title}</div><div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.type} · {a.status}</div></div></label>)}</div>{form.activityIds.length > 0 && <div style={{ fontSize: 12, color: 'var(--color-navy-700)', marginTop: 6, fontWeight: 500 }}>{form.activityIds.length} activit{form.activityIds.length === 1 ? 'y' : 'ies'} selected</div>}</div>}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}><button type="button" onClick={() => setShowNew(false)} style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, background: 'transparent', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={saving} style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, background: 'var(--color-navy-900)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', opacity: saving ? .6 : 1 }}>{saving ? 'Adding...' : 'Add'}</button></div>
     </form></div></div>}
+
+    {previewAward && <CertificatePreview
+      cert={previewAward}
+      participant={participants.find(p => p.id === previewAward.participant_id)}
+      activity={activities.find(a => a.id === previewAward.activity_id)}
+      orgName={profile?.org_name || 'Organization'}
+      logoUrl={profile?.logo_url}
+      onClose={() => setPreviewAward(null)}
+    />}
 
     {toast && <div style={{ position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 13, fontWeight: 500, padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300 }}>{toast}</div>}
   </div>;

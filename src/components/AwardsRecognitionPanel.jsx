@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { fmtDate } from '../lib/format';
 import { isReportingPreviewDemo, reportPreviewDemo } from '../lib/reportPreviewDemo';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
+import CertificatePreview from './CertificatePreview';
 import './AwardsRecognitionPanel.css';
 
 const PAGE_SIZE = 25;
@@ -69,7 +70,7 @@ function previewHistory(filters = EMPTY_FILTERS) {
 }
 
 export default function AwardsRecognitionPanel() {
-  const { isPro, isAdmin } = useAuth();
+  const { isPro, isAdmin, profile } = useAuth();
   const { activities, participants, refetch } = useData();
   const previewReadOnly = isReportingPreviewDemo();
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -81,6 +82,7 @@ export default function AwardsRecognitionPanel() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [templates, setTemplates] = useState([]);
+  const [diagnostics, setDiagnostics] = useState(null);
   const [awards, setAwards] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
@@ -95,6 +97,7 @@ export default function AwardsRecognitionPanel() {
   const [templateDraft, setTemplateDraft] = useState({ name: '', certificateTitle: '', category: '', citationTemplate: '' });
   const [form, setForm] = useState({ activityId: Number.isSafeInteger(initialActivityId) && initialActivityId > 0 ? String(initialActivityId) : '', templateId: '', awardTitle: 'Trainee of the Week', awardCategory: 'Performance', awardPeriod: '', citation: 'In recognition of outstanding performance, participation and commitment.', issuedDate: today(), certificateType: 'recognition', emailNow: false });
   const [dialog, setDialog] = useState(null);
+  const [showCertificatePreview, setShowCertificatePreview] = useState(false);
 
   const historyQuery = useCallback((targetPage = page, targetFilters = filters, pageSize = PAGE_SIZE) => {
     const query = new URLSearchParams({ page: String(targetPage), pageSize: String(pageSize) });
@@ -108,13 +111,14 @@ export default function AwardsRecognitionPanel() {
       if (previewReadOnly) {
         const rows = previewHistory(targetFilters);
         setTemplates([{ id: -1, name: 'Outstanding Performance', certificate_title: 'Outstanding Project Award', category: 'Performance', active: true }]);
+        setDiagnostics({ unclassified: 0, missing_evidence: 0, repaired: 2, canonical: 2 });
         setAwards(rows.slice((targetPage - 1) * PAGE_SIZE, targetPage * PAGE_SIZE));
         setPagination({ page: targetPage, pageSize: PAGE_SIZE, total: rows.length, totalPages: Math.max(1, Math.ceil(rows.length / PAGE_SIZE)) });
         setSelectedAwards(new Set());
         return;
       }
       const data = await request(historyQuery(targetPage, targetFilters));
-      setTemplates(data.templates || []); setAwards(data.awards || []);
+      setTemplates(data.templates || []); setAwards(data.awards || []); setDiagnostics(data.diagnostics || null);
       setPagination(data.pagination || { page: targetPage, pageSize: PAGE_SIZE, total: data.awards?.length || 0, totalPages: 1 });
       setSelectedAwards(new Set());
     } catch (loadError) { setError(loadError.message); }
@@ -131,6 +135,14 @@ export default function AwardsRecognitionPanel() {
   }, [participantSearch, participants]);
   const selectedCount = selectedParticipants.size + manualRecipients.length;
   const selectedRows = awards.filter(row => selectedAwards.has(row.id));
+  const previewParticipant = participants.find(item => item.id === [...selectedParticipants][0]) || manualRecipients[0] || { name: 'Recipient name' };
+  const previewActivity = activities.find(item => String(item.id) === String(form.activityId));
+  const previewCertificate = {
+    cert_no: 'PREVIEW', certificate_kind: form.activityId ? 'award' : 'standalone', certificate_type: 'recognition',
+    award_title: form.awardTitle, award_category: form.awardCategory, award_period: form.awardPeriod,
+    citation: form.citation, issued_date: form.issuedDate, recipient_name: previewParticipant.name,
+    metadata: previewActivity ? { activity_title: previewActivity.title, activity_venue: previewActivity.venue, activity_start_date: previewActivity.start_date, activity_end_date: previewActivity.end_date } : {},
+  };
 
   function patchForm(key, value) { setForm(current => ({ ...current, [key]: value })); }
   function applyTemplate(templateId) {
@@ -252,7 +264,9 @@ export default function AwardsRecognitionPanel() {
         <section className="awards-section"><div className="section-heading"><span>1</span><div><h4>Recognition details</h4><p>Start from a template or create a one-off award.</p></div></div><div className="field-grid"><label>Template<select value={form.templateId} onChange={event => applyTemplate(event.target.value)}><option value="">Custom / one-off</option>{activeTemplates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label><label>Activity (optional)<select value={form.activityId} onChange={event => patchForm('activityId', event.target.value)}><option value="">Standalone</option>{activities.map(activity => <option key={activity.id} value={activity.id}>{activity.title}</option>)}</select></label><label>Award / certificate title<input value={form.awardTitle} onChange={event => patchForm('awardTitle', event.target.value)}/></label><label>Category<input value={form.awardCategory} onChange={event => patchForm('awardCategory', event.target.value)}/></label><label>Period<input value={form.awardPeriod} onChange={event => patchForm('awardPeriod', event.target.value)} placeholder="Week 2 · 7–11 September"/></label><label>Award date<input type="date" value={form.issuedDate} onChange={event => patchForm('issuedDate', event.target.value)}/></label></div><label>Citation<textarea value={form.citation} onChange={event => patchForm('citation', event.target.value)}/></label><label className="checkbox-label"><input type="checkbox" checked={form.emailNow} onChange={event => patchForm('emailNow', event.target.checked)}/> Email certificates immediately when an address is available</label></section>
         <section className="awards-section"><div className="section-heading"><span>2</span><div><h4>Recipients</h4><p>Select participants or add a standalone recipient.</p></div></div><label className="search-field"><Search size={15}/><input value={participantSearch} onChange={event => setParticipantSearch(event.target.value)} placeholder="Search participants"/></label><div className="participant-list">{visibleParticipants.map(participant => <label key={participant.id}><input type="checkbox" checked={selectedParticipants.has(participant.id)} onChange={() => toggleParticipant(participant.id)}/><span><strong>{participant.name}</strong><small>{participant.email || participant.org || 'Participant'}</small></span></label>)}{!visibleParticipants.length && <p>No participants match.</p>}</div><div className="manual-recipient"><h5><Plus size={14}/> Standalone recipient</h5><div><input value={manualName} onChange={event => setManualName(event.target.value)} placeholder="Full name"/><input type="email" value={manualEmail} onChange={event => setManualEmail(event.target.value)} placeholder="Email (optional)"/><button className="button secondary" onClick={addManualRecipient}>Add</button></div>{manualRecipients.map(recipient => <span key={recipient.id}>{recipient.name}<button aria-label={`Remove ${recipient.name}`} onClick={() => setManualRecipients(current => current.filter(item => item.id !== recipient.id))}><X size={12}/></button></span>)}</div><button className="button primary full" disabled={!selectedCount || !form.awardTitle.trim() || previewReadOnly} onClick={() => setDialog({ type: 'issue' })}><Award size={16}/> Review {selectedCount} certificate{selectedCount === 1 ? '' : 's'}</button></section>
       </div>}
+      {view === 'issue' && <div className="award-preview-bar"><div><strong>Preview before issuing</strong><span>Shows the first selected recipient; every certificate in the batch uses the same design and recognition details.</span></div><button className="button secondary" disabled={!form.awardTitle.trim()} onClick={() => setShowCertificatePreview(true)}><Eye size={15}/> Preview certificate</button></div>}
 
+      {view === 'templates' && isAdmin && diagnostics && <div className={`classification-health ${Number(diagnostics.unclassified) || Number(diagnostics.missing_evidence) ? 'attention' : ''}`}><strong>Classification health</strong><p>{Number(diagnostics.unclassified) || Number(diagnostics.missing_evidence) ? `${diagnostics.unclassified} legacy record(s) need classification and ${diagnostics.missing_evidence} recognition record(s) need metadata review.` : `Healthy · ${diagnostics.canonical} canonical recognition record(s).`}</p>{Number(diagnostics.repaired) > 0 && <small>{diagnostics.repaired} legacy record(s) were repaired by the canonicalization migration.</small>}</div>}
       {view === 'templates' && <div className="awards-view templates-grid"><section className="awards-section"><h4>Create a reusable template</h4><label>Template name<input value={templateDraft.name} onChange={event => setTemplateDraft(current => ({ ...current, name: event.target.value }))} placeholder="Trainee of the Week"/></label><label>Certificate title<input value={templateDraft.certificateTitle} onChange={event => setTemplateDraft(current => ({ ...current, certificateTitle: event.target.value }))} placeholder="Certificate of Outstanding Performance"/></label><label>Category<input value={templateDraft.category} onChange={event => setTemplateDraft(current => ({ ...current, category: event.target.value }))}/></label><label>Default citation<textarea value={templateDraft.citationTemplate} onChange={event => setTemplateDraft(current => ({ ...current, citationTemplate: event.target.value }))}/></label><button className="button primary" disabled={busy || previewReadOnly || !templateDraft.name.trim()} onClick={createTemplate}>Save template</button></section><section className="awards-section"><h4>Saved templates</h4><div className="template-list">{templates.map(template => <article key={template.id}><div><strong>{template.name}</strong><p>{template.certificate_title || template.category || 'Recognition certificate'}</p></div><StatusPill tone={template.active ? 'success' : ''}>{template.active ? 'Active' : 'Inactive'}</StatusPill>{isAdmin && <button className="button secondary" disabled={busy || previewReadOnly} onClick={() => toggleTemplate(template)}>{template.active ? 'Deactivate' : 'Activate'}</button>}</article>)}{!templates.length && <p>No templates yet.</p>}</div></section></div>}
     </>}
 
@@ -260,5 +274,6 @@ export default function AwardsRecognitionPanel() {
     {dialog?.type === 'revoke' && <Dialog title={`Revoke ${dialog.row.cert_no}`} confirmLabel="Revoke certificate" danger busy={busy} confirmDisabled={!dialog.reason.trim()} onClose={() => setDialog(null)} onConfirm={performCertificateAction}><p>Revocation is visible during verification and remains in the audit history.</p><label>Reason<textarea autoFocus value={dialog.reason} onChange={event => setDialog(current => ({ ...current, reason: event.target.value }))} placeholder="Required for the audit trail"/></label>{!dialog.reason.trim() && <small>A reason is required.</small>}</Dialog>}
     {dialog?.type === 'reissue' && <Dialog title={`Reissue ${dialog.row.cert_no}`} confirmLabel="Issue replacement" busy={busy} onClose={() => setDialog(null)} onConfirm={performCertificateAction}><p>A replacement certificate number will be created. This certificate will remain visible as superseded.</p></Dialog>}
     {dialog?.type === 'details' && <Dialog title="Recognition audit details" confirmLabel="Close" showCancel={false} onClose={() => setDialog(null)} onConfirm={() => setDialog(null)}><dl className="review-list">{[['Certificate', dialog.row.cert_no], ['Recipient', dialog.row.display_recipient_name], ['Award', dialog.row.award_title], ['Status', dialog.row.status], ['Issued', fmtDate(dialog.row.issued_date)], ['Delivery', dialog.row.delivery_status || 'Not sent'], ['Citation', dialog.row.citation || '—'], ['Revocation reason', dialog.row.revoke_reason || '—']].map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl></Dialog>}
+    {showCertificatePreview && <CertificatePreview cert={previewCertificate} participant={previewParticipant} activity={previewActivity} orgName={profile?.org_name || 'Organization'} logoUrl={profile?.logo_url} downloadEnabled={false} onClose={() => setShowCertificatePreview(false)}/>}
   </section>;
 }

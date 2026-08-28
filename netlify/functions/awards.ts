@@ -5,7 +5,7 @@ import { getBillingSnapshot } from './_shared/billing';
 import { maybeSendAwardedCertificate } from './_shared/certificate-delivery';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
-import { canonicalRecognitionKind, recognitionSql } from './_shared/recognition';
+import { canonicalRecognitionKind, recognitionEvidenceSql, recognitionSql } from './_shared/recognition';
 
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { 'cache-control': 'no-store' } }); }
 function clean(value: unknown, max = 500) { return String(value ?? '').trim().slice(0, max); }
@@ -68,7 +68,17 @@ export default async (request: Request) => {
     const rowValues = [...values, pageSize, (page - 1) * pageSize];
     const limitPlaceholder = `$${values.length + 1}`;
     const offsetPlaceholder = `$${values.length + 2}`;
-    const [templates, totalResult, awards] = await Promise.all([
+    const diagnosticsPromise = isAdmin
+      ? db.query(
+        `select
+           count(*) filter (where certificate_kind='completion' and ${recognitionEvidenceSql('c')})::int as unclassified,
+           count(*) filter (where certificate_kind in ('award','standalone') and not ${recognitionEvidenceSql('c')})::int as missing_evidence,
+           count(*) filter (where metadata ? 'classification_repaired_at')::int as repaired,
+           count(*) filter (where certificate_kind in ('award','standalone'))::int as canonical
+         from certificates c where organization_id=$1`, [orgId]
+      )
+      : Promise.resolve({ rows: [] });
+    const [templates, totalResult, awards, diagnosticsResult] = await Promise.all([
       db.query(`select id,name,certificate_title,category,citation_template,active,created_at,updated_at from award_templates where organization_id=$1 order by active desc,lower(name)`, [orgId]),
       db.query(`select count(*)::int as total ${joins} ${where}`, values),
       db.query(
@@ -92,12 +102,14 @@ export default async (request: Request) => {
          ${where}
          order by c.issued_date desc,c.id desc
          limit ${limitPlaceholder} offset ${offsetPlaceholder}`, rowValues),
+      diagnosticsPromise,
     ]);
     const total = Number(totalResult.rows[0]?.total || 0);
     return json({
       pro,
       templates: templates.rows,
       awards: awards.rows,
+      diagnostics: diagnosticsResult.rows[0] || null,
       pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
     });
   }
