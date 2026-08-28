@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
-import { Mail, Send, History, Settings as SettingsIcon, Users, Sparkles } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, History, Mail, Search, Send, Settings as SettingsIcon, Sparkles, Users } from 'lucide-react';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
 const templates = {
@@ -20,6 +20,26 @@ const templates = {
     message: 'Thank you for taking part in our programme.\n\nWe appreciate your participation and will share any relevant follow-up information with you here.',
   },
 };
+const EMPTY_HISTORY = [];
+
+function communicationKind(item) {
+  if (item.kind !== 'certificate') return item.kind || 'message';
+  return /award|recognition/i.test(item.subject || '') ? 'recognition' : 'certificate';
+}
+
+function communicationHealth(item) {
+  if (Number(item.failed) > 0) return 'issues';
+  if (Number(item.queued) > 0) return 'in_progress';
+  return 'healthy';
+}
+
+function kindLabel(item) {
+  const kind = communicationKind(item);
+  if (kind === 'recognition') return 'Recognition';
+  if (kind === 'certificate') return 'Certificate';
+  if (kind === 'announcement') return 'Announcement';
+  return 'Message';
+}
 
 export default function Communications() {
   const { activities, participants, registrations } = useData();
@@ -35,6 +55,10 @@ export default function Communications() {
   const [audience, setAudience] = useState({ activityId: 'all', category: 'all', organization: 'all', participantId: 'all' });
   const [autoSendCertificates, setAutoSendCertificates] = useState(false);
   const [replyToEmail, setReplyToEmail] = useState('');
+  const [showSendReview, setShowSendReview] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyKind, setHistoryKind] = useState('all');
+  const [historyHealth, setHistoryHealth] = useState('all');
 
   async function load() {
     setLoading(true);
@@ -56,6 +80,23 @@ export default function Communications() {
 
   const categories = useMemo(() => [...new Set(participants.map(p => p.category).filter(Boolean))].sort(), [participants]);
   const organizations = useMemo(() => [...new Set(participants.map(p => p.org).filter(Boolean))].sort(), [participants]);
+  const communicationHistory = meta.history || EMPTY_HISTORY;
+
+  const historySummary = useMemo(() => communicationHistory.reduce((summary, item) => ({
+    messages: summary.messages + 1,
+    recipients: summary.recipients + Number(item.recipients || 0),
+    delivered: summary.delivered + Number(item.delivered || 0),
+    issues: summary.issues + Number(item.failed || 0),
+  }), { messages: 0, recipients: 0, delivered: 0, issues: 0 }), [communicationHistory]);
+
+  const filteredHistory = useMemo(() => {
+    const search = historySearch.trim().toLowerCase();
+    return communicationHistory.filter(item => {
+      if (historyKind !== 'all' && communicationKind(item) !== historyKind) return false;
+      if (historyHealth !== 'all' && communicationHealth(item) !== historyHealth) return false;
+      return !search || [item.subject, item.kind, kindLabel(item)].some(value => String(value || '').toLowerCase().includes(search));
+    });
+  }, [communicationHistory, historyHealth, historyKind, historySearch]);
 
   const matchedParticipants = useMemo(() => {
     const registeredIds = audience.activityId === 'all'
@@ -101,6 +142,7 @@ export default function Communications() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not send message');
       setToast(`Message sent to ${body.recipients} participant${body.recipients === 1 ? '' : 's'}.`);
+      setShowSendReview(false);
       await load();
       setTab('history');
     } catch (error) {
@@ -140,7 +182,7 @@ export default function Communications() {
   return (
     <div style={{ display: 'grid', gap: 22 }}>
       <style>{`
-        .lex-comm-tabs{display:flex;gap:8px;flex-wrap:wrap}.lex-comm-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.7fr);gap:18px}.lex-comm-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}@media(max-width:820px){.lex-comm-grid{grid-template-columns:1fr}.lex-comm-filters{grid-template-columns:1fr}}
+        .lex-comm-tabs{display:flex;gap:8px;flex-wrap:wrap}.lex-comm-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.7fr);gap:18px}.lex-comm-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.lex-comm-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.lex-comm-history-tools{display:grid;grid-template-columns:minmax(220px,1fr) 180px 180px;gap:10px;padding:14px 16px;border-top:1px solid var(--border-default)}.lex-comm-search{display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid var(--border-default);border-radius:8px;background:var(--surface-card)}.lex-comm-search input{width:100%;padding:9px 0;border:0;outline:0;background:transparent}.lex-comm-review-backdrop{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:20px;background:rgba(0,43,84,.45)}.lex-comm-review{width:min(520px,100%);padding:24px;border-radius:16px;background:var(--surface-card);box-shadow:var(--shadow-raised)}@media(max-width:820px){.lex-comm-grid{grid-template-columns:1fr}.lex-comm-filters{grid-template-columns:1fr}.lex-comm-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.lex-comm-history-tools{grid-template-columns:1fr}.lex-comm-history-row{grid-template-columns:1fr!important}.lex-comm-history-status{text-align:left!important}.lex-comm-history-status>div:first-child{justify-content:flex-start!important}}
       `}</style>
 
       {previewReadOnly && <div role="status" style={{ padding: '12px 15px', border: '1px solid var(--border-default)', borderRadius: 12, background: 'var(--surface-muted)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}><strong style={{ color: 'var(--color-navy-900)' }}>Read-only demo preview:</strong> audience data is available for review, but sending email and saving delivery settings are disabled so this preview cannot change Neon or contact real participants.</div>}
@@ -162,7 +204,7 @@ export default function Communications() {
         ].map(([key, Icon, label]) => <button key={key} onClick={() => setTab(key)} style={{ display: 'flex', gap: 7, alignItems: 'center', padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border-default)', background: tab === key ? 'var(--color-navy-900)' : 'var(--surface-card)', color: tab === key ? '#fff' : 'var(--text-secondary)', fontWeight: 700 }}><Icon size={15}/>{label}</button>)}
       </div>
 
-      {toast && <div style={{ padding: '11px 14px', borderRadius: 9, background: 'var(--surface-muted)', color: 'var(--text-primary)', fontSize: 13 }}>{toast}</div>}
+      {toast && <div role="status" aria-live="polite" style={{ padding: '11px 14px', borderRadius: 9, background: 'var(--surface-muted)', color: 'var(--text-primary)', fontSize: 13 }}>{toast}</div>}
 
       {tab === 'compose' && (
         <div className="lex-comm-grid">
@@ -174,7 +216,7 @@ export default function Communications() {
             <input value={subject} onChange={e => setSubject(e.target.value)} style={{ ...input, marginTop: 6 }}/>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginTop: 14 }}>Message</label>
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={9} style={{ ...input, marginTop: 6, resize: 'vertical', lineHeight: 1.55 }}/>
-            <button onClick={sendAnnouncement} disabled={previewReadOnly || sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: previewReadOnly || sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{previewReadOnly ? 'Email disabled in preview' : sending ? 'Sending…' : `Send to ${matchedParticipants.length} participant${matchedParticipants.length === 1 ? '' : 's'}`}</button>
+            <button onClick={() => setShowSendReview(true)} disabled={previewReadOnly || sending || !matchedParticipants.length || !subject.trim() || !message.trim()} style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px', border: 0, borderRadius: 9, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800, opacity: previewReadOnly || sending || !matchedParticipants.length ? .5 : 1 }}><Send size={16}/>{previewReadOnly ? 'Email disabled in preview' : `Review message to ${matchedParticipants.length}`}</button>
           </section>
 
           <aside style={{ padding: 20, border: '1px solid var(--border-default)', borderRadius: 14, background: 'var(--surface-card)' }}>
@@ -191,18 +233,36 @@ export default function Communications() {
       )}
 
       {tab === 'history' && (
-        <section style={{ border: '1px solid var(--border-default)', borderRadius: 14, overflow: 'hidden', background: 'var(--surface-card)' }}>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div className="lex-comm-summary">
+            {[
+              ['Messages', historySummary.messages],
+              ['Recipients', historySummary.recipients],
+              ['Delivered', historySummary.delivered],
+              ['Delivery issues', historySummary.issues],
+            ].map(([label, value]) => <div key={label} style={{ padding: 16, border: '1px solid var(--border-default)', borderRadius: 12, background: 'var(--surface-card)' }}><div style={{ fontFamily: 'var(--font-display)', fontSize: 25, fontWeight: 800, color: label === 'Delivery issues' && value ? 'var(--color-danger)' : 'var(--color-navy-900)' }}>{value}</div><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12 }}>{label}</div></div>)}
+          </div>
+          <section style={{ border: '1px solid var(--border-default)', borderRadius: 14, overflow: 'hidden', background: 'var(--surface-card)' }}>
           <div style={{ padding: '16px 20px', fontWeight: 800 }}>Recent communications</div>
-          {meta.history?.length ? meta.history.map(item => (
-            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 18, padding: '14px 20px', borderTop: '1px solid var(--border-default)' }}>
-              <div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 800, color: 'var(--color-navy-700)' }}>{item.kind}</span><strong style={{ fontSize: 13 }}>{item.subject}</strong></div><div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(item.created_at).toLocaleString()}</div></div>
-              <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
-                <div><strong>{item.delivered || 0}</strong> delivered · {item.sent || 0}/{item.recipients || 0} accepted/currently healthy</div>
+          <div className="lex-comm-history-tools">
+            <label className="lex-comm-search"><Search size={15}/><span className="sr-only">Search communications</span><input value={historySearch} onChange={event => setHistorySearch(event.target.value)} placeholder="Search subject or type"/></label>
+            <select aria-label="Communication type" value={historyKind} onChange={event => setHistoryKind(event.target.value)} style={input}><option value="all">All types</option><option value="announcement">Announcements</option><option value="recognition">Recognition</option><option value="certificate">Certificates</option></select>
+            <select aria-label="Delivery health" value={historyHealth} onChange={event => setHistoryHealth(event.target.value)} style={input}><option value="all">All delivery states</option><option value="healthy">Healthy</option><option value="in_progress">In progress</option><option value="issues">Needs attention</option></select>
+          </div>
+          {filteredHistory.length ? filteredHistory.map(item => {
+            const health = communicationHealth(item);
+            return (
+            <div key={item.id} className="lex-comm-history-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 18, padding: '14px 20px', borderTop: '1px solid var(--border-default)' }}>
+              <div><div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 800, color: communicationKind(item) === 'recognition' ? 'var(--color-warning)' : 'var(--color-navy-700)' }}>{kindLabel(item)}</span><strong style={{ fontSize: 13 }}>{item.subject}</strong></div><div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(item.created_at).toLocaleString()}</div></div>
+              <div className="lex-comm-history-status" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 5, color: health === 'issues' ? 'var(--color-danger)' : health === 'healthy' ? 'var(--color-success)' : 'var(--text-secondary)', fontWeight: 700 }}>{health === 'issues' ? <AlertTriangle size={14}/> : health === 'healthy' ? <CheckCircle2 size={14}/> : null}{health === 'issues' ? 'Needs attention' : health === 'in_progress' ? 'In progress' : 'Healthy'}</div>
+                <div style={{ marginTop: 4 }}><strong>{item.delivered || 0}</strong> delivered · {item.sent || 0}/{item.recipients || 0} accepted/currently healthy</div>
                 {(item.failed || item.queued) ? <div style={{ marginTop: 3, color: item.failed ? 'var(--color-danger)' : 'var(--text-tertiary)' }}>{item.failed ? `${item.failed} delivery issue${item.failed === 1 ? '' : 's'}` : ''}{item.failed && item.queued ? ' · ' : ''}{item.queued ? `${item.queued} queued` : ''}</div> : null}
               </div>
             </div>
-          )) : <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)' }}>No participant communications have been sent yet.</div>}
+          ); }) : <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)' }}>{communicationHistory.length ? 'No communications match these filters.' : 'No participant communications have been sent yet.'}</div>}
         </section>
+        </div>
       )}
 
       {tab === 'settings' && (
@@ -215,6 +275,19 @@ export default function Communications() {
           <button onClick={saveSettings} disabled={previewReadOnly || sending} style={{ marginTop: 18, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}>{previewReadOnly ? 'Settings locked in preview' : sending ? 'Saving…' : 'Save settings'}</button>
         </section>
       )}
+
+      {showSendReview && <div className="lex-comm-review-backdrop" role="presentation" onMouseDown={event => event.target === event.currentTarget && setShowSendReview(false)}>
+        <section className="lex-comm-review" role="dialog" aria-modal="true" aria-labelledby="communication-review-title">
+          <h3 id="communication-review-title" style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--color-navy-900)' }}>Review before sending</h3>
+          <p style={{ marginTop: 8, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55 }}>LexAMS will send this branded message and record its delivery status in Communications history.</p>
+          <dl style={{ display: 'grid', gap: 10, marginTop: 18, padding: 16, borderRadius: 10, background: 'var(--surface-muted)', fontSize: 13 }}>
+            <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Recipients</dt><dd style={{ marginTop: 3, fontWeight: 800 }}>{matchedParticipants.length} participant{matchedParticipants.length === 1 ? '' : 's'}</dd></div>
+            <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Subject</dt><dd style={{ marginTop: 3, fontWeight: 700 }}>{subject}</dd></div>
+            <div><dt style={{ color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase' }}>Audience</dt><dd style={{ marginTop: 3 }}>{audience.participantId !== 'all' ? participants.find(participant => String(participant.id) === audience.participantId)?.name : 'Everyone matching the selected filters'}</dd></div>
+          </dl>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}><button onClick={() => setShowSendReview(false)} disabled={sending} style={{ padding: '10px 16px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--surface-card)', color: 'var(--text-secondary)', fontWeight: 700 }}>Cancel</button><button onClick={sendAnnouncement} disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 800 }}><Send size={15}/>{sending ? 'Sending…' : `Send to ${matchedParticipants.length}`}</button></div>
+        </section>
+      </div>}
     </div>
   );
 }
