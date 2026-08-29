@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import CertificateSignatureGrid from '../../components/CertificateSignatureGrid';
+import { printCertificate } from '../../lib/printCertificate.js';
 import { isRecognitionCertificate } from '../../../shared/recognition.js';
 
 function fmtDate(iso) {
@@ -58,9 +59,9 @@ export default function CertificatePublic() {
     <PublicExperienceLayout eyebrow={isAward ? 'Verified recognition' : 'Verified certificate'} title={type} organizationName={certificate.organization_name} organizationLogo={certificate.organization_logo}>
       <PublicCard>
         {inactive && <PublicNotice tone="error">This certificate is {certificate.status}. {certificate.revoke_reason || 'It is retained here only as part of the issuance audit trail.'}</PublicNotice>}
-        <div id="certificate-print" style={{ border: '2px solid #002B54', padding: 10, background: '#fff', position: 'relative', opacity: inactive ? .72 : 1 }}>
+        <div id="certificate-print" className="certificate-print-target" style={{ border: '2px solid #002B54', padding: 10, background: '#fff', position: 'relative', opacity: inactive ? .72 : 1 }}>
           {inactive && <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none', zIndex: 3 }}><div style={{ transform: 'rotate(-24deg)', fontSize: 56, fontWeight: 900, letterSpacing: '.12em', color: 'rgba(155,44,44,.18)', textTransform: 'uppercase' }}>{certificate.status}</div></div>}
-          <div style={{ border: '1px solid #FAB72D', padding: '42px 34px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div className="certificate-public-content" style={{ border: '1px solid #FAB72D', padding: '42px 34px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
             {certificate.organization_logo && <img src={certificate.organization_logo} alt="" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#002B54' }}>{certificate.organization_name}</div>
             <div style={{ marginTop: 14, textTransform: 'uppercase', letterSpacing: '.16em', fontSize: 11, color: '#0E4C8F' }}>{isAward ? (certificate.award_category || 'Certificate of Recognition') : type}</div>
@@ -97,7 +98,7 @@ export default function CertificatePublic() {
           </div>
         </div>
         <div className="lex-public-actions" style={{ marginTop: 18 }}>
-          <button className="lex-public-button secondary" onClick={() => window.print()}>Download / Print PDF</button>
+          <button type="button" className="lex-public-button secondary" onClick={() => printCertificate(`${certificate.cert_no || 'Certificate'} - ${certificate.participant_name || 'Recipient'}`)}>Print / Save PDF</button>
         </div>
         {inactive
           ? <PublicNotice tone="error">Certificate {certificate.cert_no} is recorded by LexAMS but is no longer valid.</PublicNotice>
