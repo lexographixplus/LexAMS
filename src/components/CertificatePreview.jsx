@@ -193,7 +193,7 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
 
         <div className="certificate-preview-stage" style={{ width: CERTIFICATE_WIDTH * previewScale, height: CERTIFICATE_HEIGHT * previewScale }}>
           <div className="certificate-preview-sheet" ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: CERTIFICATE_WIDTH, height: CERTIFICATE_HEIGHT, maxWidth: 'none', padding: 10, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
-            <div className="certificate-preview-content" style={{ border: '1px solid var(--color-gold-500)', height: '100%', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div className="certificate-preview-content" style={{ border: '1px solid var(--color-gold-500)', height: '100%', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-navy-900)' }}>{orgName || 'Organization'}</div>
             <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-navy-700)', marginTop: 14 }}><span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span>&nbsp;&nbsp;{certificateLabel}&nbsp;&nbsp;<span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span></div>
@@ -205,11 +205,11 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
 
             {signatories.length > 0 ? (
               <>
-                <div style={{ marginTop: 34 }}><CertificateSignatureGrid signatories={signatories} signatureUrlFor={signatureUrl} /></div>
+                <div style={{ width: '100%', marginTop: 34 }}><CertificateSignatureGrid signatories={signatories} signatureUrlFor={signatureUrl} /></div>
                 <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
               </>
             ) : (
-              <div className="certificate-preview-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 44 }}>
+              <div className="certificate-preview-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: 44 }}>
                 <div className="certificate-preview-signature" style={{ textAlign: 'left' }}><div className="certificate-preview-signature-line" style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{activity?.facilitator || metadata.activity_facilitator || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Facilitator</div></div>
                 <div className="certificate-preview-meta" style={{ textAlign: 'center' }}><div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-navy-900)' }}>{cert.cert_no}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)', marginTop: 4 }}>Issued {fmtDate(cert.issued_date)}</div></div>
                 <div className="certificate-preview-signature" style={{ textAlign: 'right' }}><div className="certificate-preview-signature-line" style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
