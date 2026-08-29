@@ -31,6 +31,12 @@ const comparison = [
   ['Assessments per activity', '1', '25'],
   ['Assessment questions', 'Up to 10', 'Up to 100'],
   ['Timed assessments', 'No', 'Yes'],
+  ['Manual planning, weekly schedules, budgets and journals', 'Included', 'Included'],
+  ['Session and facilitator CSV import', 'No', 'Yes'],
+  ['Activity reports', '1 per activity', 'Up to 25 per activity'],
+  ['Report templates', 'Built-in templates', 'Built-in and custom templates'],
+  ['Narrative generation', 'Manual writing', 'Evidence-grounded drafts'],
+  ['Report workflow', 'Draft and Print/PDF', 'Review and approval'],
   ['CSV export', 'No', 'Yes'],
   ['Custom organisation branding', 'No', 'Yes'],
   ['Certificates per month', '5', 'Up to 1,000'],
@@ -50,7 +56,7 @@ export default function PricingPage() {
         <div className="mk-container mk-pricing-heading">
           <div className="mk-kicker">Simple pricing</div>
           <h1>Start useful. Upgrade when your programmes grow.</h1>
-          <p>Choose the plan that fits your programme today. Start Free with no card required and upgrade when you need more capacity and collaboration.</p>
+          <p>Choose the plan that fits your programme today. Start Free with no card required and upgrade when you need more capacity, collaboration, automation and professional reporting.</p>
         </div>
       </section>
 

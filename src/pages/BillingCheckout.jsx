@@ -7,6 +7,16 @@ const plans = {
   monthly: { label: 'Monthly', amount: 1000, detail: 'Flexible monthly access', period: '1 month of Pro access' },
 };
 
+const featureReasons = {
+  'session-import': 'Import sessions and facilitator assignments from CSV instead of entering the schedule manually.',
+  'living-reporting': 'Create multiple reports with custom structures, grounded narrative drafts and approval workflows.',
+  'custom-report-templates': 'Create and reuse organisation-specific report templates.',
+  'multiple-activity-reports': 'Create more than one report for the same activity.',
+  'custom-report-structures': 'Add, remove and reorder sections for a tailored report structure.',
+  'narrative-generation': 'Generate and refresh evidence-grounded narrative drafts from verified activity records.',
+  'report-approvals': 'Move reports through review and protect approved writing.',
+};
+
 export default function BillingCheckout() {
   const [params, setParams] = useSearchParams();
   const initialCycle = params.get('cycle') === 'monthly' ? 'monthly' : 'annual';
@@ -14,10 +24,14 @@ export default function BillingCheckout() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const plan = plans[cycle];
+  const requestedFeature = params.get('feature');
+  const featureReason = featureReasons[requestedFeature] || '';
 
   function chooseCycle(nextCycle) {
     setCycle(nextCycle);
-    setParams({ cycle: nextCycle }, { replace: true });
+    const next = new URLSearchParams(params);
+    next.set('cycle', nextCycle);
+    setParams(next, { replace: true });
   }
 
   async function continueToPayment() {
@@ -47,6 +61,7 @@ export default function BillingCheckout() {
     <main className="billing-checkout-main" style={main}>
       <section style={checkoutCard}>
         <div style={intro}><div style={eyebrow}><Sparkles size={14} />LEXAMS PRO</div><h1 style={title}>Upgrade with confidence.</h1><p style={subtitle}>Choose your plan, review the total, then complete payment securely with Modem Pay.</p></div>
+        {featureReason && <div style={featureContext}><Sparkles size={17}/><div><strong style={{ display: 'block' }}>Unlock this workflow</strong><span style={{ display: 'block', marginTop: 2 }}>{featureReason}</span></div></div>}
         <div style={planPicker}>
           {Object.entries(plans).map(([key, item]) => <button key={key} onClick={() => chooseCycle(key)} style={{ ...planOption, ...(cycle === key ? selectedPlanOption : {}) }}>
             <span style={{ ...radio, borderColor: cycle === key ? '#FAB72D' : '#7890a4' }}><span style={cycle === key ? radioDot : undefined} /></span>
@@ -63,7 +78,7 @@ export default function BillingCheckout() {
         <button onClick={continueToPayment} disabled={submitting} style={{ ...payButton, opacity: submitting ? .7 : 1 }}><CreditCard size={17} />{submitting ? 'Opening secure payment…' : 'Continue to secure payment'}</button>
         <p style={paymentNote}><LockKeyhole size={14} />You will complete payment on Modem Pay’s secure payment page. LexAMS confirms access only after payment verification.</p>
       </section>
-      <aside style={benefitCard}><div style={benefitIcon}><ShieldCheck size={22} /></div><h2 style={benefitTitle}>What Pro unlocks</h2><ul style={benefitList}><li><Check size={15} />Team collaboration and roles</li><li><Check size={15} />Higher programme capacity</li><li><Check size={15} />Full reporting and CSV export</li><li><Check size={15} />Professional branded outputs</li></ul><div style={receiptNote}>A branded receipt is sent after your payment is confirmed.</div></aside>
+      <aside style={benefitCard}><div style={benefitIcon}><ShieldCheck size={22} /></div><h2 style={benefitTitle}>What Pro unlocks</h2><ul style={benefitList}><li><Check size={15} />Team collaboration and roles</li><li><Check size={15} />Higher programme capacity</li><li><Check size={15} />Session and facilitator CSV import</li><li><Check size={15} />Custom templates and multiple reports</li><li><Check size={15} />Grounded narrative generation and approvals</li><li><Check size={15} />Professional branded outputs and exports</li></ul><div style={receiptNote}>A branded receipt is sent after your payment is confirmed.</div></aside>
     </main>
   </div>;
 }
@@ -79,6 +94,7 @@ const intro = { maxWidth: 530 };
 const eyebrow = { display: 'inline-flex', alignItems: 'center', gap: 6, color: '#a56d00', background: '#fff3d5', borderRadius: 99, padding: '6px 9px', fontSize: 11, fontWeight: 800, letterSpacing: '.08em' };
 const title = { margin: '16px 0 7px', color: '#002B54', fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4vw, 38px)', letterSpacing: '-.04em', lineHeight: 1.05 };
 const subtitle = { margin: 0, color: '#52677b', lineHeight: 1.6, fontSize: 14 };
+const featureContext = { display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 20, padding: '12px 13px', border: '1px solid #efd48c', borderRadius: 11, background: '#fff8e5', color: '#705300', fontSize: 12, lineHeight: 1.5 };
 const planPicker = { display: 'grid', gap: 10, marginTop: 28 };
 const planOption = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '15px 16px', border: '1.5px solid #dce6ee', borderRadius: 12, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' };
 const selectedPlanOption = { borderColor: '#FAB72D', boxShadow: '0 0 0 3px rgba(250,183,45,.22)', background: '#fffdf8' };

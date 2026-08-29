@@ -86,6 +86,11 @@
 .planning-message.success { background: #edf8f0; color: #176b3a; }
 .planning-message.error { background: #fff0ef; color: #9a2e29; }
 .planning-message button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: inherit; font-weight: 800; }
+.planning-commercial-note { display: flex; align-items: center; gap: 10px; }
+.planning-commercial-note > span { flex: 1; }
+.planning-commercial-note > span strong { display: block; color: var(--planning-navy); }
+.planning-commercial-note > button { flex: none; min-height: 34px; padding: 0 11px; border-radius: 8px; background: var(--planning-navy); color: #fff; }
+.planning-pro-button { border-style: dashed; color: #705300; background: #fff9e8; }
 
 .planning-metrics {
   display: grid;
@@ -316,6 +321,9 @@
 }
 
 @media (max-width: 680px) {
+  .planning-commercial-note { align-items: flex-start; flex-wrap: wrap; }
+  .planning-commercial-note > span { min-width: calc(100% - 30px); }
+  .planning-commercial-note > button { width: 100%; justify-content: center; }
   .planning-hero { align-items: flex-start; padding: 20px; }
   .planning-hero-progress { min-width: 95px; padding-left: 14px; }
   .planning-hero-progress strong { font-size: 27px; }

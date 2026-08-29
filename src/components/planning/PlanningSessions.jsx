@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, CalendarRange, Clock3, Edit3, List, MapPin, Plus, UserRound, X } from 'lucide-react';
+import { CalendarDays, CalendarRange, Clock3, Edit3, List, LockKeyhole, MapPin, Plus, UserRound, X } from 'lucide-react';
 import { buildActivityWeeks } from '../../../shared/planning.js';
 import PlanningSessionCsvImport from './PlanningSessionCsvImport';
 
@@ -100,12 +100,13 @@ function WeeklySchedule({ week, permissions, saving, onEdit, onStatus }) {
   </section>;
 }
 
-export default function PlanningSessions({ data, saving, onMutate }) {
+export default function PlanningSessions({ data, saving, onMutate, onUpgrade }) {
   const [dialog, setDialog] = useState(null);
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('week');
   const [activeWeek, setActiveWeek] = useState(0);
   const canManage = data.permissions.canManagePlanning;
+  const canImportCsv = data.commercial?.entitlements?.sessionCsvImport ?? true;
   const visible = useMemo(() => filter === 'all' ? data.sessions : data.sessions.filter(session => session.planning_status === filter), [data.sessions, filter]);
   const weeks = useMemo(() => buildActivityWeeks(data.activity, visible), [data.activity, visible]);
   const allWeeks = useMemo(() => buildActivityWeeks(data.activity, data.sessions), [data.activity, data.sessions]);
@@ -120,7 +121,7 @@ export default function PlanningSessions({ data, saving, onMutate }) {
   const updateStatus = (session, status) => onMutate('set_session_planning_status', { sessionId: session.id, status }, 'Session preparation status updated.');
 
   return <div className="planning-section-stack">
-    <div className="planning-toolbar"><div><h4>Session plans</h4><p>Arrange delivery by week, prepare each session, and connect facilitator responsibilities to the live schedule.</p></div><div className="planning-toolbar-actions">{multiWeek && <div className="planning-view-toggle" role="group" aria-label="Session layout"><button className={viewMode === 'week' ? 'active' : ''} onClick={() => setViewMode('week')}><CalendarRange size={14}/>Week</button><button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><List size={14}/>List</button></div>}<select value={filter} onChange={event => { setFilter(event.target.value); setActiveWeek(0); }} aria-label="Filter session status"><option value="all">All planning states</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{(canManage || data.permissions.readOnlyPreview) && <PlanningSessionCsvImport activity={data.activity} members={data.members} saving={saving} onMutate={onMutate} preview={data.permissions.readOnlyPreview}/>} {canManage && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add session</button>}</div></div>
+    <div className="planning-toolbar"><div><h4>Session plans</h4><p>Arrange delivery by week, prepare each session, and connect facilitator responsibilities to the live schedule.</p></div><div className="planning-toolbar-actions">{multiWeek && <div className="planning-view-toggle" role="group" aria-label="Session layout"><button className={viewMode === 'week' ? 'active' : ''} onClick={() => setViewMode('week')}><CalendarRange size={14}/>Week</button><button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><List size={14}/>List</button></div>}<select value={filter} onChange={event => { setFilter(event.target.value); setActiveWeek(0); }} aria-label="Filter session status"><option value="all">All planning states</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{(canManage || data.permissions.readOnlyPreview) && (canImportCsv ? <PlanningSessionCsvImport activity={data.activity} members={data.members} saving={saving} onMutate={onMutate} preview={data.permissions.readOnlyPreview}/> : <button className="planning-secondary-button planning-pro-button" onClick={onUpgrade}><LockKeyhole size={14}/>Import CSV · Pro</button>)} {canManage && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add session</button>}</div></div>
     {visible.length && multiWeek && viewMode === 'week' ? <><nav className="planning-week-strip" aria-label="Training weeks">{weeks.map((week, index) => <button key={week.startDate} className={index === Math.min(activeWeek, weeks.length - 1) ? 'active' : ''} aria-current={index === Math.min(activeWeek, weeks.length - 1) ? 'page' : undefined} onClick={() => setActiveWeek(index)}><span>{week.label}</span><strong>{prettyDate(week.startDate)}–{prettyDate(week.endDate)}</strong><small>{week.sessions.length} session{week.sessions.length === 1 ? '' : 's'}</small></button>)}</nav>{selectedWeek && <WeeklySchedule week={selectedWeek} permissions={data.permissions} saving={saving} onEdit={setDialog} onStatus={updateStatus}/>}</> : null}
     {visible.length && (!multiWeek || viewMode === 'list') ? <div className="planning-session-list">{visible.map(session => {
       const assigned = session.facilitators?.some(person => String(person.user_id) === String(data.permissions.currentUserId));

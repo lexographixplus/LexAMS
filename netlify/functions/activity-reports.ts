@@ -1,5 +1,6 @@
 import type { Config, Context } from '@netlify/functions';
 import { getPool } from './_shared/db';
+import { getPlanAccess, PlanLimitError, requireAllowance, requirePro } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 import { loadActivityReportSourceBundle } from './_shared/report-sources';
@@ -15,6 +16,7 @@ import {
   reportingPermissions,
   REPORT_STATUSES,
 } from '../../shared/reporting.js';
+import { isBasicReportStatus } from '../../shared/commercial.js';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, {
@@ -148,7 +150,7 @@ async function loadReports(db: any, organizationId: string, activityId: number, 
   });
 }
 
-async function snapshot(db: any, organizationId: string, activityId: number, role: string, userId: string) {
+async function snapshot(db: any, organizationId: string, activityId: number, role: string, userId: string, commercial: any) {
   const bundle = await loadActivityReportSourceBundle(db, organizationId, activityId);
   if (!bundle) return null;
   const [templates, reports] = await Promise.all([
@@ -160,6 +162,7 @@ async function snapshot(db: any, organizationId: string, activityId: number, rol
     templates,
     reports,
     permissions: { ...reportingPermissions(role), role, currentUserId: userId },
+    commercial,
   };
 }
 
@@ -209,9 +212,19 @@ export default async (request: Request, context: Context) => {
   const organizationId = tenant.organization_id;
   const userId = String(tenant.user.id);
   const permissions = reportingPermissions(tenant.role);
+  const [planAccess, reportCountResult] = await Promise.all([
+    getPlanAccess(db, organizationId),
+    db.query("select count(*)::int as count from activity_reports where organization_id=$1 and activity_id=$2 and status<>'archived'", [organizationId, activityId]),
+  ]);
+  const commercial = {
+    plan: planAccess.subscription.plan,
+    status: planAccess.subscription.status,
+    entitlements: planAccess.entitlements,
+    usage: { activityReports: Number(reportCountResult.rows[0]?.count || 0) },
+  };
 
   if (request.method === 'GET') {
-    const data = await snapshot(db, organizationId, activityId, tenant.role, userId);
+    const data = await snapshot(db, organizationId, activityId, tenant.role, userId, commercial);
     return data ? json(data) : json({ error: 'Activity not found.' }, 404);
   }
   if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
@@ -224,6 +237,7 @@ export default async (request: Request, context: Context) => {
   try {
     if (action === 'save_template') {
       if (!permissions.canManageTemplates) return json({ error: 'Administrator permission is required to manage organisation templates.' }, 403);
+      requirePro('Custom report templates', planAccess.entitlements.customReportTemplates);
       const template = normalizeReportTemplate(body.template);
       const client = await db.connect();
       try {
@@ -261,6 +275,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'duplicate_template') {
       if (!permissions.canManageTemplates) return json({ error: 'Administrator permission is required to manage organisation templates.' }, 403);
+      requirePro('Custom report templates', planAccess.entitlements.customReportTemplates);
       const templateId = numberId(body.templateId);
       const name = String(body.name || '').trim().slice(0, 120);
       if (!templateId || !name) return json({ error: 'Template and copy name are required.' }, 400);
@@ -295,6 +310,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'delete_template') {
       if (!permissions.canManageTemplates) return json({ error: 'Administrator permission is required to manage organisation templates.' }, 403);
+      requirePro('Custom report templates', planAccess.entitlements.customReportTemplates);
       const templateId = numberId(body.templateId);
       if (!templateId) return json({ error: 'Invalid template.' }, 400);
       const result = await db.query(
@@ -312,9 +328,16 @@ export default async (request: Request, context: Context) => {
       if (!report.template_id) return json({ error: 'Choose a report template.' }, 400);
       const template = await findTemplate(db, organizationId, report.template_id);
       if (!template) return json({ error: 'Report template not found.' }, 404);
+      if (!template.is_builtin) requirePro('Organisation report templates', planAccess.entitlements.customReportTemplates);
       const client = await db.connect();
       try {
         await client.query('begin');
+        await client.query('select id from activities where id=$1 and organization_id=$2 for update', [activityId, organizationId]);
+        const currentReports = await client.query(
+          "select count(*)::int as count from activity_reports where organization_id=$1 and activity_id=$2 and status<>'archived'",
+          [organizationId, activityId],
+        );
+        requireAllowance('activity reports', Number(currentReports.rows[0]?.count || 0), planAccess.entitlements.reportsPerActivity, 'REPORT_LIMIT_REACHED', planAccess.subscription.plan);
         const created = await client.query(
           `insert into activity_reports
              (organization_id,activity_id,template_id,title,reporting_period_start,reporting_period_end,created_by)
@@ -347,6 +370,7 @@ export default async (request: Request, context: Context) => {
       const reportId = numberId(body.report?.id);
       const status = String(body.report?.status || 'draft');
       if (!reportId || !REPORT_STATUSES.includes(status)) return json({ error: 'Invalid report.' }, 400);
+      if (!isBasicReportStatus(status)) requirePro('Report review and approval workflow', planAccess.entitlements.reportApprovals);
       const current = await findReport(db, organizationId, activityId, reportId);
       if (!current) return json({ error: 'Report not found.' }, 404);
       if (status === 'approved' && !permissions.canApproveReports) return json({ error: 'Report approval permission is required.' }, 403);
@@ -390,13 +414,17 @@ export default async (request: Request, context: Context) => {
       if (!permissions.canEditReports) return json({ error: 'Report editor permission is required.' }, 403);
       const section = normalizeReportSectionContent(body.section);
       const current = await db.query(
-        `select s.* from activity_report_sections s
+        `select s.*,r.status as report_status from activity_report_sections s
          join activity_reports r on r.id=s.report_id and r.organization_id=s.organization_id and r.activity_id=s.activity_id
          where s.id=$1 and s.activity_id=$2 and s.organization_id=$3 and r.status<>'archived' limit 1`,
         [section.id, activityId, organizationId],
       );
       if (!current.rowCount) return json({ error: 'Report section not found.' }, 404);
       const row = current.rows[0];
+      if (!isBasicReportStatus(row.report_status)) requirePro('Editing reports in review or approved states', planAccess.entitlements.reportApprovals);
+      if (section.title !== String(row.title || '') || section.instructions !== String(row.instructions || '')) {
+        requirePro('Custom report structures', planAccess.entitlements.reportStructureEditing);
+      }
       const state = section.content_text
         ? (row.generated_text && section.content_text === row.generated_text ? 'generated' : 'user_edited')
         : 'empty';
@@ -413,6 +441,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'generate_section') {
       if (!permissions.canGenerateNarrative) return json({ error: 'Narrative generation permission is required.' }, 403);
+      requirePro('Evidence-grounded narrative generation', planAccess.entitlements.narrativeGeneration);
       const sectionId = numberId(body.sectionId);
       if (!sectionId) return json({ error: 'Invalid report section.' }, 400);
       const sectionResult = await db.query(
@@ -496,6 +525,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'set_section_approval') {
       if (!permissions.canApproveReports) return json({ error: 'Report approval permission is required.' }, 403);
+      requirePro('Report review and approval workflow', planAccess.entitlements.reportApprovals);
       const sectionId = numberId(body.sectionId);
       const approved = body.approved === true;
       if (!sectionId) return json({ error: 'Invalid report section.' }, 400);
@@ -521,6 +551,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'add_report_section') {
       if (!permissions.canEditReports) return json({ error: 'Report editor permission is required.' }, 403);
+      requirePro('Custom report structures', planAccess.entitlements.reportStructureEditing);
       const reportId = numberId(body.reportId);
       if (!reportId || !(await findReport(db, organizationId, activityId, reportId))) return json({ error: 'Report not found.' }, 404);
       const section = normalizeTemplateSection(body.section, 1);
@@ -541,6 +572,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'delete_report_section') {
       if (!permissions.canEditReports) return json({ error: 'Report editor permission is required.' }, 403);
+      requirePro('Custom report structures', planAccess.entitlements.reportStructureEditing);
       const sectionId = numberId(body.sectionId);
       if (!sectionId) return json({ error: 'Invalid report section.' }, 400);
       const current = await db.query(
@@ -564,6 +596,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'reorder_sections') {
       if (!permissions.canEditReports) return json({ error: 'Report editor permission is required.' }, 403);
+      requirePro('Custom report structures', planAccess.entitlements.reportStructureEditing);
       const reportId = numberId(body.reportId);
       const sectionIds = Array.isArray(body.sectionIds) ? body.sectionIds.map(numberId) : [];
       if (!reportId || !sectionIds.length || sectionIds.some((id: number | null) => !id) || new Set(sectionIds).size !== sectionIds.length) return json({ error: 'Invalid section order.' }, 400);
@@ -597,6 +630,7 @@ export default async (request: Request, context: Context) => {
     return json({ error: 'Unsupported reporting action.' }, 400);
   } catch (error: any) {
     console.error('Activity reporting failed', { action, activityId, error });
+    if (error instanceof PlanLimitError) return json(error.toResponse(), error.code === 'PRO_REQUIRED' ? 403 : 409);
     const message = error?.code === '23505' ? 'A template with that name already exists.' : (error instanceof Error ? error.message : 'Could not complete the reporting action.');
     return json({ error: message }, 400);
   }

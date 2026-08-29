@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BookOpenText, CalendarDays, CheckCircle2, ClipboardList, LayoutDashboard, RefreshCw, Sparkles, Users, WalletCards } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, BookOpenText, CalendarDays, CheckCircle2, ClipboardList, LayoutDashboard, LockKeyhole, RefreshCw, Sparkles, Users, WalletCards } from 'lucide-react';
 import { calculateBudgetSummary, calculateJournalSummary, calculatePlanningSummary } from '../../../shared/planning.js';
 import { isReportingPreviewDemo } from '../../lib/reportPreviewDemo';
 import { getPlanningPreview } from '../../lib/planningPreviewDemo';
@@ -97,6 +98,7 @@ function FacilitatorOverview({ sessions, members, onOpen }) {
 
 export default function ActivityPlanningWorkspace({ activity }) {
   const preview = isReportingPreviewDemo();
+  const navigate = useNavigate();
   const [view, setView] = useState('summary');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,7 @@ export default function ActivityPlanningWorkspace({ activity }) {
       <div className="planning-hero-progress"><strong>{summary.planningProgressPercent}%</strong><span>planning readiness</span></div>
     </header>
     {preview && <div className="planning-message neutral">Preview data is synthetic and read-only. It demonstrates the complete planning experience without changing production records.</div>}
+    {data.commercial?.plan === 'free' && <div className="planning-message neutral planning-commercial-note"><LockKeyhole size={17}/><span><strong>Free planning is fully available.</strong> Add tasks, sessions, weekly schedules, budgets and journal updates manually. Upgrade when you need bulk session and facilitator CSV import.</span><button onClick={() => navigate('/app/checkout?feature=session-import')}>View Pro</button></div>}
     {error && <div className="planning-message error">{error}</div>}
     {notice && <div className="planning-message success">{notice}</div>}
     <div className="planning-metrics planning-metrics-four">
@@ -160,7 +163,7 @@ export default function ActivityPlanningWorkspace({ activity }) {
     <nav className="planning-tabs" aria-label="Planning sections">{VIEWS.map(([id, label, Icon]) => <button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}><Icon size={15}/>{label}</button>)}</nav>
     {view === 'summary' && <PlanSummary data={data} summary={summary} budgetSummary={budgetSummary} journalSummary={journalSummary} onOpen={setView}/>}
     {view === 'tasks' && <PlanningTasks data={data} saving={saving} onMutate={mutate}/>}
-    {view === 'sessions' && <PlanningSessions data={data} saving={saving} onMutate={mutate}/>}
+    {view === 'sessions' && <PlanningSessions data={data} saving={saving} onMutate={mutate} onUpgrade={() => navigate('/app/checkout?feature=session-import')}/>}
     {view === 'facilitators' && <FacilitatorOverview sessions={data.sessions} members={data.members} onOpen={setView}/>}
     {view === 'budget' && <PlanningBudget data={data} saving={saving} onMutate={mutate}/>}
     {view === 'journal' && <PlanningJournal data={data} saving={saving} onMutate={mutate}/>}

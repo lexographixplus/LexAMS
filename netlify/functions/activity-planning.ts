@@ -1,5 +1,6 @@
 import type { Config, Context } from '@netlify/functions';
 import { getPool } from './_shared/db';
+import { getPlanAccess, PlanLimitError, requirePro } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 import {
@@ -71,6 +72,7 @@ async function snapshot(
   activityId: number,
   role: string,
   userId: string,
+  commercial: any,
 ) {
   const activity = await activityExists(db, organizationId, activityId);
   if (!activity) return null;
@@ -168,6 +170,7 @@ async function snapshot(
     budgetItems: budgetItems.rows,
     journalEntries: journalEntries.rows,
     permissions: { ...planningPermissions(role), currentUserId: userId, role },
+    commercial,
   };
 }
 
@@ -235,9 +238,15 @@ export default async (request: Request, context: Context) => {
   const organizationId = tenant.organization_id;
   const userId = String(tenant.user.id);
   const permissions = planningPermissions(tenant.role);
+  const planAccess = await getPlanAccess(db, organizationId);
+  const commercial = {
+    plan: planAccess.subscription.plan,
+    status: planAccess.subscription.status,
+    entitlements: planAccess.entitlements,
+  };
 
   if (request.method === 'GET') {
-    const data = await snapshot(db, organizationId, activityId, tenant.role, userId);
+    const data = await snapshot(db, organizationId, activityId, tenant.role, userId, commercial);
     return data ? json(data) : json({ error: 'Activity not found.' }, 404);
   }
   if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
@@ -400,6 +409,7 @@ export default async (request: Request, context: Context) => {
 
     if (action === 'import_sessions') {
       if (!permissions.canManagePlanning) return json({ error: 'Planning manager permission is required.' }, 403);
+      requirePro('Session and facilitator CSV import', planAccess.entitlements.sessionCsvImport);
       const sourceRows = Array.isArray(body.rows) ? body.rows : [];
       if (!sourceRows.length || sourceRows.length > 200) return json({ error: 'Import between 1 and 200 sessions at a time.' }, 400);
       const duplicateMode = body.duplicateMode === 'update' ? 'update' : 'skip';
@@ -659,6 +669,7 @@ export default async (request: Request, context: Context) => {
     return json({ error: 'Unsupported planning action.' }, 400);
   } catch (error) {
     console.error('Activity planning failed', { action, activityId, error });
+    if (error instanceof PlanLimitError) return json(error.toResponse(), error.code === 'PRO_REQUIRED' ? 403 : 409);
     return json({ error: error instanceof Error ? error.message : 'Could not complete the planning action.' }, 400);
   }
 };

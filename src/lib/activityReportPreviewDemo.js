@@ -1,4 +1,5 @@
 import { calculateBudgetSummary, calculateJournalSummary } from '../../shared/planning.js';
+import { phaseTwoEntitlements } from '../../shared/commercial.js';
 import {
   calculateReportCompletion,
   generateReportNarrative,
@@ -179,5 +180,6 @@ export function getActivityReportPreview(activity = {}) {
     templates,
     reports: [report],
     permissions: { canViewReports: true, canManageTemplates: false, canCreateReports: false, canEditReports: false, canApproveReports: false, canGenerateNarrative: false, role: 'owner', currentUserId: 'preview-user', readOnlyPreview: true },
+    commercial: { ...planning.commercial, entitlements: phaseTwoEntitlements(planning.commercial.plan), usage: { activityReports: 1 } },
   };
 }
