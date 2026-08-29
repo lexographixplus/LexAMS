@@ -2,14 +2,20 @@ export const TASK_STAGES = ['pre', 'during', 'post'];
 export const TASK_STATUSES = ['todo', 'in_progress', 'blocked', 'done'];
 export const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 export const SESSION_PLANNING_STATUSES = ['draft', 'ready', 'delivered', 'cancelled'];
+export const JOURNAL_ENTRY_MODES = ['daily', 'weekly'];
+export const JOURNAL_FOLLOW_UP_STATUSES = ['open', 'resolved', 'not_required'];
+export const BUDGET_CURRENCIES = ['GMD', 'USD', 'EUR', 'GBP', 'XOF'];
 
 const PLANNING_MANAGERS = new Set(['owner', 'admin', 'programme_manager']);
 const ASSIGNED_TASK_CONTRIBUTORS = new Set(['facilitator', 'me_officer']);
+const JOURNAL_CONTRIBUTORS = new Set(['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer']);
 
 export function planningPermissions(role) {
   return {
     canManagePlanning: PLANNING_MANAGERS.has(String(role || '')),
     canUpdateAssignedTasks: ASSIGNED_TASK_CONTRIBUTORS.has(String(role || '')),
+    canManageBudget: PLANNING_MANAGERS.has(String(role || '')),
+    canCreateJournal: JOURNAL_CONTRIBUTORS.has(String(role || '')),
   };
 }
 
@@ -37,6 +43,33 @@ function cleanTime(value, label) {
   if (!time) return null;
   if (!/^\d{2}:\d{2}(?::\d{2})?$/.test(time)) throw new Error(`${label} must be a valid time.`);
   return time.slice(0, 5);
+}
+
+function cleanMoney(value, label) {
+  if (value === '' || value === null || value === undefined) return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0 || amount > 999999999999.99) {
+    throw new Error(`${label} must be a valid non-negative amount.`);
+  }
+  return Math.round(amount * 100) / 100;
+}
+
+function cleanUrl(value, label = 'Evidence link') {
+  const url = cleanText(value, 1200);
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+  } catch {
+    throw new Error(`${label} must be a valid http or https link.`);
+  }
+  return url;
+}
+
+function positiveIds(values, limit = 100) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .map(value => Number(value))
+    .filter(value => Number.isSafeInteger(value) && value > 0))].slice(0, limit);
 }
 
 export function normalizePlanningTask(input = {}) {
@@ -86,6 +119,80 @@ export function normalizeSessionPlan(input = {}) {
   };
 }
 
+export function normalizeBudgetItem(input = {}) {
+  const itemName = cleanText(input.item_name, 180);
+  if (!itemName) throw new Error('Budget item name is required.');
+  return {
+    category: cleanText(input.category, 100) || 'General',
+    item_name: itemName,
+    planned_amount: cleanMoney(input.planned_amount, 'Planned amount'),
+    actual_amount: cleanMoney(input.actual_amount, 'Actual amount'),
+    evidence_date: cleanDate(input.evidence_date, 'Evidence date'),
+    notes: cleanText(input.notes, 3000),
+    evidence_url: cleanUrl(input.evidence_url),
+  };
+}
+
+export function normalizeJournalEntry(input = {}) {
+  const entryMode = JOURNAL_ENTRY_MODES.includes(String(input.entry_mode)) ? String(input.entry_mode) : 'daily';
+  const entryDate = cleanDate(input.entry_date, entryMode === 'weekly' ? 'Week start' : 'Entry date');
+  if (!entryDate) throw new Error(entryMode === 'weekly' ? 'Week start is required.' : 'Entry date is required.');
+  const periodEnd = entryMode === 'weekly' ? cleanDate(input.period_end, 'Week end') : null;
+  if (entryMode === 'weekly' && !periodEnd) throw new Error('Week end is required.');
+  if (periodEnd && periodEnd < entryDate) throw new Error('Week end must be on or after the start date.');
+  const progressSummary = cleanText(input.progress_summary, 5000);
+  if (!progressSummary) throw new Error('Progress summary is required.');
+  const followUpStatus = JOURNAL_FOLLOW_UP_STATUSES.includes(String(input.follow_up_status))
+    ? String(input.follow_up_status)
+    : cleanText(input.actions_follow_up, 5000) ? 'open' : 'not_required';
+  return {
+    entry_mode: entryMode,
+    entry_date: entryDate,
+    period_end: periodEnd,
+    progress_summary: progressSummary,
+    achievements: cleanText(input.achievements, 5000),
+    challenges: cleanText(input.challenges, 5000),
+    observations_lessons: cleanText(input.observations_lessons, 5000),
+    actions_follow_up: cleanText(input.actions_follow_up, 5000),
+    follow_up_status: followUpStatus,
+    evidence_url: cleanUrl(input.evidence_url),
+    include_in_report: input.include_in_report !== false,
+    session_ids: positiveIds(input.session_ids),
+    task_ids: positiveIds(input.task_ids),
+  };
+}
+
+export function canEditJournalEntry({ role, userId, entry }) {
+  if (PLANNING_MANAGERS.has(String(role || ''))) return true;
+  return JOURNAL_CONTRIBUTORS.has(String(role || ''))
+    && Boolean(entry)
+    && String(entry.created_by || '') === String(userId || '');
+}
+
+function validEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+export function normalizeEmailList(value) {
+  const source = Array.isArray(value) ? value : String(value || '').split(/[;,|]/);
+  const emails = [...new Set(source.map(item => String(item || '').trim().toLowerCase()).filter(Boolean))].slice(0, 30);
+  const invalid = emails.find(email => !validEmail(email));
+  if (invalid) throw new Error(`Invalid facilitator email: ${invalid}.`);
+  return emails;
+}
+
+export function normalizeSessionImportRow(input = {}) {
+  const facilitatorEmails = normalizeEmailList(input.facilitator_emails);
+  const leadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
+  if (leadEmail && !validEmail(leadEmail)) throw new Error(`Invalid lead facilitator email: ${leadEmail}.`);
+  const emails = leadEmail && !facilitatorEmails.includes(leadEmail) ? [leadEmail, ...facilitatorEmails] : facilitatorEmails;
+  return {
+    ...normalizeSessionPlan({ ...input, facilitator_ids: [] }),
+    facilitator_emails: emails,
+    lead_facilitator_email: leadEmail || emails[0] || null,
+  };
+}
+
 function percent(value, total) {
   return total ? Math.round((value / total) * 100) : 0;
 }
@@ -115,4 +222,80 @@ export function calculatePlanningSummary({ tasks = [], sessions = [], today = ne
     facilitatorCoveragePercent: percent(assignedSessions, sessions.length),
     planningProgressPercent: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
   };
+}
+
+export function calculateBudgetSummary(items = []) {
+  const categoryMap = new Map();
+  let planned = 0;
+  let actual = 0;
+  let unplannedItems = 0;
+  for (const item of items) {
+    const itemPlanned = item.planned_amount === null || item.planned_amount === '' ? 0 : Number(item.planned_amount || 0);
+    const itemActual = item.actual_amount === null || item.actual_amount === '' ? 0 : Number(item.actual_amount || 0);
+    planned += itemPlanned;
+    actual += itemActual;
+    if ((item.planned_amount === null || item.planned_amount === '') && itemActual > 0) unplannedItems += 1;
+    const category = String(item.category || 'General');
+    const current = categoryMap.get(category) || { category, planned: 0, actual: 0 };
+    current.planned += itemPlanned;
+    current.actual += itemActual;
+    categoryMap.set(category, current);
+  }
+  const categories = [...categoryMap.values()].map(category => ({
+    ...category,
+    variance: category.planned - category.actual,
+  })).sort((a, b) => b.actual - a.actual || a.category.localeCompare(b.category));
+  return {
+    itemCount: items.length,
+    planned,
+    actual,
+    variance: planned - actual,
+    usedPercent: planned > 0 ? Math.round((actual / planned) * 100) : null,
+    unplannedItems,
+    categories,
+  };
+}
+
+export function calculateJournalSummary(entries = []) {
+  const ordered = [...entries].sort((a, b) => String(b.entry_date || '').localeCompare(String(a.entry_date || '')) || Number(b.id || 0) - Number(a.id || 0));
+  return {
+    entryCount: entries.length,
+    reportRelevantCount: entries.filter(entry => entry.include_in_report).length,
+    openFollowUps: entries.filter(entry => entry.follow_up_status === 'open').length,
+    latestEntry: ordered[0] || null,
+  };
+}
+
+function parseUtcDate(value) {
+  const date = new Date(`${String(value || '').slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+export function buildActivityWeeks(activity = {}, sessions = []) {
+  const start = parseUtcDate(activity.start_date);
+  const end = parseUtcDate(activity.end_date || activity.start_date);
+  if (!start || !end || end < start) return [];
+  const weeks = [];
+  for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 7)) {
+    const weekStart = new Date(cursor);
+    const weekEnd = new Date(Math.min(end.getTime(), weekStart.getTime() + (6 * 86400000)));
+    const startDate = isoDate(weekStart);
+    const endDate = isoDate(weekEnd);
+    const weekSessions = sessions.filter(session => {
+      const date = String(session.session_date || '').slice(0, 10);
+      return date >= startDate && date <= endDate;
+    });
+    weeks.push({
+      index: weeks.length,
+      label: `Week ${weeks.length + 1}`,
+      startDate,
+      endDate,
+      sessions: weekSessions,
+    });
+  }
+  return weeks;
 }
