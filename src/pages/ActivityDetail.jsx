@@ -6,6 +6,7 @@ import { Copy, Pencil, Trash2, ExternalLink, Eye } from 'lucide-react';
 import CertificatePreview from '../components/CertificatePreview';
 import { useAuth } from '../contexts/AuthContext';
 import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
+import ActivityOperationalPulse from '../components/planning/ActivityOperationalPulse';
 
 const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
 
@@ -176,8 +177,8 @@ export default function ActivityDetail() {
 
       {/* Overview Tab */}
       {tab === 'Overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginTop: 22 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="activity-overview-layout">
+          <div className="activity-overview-main">
             <div style={{
               background: 'var(--surface-card)', border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '22px 24px',
@@ -187,7 +188,7 @@ export default function ActivityDetail() {
                 {activity.description}
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            <div className="activity-overview-stats">
               {[
                 { label: 'Sessions', value: activity.sessions },
                 { label: 'Registered', value: pids.length },
@@ -211,8 +212,9 @@ export default function ActivityDetail() {
                 </div>
               ))}
             </div>
+            <ActivityOperationalPulse activity={activity} onOpenPlanning={() => setTab('Planning')} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="activity-overview-side">
             {/* Share links */}
             <div style={{
               background: 'var(--surface-card)', border: '1px solid var(--border-default)',

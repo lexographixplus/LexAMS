@@ -3,8 +3,13 @@ import { getPool } from './_shared/db';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 import {
+  BUDGET_CURRENCIES,
+  canEditJournalEntry,
   canUpdatePlanningTask,
+  normalizeBudgetItem,
+  normalizeJournalEntry,
   normalizePlanningTask,
+  normalizeSessionImportRow,
   normalizeSessionPlan,
   planningPermissions,
   SESSION_PLANNING_STATUSES,
@@ -27,7 +32,7 @@ function numberId(value: unknown) {
 
 async function activityExists(db: ReturnType<typeof getPool>, organizationId: string, activityId: number) {
   const result = await db.query(
-    `select id, title, status, start_date, end_date, venue, description
+    `select id, title, status, start_date, end_date, venue, description, budget_currency
      from activities where id=$1 and organization_id=$2 limit 1`,
     [activityId, organizationId],
   );
@@ -70,7 +75,7 @@ async function snapshot(
   const activity = await activityExists(db, organizationId, activityId);
   if (!activity) return null;
 
-  const [tasks, sessions, members] = await Promise.all([
+  const [tasks, sessions, members, budgetItems, journalEntries] = await Promise.all([
     db.query(
       `select t.id, t.title, t.description, t.stage, t.assignee_user_id, t.due_date,
               t.priority, t.status, t.completed_at, t.sort_order, t.created_at, t.updated_at,
@@ -117,6 +122,42 @@ async function snapshot(
        order by coalesce(p.full_name,u.name,u.email), om.user_id`,
       [organizationId],
     ),
+    db.query(
+      `select id,category,item_name,planned_amount,actual_amount,evidence_date,notes,evidence_url,
+              created_by,created_at,updated_at
+       from activity_budget_items
+       where organization_id=$1 and activity_id=$2
+       order by category,item_name,id`,
+      [organizationId, activityId],
+    ),
+    db.query(
+      `select j.id,j.entry_mode,j.entry_date,j.period_end,j.progress_summary,j.achievements,
+              j.challenges,j.observations_lessons,j.actions_follow_up,j.follow_up_status,
+              j.evidence_url,j.include_in_report,j.created_by,j.created_at,j.updated_at,
+              coalesce(nullif(p.full_name,''),nullif(u.name,''),u.email,'Former team member') as author_name,
+              coalesce(ls.sessions,'[]'::jsonb) as linked_sessions,
+              coalesce(lt.tasks,'[]'::jsonb) as linked_tasks
+       from activity_journal_entries j
+       left join users u on u.id=j.created_by
+       left join profiles p on p.user_id=j.created_by
+       left join lateral (
+         select jsonb_agg(jsonb_build_object('id',s.id,'title',s.title,'session_date',s.session_date)
+                          order by s.session_date,s.sort_order,s.id) as sessions
+         from journal_entry_sessions js
+         join activity_sessions s on s.id=js.session_id and s.activity_id=js.activity_id and s.organization_id=js.organization_id
+         where js.organization_id=j.organization_id and js.activity_id=j.activity_id and js.journal_entry_id=j.id
+       ) ls on true
+       left join lateral (
+         select jsonb_agg(jsonb_build_object('id',t.id,'title',t.title,'status',t.status)
+                          order by t.sort_order,t.id) as tasks
+         from journal_entry_tasks jt
+         join activity_tasks t on t.id=jt.task_id and t.activity_id=jt.activity_id and t.organization_id=jt.organization_id
+         where jt.organization_id=j.organization_id and jt.activity_id=j.activity_id and jt.journal_entry_id=j.id
+       ) lt on true
+       where j.organization_id=$1 and j.activity_id=$2
+       order by j.entry_date desc,j.id desc`,
+      [organizationId, activityId],
+    ),
   ]);
 
   return {
@@ -124,8 +165,63 @@ async function snapshot(
     tasks: tasks.rows,
     sessions: sessions.rows,
     members: members.rows,
+    budgetItems: budgetItems.rows,
+    journalEntries: journalEntries.rows,
     permissions: { ...planningPermissions(role), currentUserId: userId, role },
   };
+}
+
+async function validateJournalLinks(
+  db: any,
+  organizationId: string,
+  activityId: number,
+  sessionIds: number[],
+  taskIds: number[],
+) {
+  const [sessionCount, taskCount] = await Promise.all([
+    sessionIds.length
+      ? db.query(
+        `select count(*)::int as count from activity_sessions
+         where organization_id=$1 and activity_id=$2 and id=any($3::bigint[])`,
+        [organizationId, activityId, sessionIds],
+      )
+      : Promise.resolve({ rows: [{ count: 0 }] }),
+    taskIds.length
+      ? db.query(
+        `select count(*)::int as count from activity_tasks
+         where organization_id=$1 and activity_id=$2 and id=any($3::bigint[])`,
+        [organizationId, activityId, taskIds],
+      )
+      : Promise.resolve({ rows: [{ count: 0 }] }),
+  ]);
+  if (Number(sessionCount.rows[0]?.count || 0) !== sessionIds.length) throw new Error('One or more linked sessions are invalid.');
+  if (Number(taskCount.rows[0]?.count || 0) !== taskIds.length) throw new Error('One or more linked tasks are invalid.');
+}
+
+async function syncJournalLinks(
+  db: any,
+  organizationId: string,
+  activityId: number,
+  journalEntryId: number,
+  sessionIds: number[],
+  taskIds: number[],
+) {
+  await db.query(`delete from journal_entry_sessions where organization_id=$1 and activity_id=$2 and journal_entry_id=$3`, [organizationId, activityId, journalEntryId]);
+  await db.query(`delete from journal_entry_tasks where organization_id=$1 and activity_id=$2 and journal_entry_id=$3`, [organizationId, activityId, journalEntryId]);
+  if (sessionIds.length) {
+    await db.query(
+      `insert into journal_entry_sessions (organization_id,activity_id,journal_entry_id,session_id)
+       select $1,$2,$3,unnest($4::bigint[])`,
+      [organizationId, activityId, journalEntryId, sessionIds],
+    );
+  }
+  if (taskIds.length) {
+    await db.query(
+      `insert into journal_entry_tasks (organization_id,activity_id,journal_entry_id,task_id)
+       select $1,$2,$3,unnest($4::bigint[])`,
+      [organizationId, activityId, journalEntryId, taskIds],
+    );
+  }
 }
 
 export default async (request: Request, context: Context) => {
@@ -300,6 +396,240 @@ export default async (request: Request, context: Context) => {
       } finally {
         client.release();
       }
+    }
+
+    if (action === 'import_sessions') {
+      if (!permissions.canManagePlanning) return json({ error: 'Planning manager permission is required.' }, 403);
+      const sourceRows = Array.isArray(body.rows) ? body.rows : [];
+      if (!sourceRows.length || sourceRows.length > 200) return json({ error: 'Import between 1 and 200 sessions at a time.' }, 400);
+      const duplicateMode = body.duplicateMode === 'update' ? 'update' : 'skip';
+      let rows;
+      try {
+        rows = sourceRows.map((row, index) => ({ ...normalizeSessionImportRow(row), rowNumber: index + 2 }));
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : 'The session CSV contains invalid data.' }, 400);
+      }
+      const seenTitles = new Set<string>();
+      for (const row of rows) {
+        const key = row.title.trim().toLowerCase();
+        if (seenTitles.has(key)) return json({ error: `Row ${row.rowNumber}: session title “${row.title}” appears more than once.` }, 400);
+        seenTitles.add(key);
+        const date = row.session_date;
+        if (date < String(activity.start_date).slice(0, 10) || date > String(activity.end_date).slice(0, 10)) {
+          return json({ error: `Row ${row.rowNumber}: the session date must fall within the activity dates.` }, 400);
+        }
+      }
+
+      const membersResult = await db.query(
+        `select om.user_id::text as id,lower(u.email) as email
+         from organization_members om join users u on u.id=om.user_id
+         where om.organization_id=$1 and om.role <> 'viewer'`,
+        [organizationId],
+      );
+      const memberByEmail = new Map(membersResult.rows.map(member => [String(member.email), String(member.id)]));
+      for (const row of rows) {
+        const missing = row.facilitator_emails.find(email => !memberByEmail.has(email));
+        if (missing) return json({ error: `Row ${row.rowNumber}: ${missing} is not an active team member.` }, 400);
+      }
+
+      const existingResult = await db.query(
+        `select * from activity_sessions where organization_id=$1 and activity_id=$2 order by sort_order,id`,
+        [organizationId, activityId],
+      );
+      const existingByTitle = new Map(existingResult.rows.map(session => [String(session.title).trim().toLowerCase(), session]));
+      let nextSortOrder = existingResult.rows.reduce((maximum, session) => Math.max(maximum, Number(session.sort_order || 0)), -1) + 1;
+      const summary = { created: 0, updated: 0, skipped: 0, facilitatorsAssigned: 0 };
+      const client = await db.connect();
+      try {
+        await client.query('begin');
+        for (const row of rows) {
+          const key = row.title.trim().toLowerCase();
+          const existing = existingByTitle.get(key);
+          if (existing && duplicateMode === 'skip') { summary.skipped += 1; continue; }
+          let saved;
+          if (existing) {
+            const result = await client.query(
+              `update activity_sessions set session_date=$4,starts_at=$5,ends_at=$6,venue=$7,
+                   description=$8,learning_objectives=$9,planning_status=$10,updated_at=now()
+               where id=$1 and activity_id=$2 and organization_id=$3 returning *`,
+              [existing.id, activityId, organizationId, row.session_date, row.starts_at, row.ends_at,
+                row.venue, row.description, row.learning_objectives, row.planning_status],
+            );
+            saved = result.rows[0];
+            summary.updated += 1;
+          } else {
+            const result = await client.query(
+              `insert into activity_sessions
+                 (organization_id,activity_id,title,session_date,starts_at,ends_at,venue,description,learning_objectives,planning_status,sort_order)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
+              [organizationId, activityId, row.title, row.session_date, row.starts_at, row.ends_at,
+                row.venue, row.description, row.learning_objectives, row.planning_status, nextSortOrder],
+            );
+            saved = result.rows[0];
+            existingByTitle.set(key, saved);
+            nextSortOrder += 1;
+            summary.created += 1;
+          }
+
+          const facilitatorIds = [...new Set(row.facilitator_emails.map(email => memberByEmail.get(email)).filter(Boolean))];
+          const leadId = row.lead_facilitator_email ? memberByEmail.get(row.lead_facilitator_email) : facilitatorIds[0] || null;
+          await client.query(
+            `delete from session_facilitators where organization_id=$1 and activity_id=$2 and session_id=$3`,
+            [organizationId, activityId, saved.id],
+          );
+          if (facilitatorIds.length) {
+            await client.query(
+              `insert into session_facilitators
+                 (organization_id,activity_id,session_id,user_id,is_lead,role_label,assigned_by)
+               select $1,$2,$3,member_id,member_id=$5,
+                      case when member_id=$5 then 'Lead facilitator' else 'Facilitator' end,$6
+               from unnest($4::uuid[]) as imported(member_id)`,
+              [organizationId, activityId, saved.id, facilitatorIds, leadId, userId],
+            );
+            summary.facilitatorsAssigned += facilitatorIds.length;
+          }
+        }
+        await client.query(
+          `update activities set sessions=(select count(*)::int from activity_sessions where organization_id=$1 and activity_id=$2),updated_at=now()
+           where organization_id=$1 and id=$2`,
+          [organizationId, activityId],
+        );
+        await audit(client as ReturnType<typeof getPool>, organizationId, userId, 'planning.sessions_imported', 'activity', activityId, { ...summary, rows: rows.length });
+        await client.query('commit');
+        return json(summary, 201);
+      } catch (error) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    if (action === 'set_budget_currency') {
+      if (!permissions.canManageBudget) return json({ error: 'Budget manager permission is required.' }, 403);
+      const currency = String(body.currency || '').trim().toUpperCase();
+      if (!BUDGET_CURRENCIES.includes(currency)) return json({ error: 'Choose a supported budget currency.' }, 400);
+      await db.query(
+        `update activities set budget_currency=$3,updated_at=now() where id=$1 and organization_id=$2`,
+        [activityId, organizationId, currency],
+      );
+      await audit(db, organizationId, userId, 'planning.budget_currency_updated', 'activity', activityId, { currency });
+      return json({ currency });
+    }
+
+    if (action === 'save_budget_item') {
+      if (!permissions.canManageBudget) return json({ error: 'Budget manager permission is required.' }, 403);
+      const itemId = body.item?.id ? numberId(body.item.id) : null;
+      if (body.item?.id && !itemId) return json({ error: 'Invalid budget item.' }, 400);
+      const item = normalizeBudgetItem(body.item);
+      const result = itemId
+        ? await db.query(
+          `update activity_budget_items set category=$4,item_name=$5,planned_amount=$6,actual_amount=$7,
+               evidence_date=$8,notes=$9,evidence_url=$10,updated_at=now()
+           where id=$1 and activity_id=$2 and organization_id=$3 returning *`,
+          [itemId, activityId, organizationId, item.category, item.item_name, item.planned_amount,
+            item.actual_amount, item.evidence_date, item.notes, item.evidence_url],
+        )
+        : await db.query(
+          `insert into activity_budget_items
+             (organization_id,activity_id,category,item_name,planned_amount,actual_amount,evidence_date,notes,evidence_url,created_by)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
+          [organizationId, activityId, item.category, item.item_name, item.planned_amount,
+            item.actual_amount, item.evidence_date, item.notes, item.evidence_url, userId],
+        );
+      if (!result.rowCount) return json({ error: 'Budget item not found.' }, 404);
+      await audit(db, organizationId, userId, itemId ? 'planning.budget_item_updated' : 'planning.budget_item_created', 'activity_budget_item', result.rows[0].id, { activityId });
+      return json({ item: result.rows[0] }, itemId ? 200 : 201);
+    }
+
+    if (action === 'delete_budget_item') {
+      if (!permissions.canManageBudget) return json({ error: 'Budget manager permission is required.' }, 403);
+      const itemId = numberId(body.itemId);
+      if (!itemId) return json({ error: 'Invalid budget item.' }, 400);
+      const result = await db.query(
+        `delete from activity_budget_items where id=$1 and activity_id=$2 and organization_id=$3 returning id,item_name`,
+        [itemId, activityId, organizationId],
+      );
+      if (!result.rowCount) return json({ error: 'Budget item not found.' }, 404);
+      await audit(db, organizationId, userId, 'planning.budget_item_deleted', 'activity_budget_item', itemId, { activityId, itemName: result.rows[0].item_name });
+      return json({ removed: itemId });
+    }
+
+    if (action === 'save_journal_entry') {
+      if (!permissions.canCreateJournal) return json({ error: 'Journal contributor permission is required.' }, 403);
+      const entryId = body.entry?.id ? numberId(body.entry.id) : null;
+      if (body.entry?.id && !entryId) return json({ error: 'Invalid journal entry.' }, 400);
+      const entry = normalizeJournalEntry(body.entry);
+      const activityStart = String(activity.start_date).slice(0, 10);
+      const activityEnd = String(activity.end_date).slice(0, 10);
+      if (entry.entry_date < activityStart || entry.entry_date > activityEnd || (entry.period_end && entry.period_end > activityEnd)) {
+        return json({ error: 'Journal periods must fall within the activity dates.' }, 400);
+      }
+      let current = null;
+      if (entryId) {
+        const currentResult = await db.query(
+          `select * from activity_journal_entries where id=$1 and activity_id=$2 and organization_id=$3 limit 1`,
+          [entryId, activityId, organizationId],
+        );
+        current = currentResult.rows[0] || null;
+        if (!current) return json({ error: 'Journal entry not found.' }, 404);
+        if (!canEditJournalEntry({ role: tenant.role, userId, entry: current })) return json({ error: 'You can only edit journal entries you created.' }, 403);
+      }
+
+      const client = await db.connect();
+      try {
+        await client.query('begin');
+        await validateJournalLinks(client, organizationId, activityId, entry.session_ids, entry.task_ids);
+        const result = entryId
+          ? await client.query(
+            `update activity_journal_entries set entry_mode=$4,entry_date=$5,period_end=$6,
+                 progress_summary=$7,achievements=$8,challenges=$9,observations_lessons=$10,
+                 actions_follow_up=$11,follow_up_status=$12,evidence_url=$13,include_in_report=$14,updated_at=now()
+             where id=$1 and activity_id=$2 and organization_id=$3 returning *`,
+            [entryId, activityId, organizationId, entry.entry_mode, entry.entry_date, entry.period_end,
+              entry.progress_summary, entry.achievements, entry.challenges, entry.observations_lessons,
+              entry.actions_follow_up, entry.follow_up_status, entry.evidence_url, entry.include_in_report],
+          )
+          : await client.query(
+            `insert into activity_journal_entries
+               (organization_id,activity_id,entry_mode,entry_date,period_end,progress_summary,achievements,
+                challenges,observations_lessons,actions_follow_up,follow_up_status,evidence_url,include_in_report,created_by)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
+            [organizationId, activityId, entry.entry_mode, entry.entry_date, entry.period_end,
+              entry.progress_summary, entry.achievements, entry.challenges, entry.observations_lessons,
+              entry.actions_follow_up, entry.follow_up_status, entry.evidence_url, entry.include_in_report, userId],
+          );
+        const saved = result.rows[0];
+        await syncJournalLinks(client, organizationId, activityId, saved.id, entry.session_ids, entry.task_ids);
+        await audit(client as ReturnType<typeof getPool>, organizationId, userId,
+          entryId ? 'planning.journal_entry_updated' : 'planning.journal_entry_created', 'activity_journal_entry', saved.id,
+          { activityId, entryMode: entry.entry_mode, includeInReport: entry.include_in_report });
+        await client.query('commit');
+        return json({ entry: saved }, entryId ? 200 : 201);
+      } catch (error) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    if (action === 'delete_journal_entry') {
+      const entryId = numberId(body.entryId);
+      if (!entryId) return json({ error: 'Invalid journal entry.' }, 400);
+      const currentResult = await db.query(
+        `select * from activity_journal_entries where id=$1 and activity_id=$2 and organization_id=$3 limit 1`,
+        [entryId, activityId, organizationId],
+      );
+      const current = currentResult.rows[0];
+      if (!current) return json({ error: 'Journal entry not found.' }, 404);
+      if (!canEditJournalEntry({ role: tenant.role, userId, entry: current })) return json({ error: 'You can only delete journal entries you created.' }, 403);
+      await db.query(
+        `delete from activity_journal_entries where id=$1 and activity_id=$2 and organization_id=$3`,
+        [entryId, activityId, organizationId],
+      );
+      await audit(db, organizationId, userId, 'planning.journal_entry_deleted', 'activity_journal_entry', entryId, { activityId });
+      return json({ removed: entryId });
     }
 
     if (action === 'set_session_planning_status') {

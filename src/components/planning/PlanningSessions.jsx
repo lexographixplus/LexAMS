@@ -1,9 +1,32 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, Clock3, Edit3, MapPin, Plus, UserRound, X } from 'lucide-react';
+import { CalendarDays, CalendarRange, Clock3, Edit3, List, MapPin, Plus, UserRound, X } from 'lucide-react';
+import { buildActivityWeeks } from '../../../shared/planning.js';
+import PlanningSessionCsvImport from './PlanningSessionCsvImport';
 
 const statusOptions = [['draft', 'Draft'], ['ready', 'Ready'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']];
 function dateValue(value) { return value ? String(value).slice(0, 10) : ''; }
 function timeValue(value) { return value ? String(value).slice(0, 5) : ''; }
+
+function prettyDate(value, options = {}) {
+  const date = new Date(`${dateValue(value)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...options });
+}
+
+function weekday(value) {
+  const date = new Date(`${dateValue(value)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+function daysInWeek(week) {
+  const days = [];
+  const cursor = new Date(`${week.startDate}T00:00:00Z`);
+  const end = new Date(`${week.endDate}T00:00:00Z`);
+  while (cursor <= end) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+}
 
 function SessionDialog({ initial, activity, members, saving, onClose, onSave }) {
   const [form, setForm] = useState(() => ({
@@ -62,23 +85,48 @@ function SessionCard({ session, canManage, canUpdateStatus, saving, onEdit, onSt
   </article>;
 }
 
+function WeeklySchedule({ week, permissions, saving, onEdit, onStatus }) {
+  return <section className="planning-week-schedule" aria-label={`${week.label} schedule`}>
+    <header><div><span className="planning-kicker">{week.label}</span><h5>{prettyDate(week.startDate)}–{prettyDate(week.endDate, { year: 'numeric' })}</h5></div><span>{week.sessions.length} session{week.sessions.length === 1 ? '' : 's'}</span></header>
+    <div className="planning-week-days">{daysInWeek(week).map(date => {
+      const sessions = week.sessions.filter(session => dateValue(session.session_date) === date);
+      return <section key={date} className={sessions.length ? 'has-sessions' : ''}><header><span>{weekday(date)}</span><strong>{new Date(`${date}T00:00:00`).getDate()}</strong></header><div>{sessions.length ? sessions.map(session => {
+        const assigned = session.facilitators?.some(person => String(person.user_id) === String(permissions.currentUserId));
+        const canUpdateStatus = permissions.canManagePlanning || (assigned && permissions.canUpdateAssignedTasks);
+        const lead = session.facilitators?.find(person => person.is_lead) || session.facilitators?.[0];
+        return <article key={session.id}><div><span>{timeValue(session.starts_at) || 'Time TBD'}</span><span className={`planning-status status-${session.planning_status}`}>{session.planning_status}</span></div><h6>{session.title}</h6><small><MapPin size={11}/>{session.venue || 'Venue TBD'}</small><small><UserRound size={11}/>{lead?.name || 'Unassigned'}</small>{canUpdateStatus && <select aria-label={`Preparation status for ${session.title}`} value={session.planning_status} disabled={saving} onChange={event => onStatus(session, event.target.value)}>{statusOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>}{permissions.canManagePlanning && <button onClick={() => onEdit(session)} aria-label={`Edit ${session.title}`}><Edit3 size={13}/>Edit</button>}</article>;
+      }) : <span className="planning-week-empty">No sessions</span>}</div></section>;
+    })}</div>
+  </section>;
+}
+
 export default function PlanningSessions({ data, saving, onMutate }) {
   const [dialog, setDialog] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('week');
+  const [activeWeek, setActiveWeek] = useState(0);
   const canManage = data.permissions.canManagePlanning;
   const visible = useMemo(() => filter === 'all' ? data.sessions : data.sessions.filter(session => session.planning_status === filter), [data.sessions, filter]);
+  const weeks = useMemo(() => buildActivityWeeks(data.activity, visible), [data.activity, visible]);
+  const allWeeks = useMemo(() => buildActivityWeeks(data.activity, data.sessions), [data.activity, data.sessions]);
+  const multiWeek = allWeeks.length > 1;
+  const selectedWeek = weeks[Math.min(activeWeek, Math.max(0, weeks.length - 1))];
 
   async function save(form) {
     const ok = await onMutate('save_session', { session: form }, form.id ? 'Session plan updated.' : 'Session added to the plan.');
     if (ok) setDialog(null);
   }
 
+  const updateStatus = (session, status) => onMutate('set_session_planning_status', { sessionId: session.id, status }, 'Session preparation status updated.');
+
   return <div className="planning-section-stack">
-    <div className="planning-toolbar"><div><h4>Session plans</h4><p>Prepare delivery details and facilitator responsibilities without changing attendance records.</p></div><div className="planning-toolbar-actions"><select value={filter} onChange={event => setFilter(event.target.value)} aria-label="Filter session status"><option value="all">All planning states</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{canManage && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add session</button>}</div></div>
-    {visible.length ? <div className="planning-session-list">{visible.map(session => {
+    <div className="planning-toolbar"><div><h4>Session plans</h4><p>Arrange delivery by week, prepare each session, and connect facilitator responsibilities to the live schedule.</p></div><div className="planning-toolbar-actions">{multiWeek && <div className="planning-view-toggle" role="group" aria-label="Session layout"><button className={viewMode === 'week' ? 'active' : ''} onClick={() => setViewMode('week')}><CalendarRange size={14}/>Week</button><button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><List size={14}/>List</button></div>}<select value={filter} onChange={event => { setFilter(event.target.value); setActiveWeek(0); }} aria-label="Filter session status"><option value="all">All planning states</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{(canManage || data.permissions.readOnlyPreview) && <PlanningSessionCsvImport activity={data.activity} members={data.members} saving={saving} onMutate={onMutate} preview={data.permissions.readOnlyPreview}/>} {canManage && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add session</button>}</div></div>
+    {visible.length && multiWeek && viewMode === 'week' ? <><nav className="planning-week-strip" aria-label="Training weeks">{weeks.map((week, index) => <button key={week.startDate} className={index === Math.min(activeWeek, weeks.length - 1) ? 'active' : ''} aria-current={index === Math.min(activeWeek, weeks.length - 1) ? 'page' : undefined} onClick={() => setActiveWeek(index)}><span>{week.label}</span><strong>{prettyDate(week.startDate)}–{prettyDate(week.endDate)}</strong><small>{week.sessions.length} session{week.sessions.length === 1 ? '' : 's'}</small></button>)}</nav>{selectedWeek && <WeeklySchedule week={selectedWeek} permissions={data.permissions} saving={saving} onEdit={setDialog} onStatus={updateStatus}/>}</> : null}
+    {visible.length && (!multiWeek || viewMode === 'list') ? <div className="planning-session-list">{visible.map(session => {
       const assigned = session.facilitators?.some(person => String(person.user_id) === String(data.permissions.currentUserId));
-      return <SessionCard key={session.id} session={session} saving={saving} canManage={canManage} canUpdateStatus={canManage || (assigned && data.permissions.canUpdateAssignedTasks)} onEdit={() => setDialog(session)} onStatus={status => onMutate('set_session_planning_status', { sessionId: session.id, status }, 'Session preparation status updated.')}/>;
-    })}</div> : <div className="planning-empty"><CalendarDays size={26}/><strong>No sessions match this filter</strong><p>{data.sessions.length ? 'Choose another planning state.' : 'Add the first session plan for this activity.'}</p>{canManage && !data.sessions.length && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add first session</button>}</div>}
+      return <SessionCard key={session.id} session={session} saving={saving} canManage={canManage} canUpdateStatus={canManage || (assigned && data.permissions.canUpdateAssignedTasks)} onEdit={() => setDialog(session)} onStatus={status => updateStatus(session, status)}/>;
+    })}</div> : null}
+    {!visible.length && <div className="planning-empty"><CalendarDays size={26}/><strong>No sessions match this filter</strong><p>{data.sessions.length ? 'Choose another planning state.' : 'Add the first session plan for this activity.'}</p>{canManage && !data.sessions.length && <button className="planning-primary-button" onClick={() => setDialog({})}><Plus size={15}/>Add first session</button>}</div>}
     {dialog && <SessionDialog initial={dialog.id ? dialog : null} activity={data.activity} members={data.members} saving={saving} onClose={() => setDialog(null)} onSave={save}/>}
   </div>;
 }
