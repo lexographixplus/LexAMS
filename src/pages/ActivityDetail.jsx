@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, fmtDate, statusChip } from '../lib/format';
@@ -7,8 +7,15 @@ import CertificatePreview from '../components/CertificatePreview';
 import { useAuth } from '../contexts/AuthContext';
 import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
 import ActivityOperationalPulse from '../components/planning/ActivityOperationalPulse';
+import ActivityReportPulse from '../components/reporting/ActivityReportPulse';
 
-const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
+const ActivityReportWorkspace = lazy(() => import('../components/reporting/ActivityReportWorkspace'));
+
+const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates', 'Report'];
+
+function initialActivityTab() {
+  return new URLSearchParams(window.location.search).get('view') === 'report' ? 'Report' : 'Overview';
+}
 
 export default function ActivityDetail() {
   const { id } = useParams();
@@ -19,7 +26,7 @@ export default function ActivityDetail() {
     getAttForActivity, getDoneSessions, getAttendancePct,
     upsertAttendance, issueCertificate, updateActivity, deleteActivity,
   } = useData();
-  const [tab, setTab] = useState('Overview');
+  const [tab, setTab] = useState(initialActivityTab);
   const [session, setSession] = useState('Day 1');
   const [certType, setCertType] = useState('completion');
   const { profile, isDemo } = useAuth();
@@ -213,6 +220,7 @@ export default function ActivityDetail() {
               ))}
             </div>
             <ActivityOperationalPulse activity={activity} onOpenPlanning={() => setTab('Planning')} />
+            <ActivityReportPulse activity={activity} onOpenReport={() => setTab('Report')} />
           </div>
           <div className="activity-overview-side">
             {/* Share links */}
@@ -292,6 +300,15 @@ export default function ActivityDetail() {
       {tab === 'Planning' && (
         <div style={{ marginTop: 22 }}>
           <ActivityPlanningWorkspace activity={activity} />
+        </div>
+      )}
+
+      {/* Living Report Tab */}
+      {tab === 'Report' && (
+        <div style={{ marginTop: 22 }}>
+          <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Opening living report…</div>}>
+            <ActivityReportWorkspace activity={activity} />
+          </Suspense>
         </div>
       )}
 

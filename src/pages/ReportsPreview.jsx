@@ -1,3 +1,5 @@
+import { BookOpenCheck, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ReportsV2 from './ReportsV2';
 import { getReportPreviewAdvanced, isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
@@ -80,6 +82,10 @@ export default function ReportsPreview() {
   const demo = isReportingPreviewDemo();
   return <>
     {demo && <div style={{ marginBottom: 14, padding: '11px 14px', border: '1px solid var(--border-default)', borderRadius: 12, background: 'var(--surface-muted)', fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--color-navy-900)' }}>Preview demo mode:</strong> real preview records are mixed with synthetic programme, participant, attendance, survey, assessment and certificate data. Demo records exist only in this browser preview and are never written to Neon.</div>}
+    <div style={{ marginBottom: 16, padding: '14px 16px', border: '1px solid var(--border-default)', borderRadius: 14, background: 'linear-gradient(135deg, var(--surface-card), var(--surface-muted))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><BookOpenCheck size={21} color="var(--color-navy-700)"/><div><strong style={{ display: 'block', fontSize: 13, color: 'var(--color-navy-900)' }}>Need a narrative activity report?</strong><span style={{ display: 'block', marginTop: 3, fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}>Open an activity’s Living Report to combine these analytics with verified delivery records and editorial writing.</span></div></div>
+      <Link to="/app/activities" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--color-navy-700)', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse activities <ChevronRight size={14}/></Link>
+    </div>
     <ReportsV2 />
   </>;
 }
