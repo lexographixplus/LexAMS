@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { fmtRange, fmtDate, statusChip, initials as getInitials } from '../lib/format';
-import { Copy, Pencil, Trash2, Link as LinkIcon, ExternalLink, Eye } from 'lucide-react';
+import { fmtRange, fmtDate, statusChip } from '../lib/format';
+import { Copy, Pencil, Trash2, ExternalLink, Eye } from 'lucide-react';
 import CertificatePreview from '../components/CertificatePreview';
 import { useAuth } from '../contexts/AuthContext';
+import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
 
-const TABS = ['Overview', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
+const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
 
 export default function ActivityDetail() {
   const { id } = useParams();
@@ -167,7 +168,7 @@ export default function ActivityDetail() {
       </div>
 
       {/* Tabs */}
-      <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4 }}>
+      <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4, overflowX: 'auto' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>{t}</button>
         ))}
@@ -282,6 +283,13 @@ export default function ActivityDetail() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Planning Tab */}
+      {tab === 'Planning' && (
+        <div style={{ marginTop: 22 }}>
+          <ActivityPlanningWorkspace activity={activity} />
         </div>
       )}
 
