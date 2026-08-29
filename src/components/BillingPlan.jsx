@@ -7,13 +7,15 @@ const formatMoney = (amount) => `GMD ${Number(amount || 0).toLocaleString()}`;
 
 function Meter({ label, current, limit }) {
   const percent = Math.min(100, Math.round((current / limit) * 100));
+  const warning = percent >= 100 ? 'Limit reached' : percent >= 80 ? 'Approaching plan limit' : '';
   return <div style={{ marginTop: 13 }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
       <span>{label}</span><strong style={{ color: 'var(--text-primary)' }}>{current}/{limit}</strong>
     </div>
     <div style={{ height: 7, borderRadius: 99, background: 'var(--surface-muted)', overflow: 'hidden', marginTop: 7 }}>
-      <div style={{ height: '100%', width: `${percent}%`, borderRadius: 99, background: percent >= 90 ? 'var(--color-danger)' : 'var(--color-accent)' }} />
+      <div style={{ height: '100%', width: `${percent}%`, borderRadius: 99, background: percent >= 100 ? 'var(--color-danger)' : percent >= 80 ? '#D58B00' : 'var(--color-accent)' }} />
     </div>
+    {warning && <div style={{ marginTop: 5, color: percent >= 100 ? 'var(--color-danger)' : '#8A5A00', fontSize: 10, fontWeight: 700 }}>{warning}</div>}
   </div>;
 }
 
@@ -71,7 +73,7 @@ export default function BillingPlan({ isAdmin, notify }) {
       <div style={panel}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>Current access</div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 7 }}>{billing?.subscription?.status === 'grace' ? 'Pro access remains available during your grace period.' : renewalLabel}</div>
-        {!isPro && entitlement && usage && <>
+        {entitlement && usage && <>
           <Meter label="Active activities" current={usage.activeActivities} limit={entitlement.activeActivities} />
           <Meter label="Participants" current={usage.participants} limit={entitlement.participants} />
           <Meter label="Team seats" current={usage.teamSeats} limit={entitlement.teamSeats} />

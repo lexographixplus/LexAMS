@@ -8,6 +8,8 @@ const freeFeatures = [
   '1 survey per activity with up to 5 questions',
   '1 assessment per activity with up to 10 questions',
   'Generate, view and download up to 5 certificates per month',
+  'Manual planning, weekly schedules, budgets and journals',
+  '1 built-in activity report with linked evidence and PDF',
 ];
 
 const proFeatures = [
@@ -18,6 +20,11 @@ const proFeatures = [
   'Up to 25 assessments per activity with 100 questions each',
   'Timed assessments',
   'CSV and advanced report exports',
+  'Session and facilitator CSV import',
+  'Up to 25 reports per activity',
+  'Custom report templates and structures',
+  'Evidence-grounded narrative generation',
+  'Report review and approval workflows',
   'Custom organisation branding',
   'Up to 1,000 certificates per month',
   'Participant announcements and programme email',

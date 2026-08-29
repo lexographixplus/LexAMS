@@ -1,3 +1,5 @@
+import { phaseTwoEntitlements } from '../../shared/commercial.js';
+
 const members = [
   { id: 'preview-manager', name: 'Neneh Sowe', email: 'neneh@example.invalid', role: 'programme_manager' },
   { id: 'preview-facilitator-1', name: 'Ebrima Njie', email: 'ebrima@example.invalid', role: 'facilitator' },
@@ -37,6 +39,7 @@ const journalEntries = [
 ];
 
 export function getPlanningPreview(activity = {}) {
+  const commercialPlan = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === 'free' ? 'free' : 'pro';
   return {
     activity: {
       id: activity.id,
@@ -62,5 +65,6 @@ export function getPlanningPreview(activity = {}) {
       role: 'owner',
       readOnlyPreview: true,
     },
+    commercial: { plan: commercialPlan, status: 'active', entitlements: phaseTwoEntitlements(commercialPlan) },
   };
 }

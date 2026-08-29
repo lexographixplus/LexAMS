@@ -1,3 +1,5 @@
+import { phaseTwoEntitlements } from '../../../shared/commercial.js';
+
 type Queryable = { query: (...args: any[]) => Promise<any> };
 
 export type PlanName = 'free' | 'pro';
@@ -15,6 +17,12 @@ type EntitlementSet = {
   customBranding: boolean;
   monthlyCertificates: number;
   teamCollaboration: boolean;
+  sessionCsvImport: boolean;
+  reportsPerActivity: number;
+  customReportTemplates: boolean;
+  narrativeGeneration: boolean;
+  reportApprovals: boolean;
+  reportStructureEditing: boolean;
 };
 
 function envValue(name: string) {
@@ -42,6 +50,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanName, EntitlementSet> = {
     customBranding: false,
     monthlyCertificates: 5,
     teamCollaboration: false,
+    ...phaseTwoEntitlements('free'),
   },
   pro: {
     activeActivities: limit('LEXAMS_PRO_MAX_ACTIVE_ACTIVITIES', 100),
@@ -56,6 +65,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanName, EntitlementSet> = {
     customBranding: true,
     monthlyCertificates: limit('LEXAMS_PRO_MAX_MONTHLY_CERTIFICATES', 1000),
     teamCollaboration: true,
+    ...phaseTwoEntitlements('pro'),
   },
 };
 
@@ -80,6 +90,8 @@ export type BillingSnapshot = {
   };
 };
 
+export type PlanAccess = Pick<BillingSnapshot, 'subscription' | 'entitlements'>;
+
 function effectivePlan(subscription: any): PlanName {
   if (!subscription || subscription.plan !== 'pro') return 'free';
   const now = Date.now();
@@ -99,18 +111,9 @@ export async function ensureFreeSubscription(db: Queryable, organizationId: stri
   );
 }
 
-export async function getBillingSnapshot(db: Queryable, organizationId: string): Promise<BillingSnapshot> {
+export async function getPlanAccess(db: Queryable, organizationId: string): Promise<PlanAccess> {
   await ensureFreeSubscription(db, organizationId);
-  const [subscriptionResult, activeActivities, participants, teamSeats, monthlyCertificates] = await Promise.all([
-    db.query('select * from organization_subscriptions where organization_id = $1', [organizationId]),
-    db.query(`select count(*)::int as count from activities where organization_id = $1 and status in ('Upcoming', 'Ongoing')`, [organizationId]),
-    db.query('select count(*)::int as count from participants where organization_id = $1', [organizationId]),
-    db.query(`select (select count(*)::int from organization_members where organization_id = $1)
-                    + (select count(*)::int from team_invites where organization_id = $1 and status = 'pending') as count`, [organizationId]),
-    db.query(`select count(*)::int as count from certificates
-              where organization_id = $1 and issued_date >= date_trunc('month', current_date)::date`, [organizationId]),
-  ]);
-
+  const subscriptionResult = await db.query('select * from organization_subscriptions where organization_id = $1', [organizationId]);
   const record = subscriptionResult.rows[0] || null;
   const plan = effectivePlan(record);
   const status = plan === 'free' && record?.plan === 'pro' && !['cancelled', 'expired'].includes(record.status)
@@ -130,6 +133,22 @@ export async function getBillingSnapshot(db: Queryable, organizationId: string):
       cancel_at_period_end: Boolean(record?.cancel_at_period_end),
     },
     entitlements: PLAN_ENTITLEMENTS[plan],
+  };
+}
+
+export async function getBillingSnapshot(db: Queryable, organizationId: string): Promise<BillingSnapshot> {
+  const [access, activeActivities, participants, teamSeats, monthlyCertificates] = await Promise.all([
+    getPlanAccess(db, organizationId),
+    db.query(`select count(*)::int as count from activities where organization_id = $1 and status in ('Upcoming', 'Ongoing')`, [organizationId]),
+    db.query('select count(*)::int as count from participants where organization_id = $1', [organizationId]),
+    db.query(`select (select count(*)::int from organization_members where organization_id = $1)
+                    + (select count(*)::int from team_invites where organization_id = $1 and status = 'pending') as count`, [organizationId]),
+    db.query(`select count(*)::int as count from certificates
+              where organization_id = $1 and issued_date >= date_trunc('month', current_date)::date`, [organizationId]),
+  ]);
+
+  return {
+    ...access,
     usage: {
       activeActivities: activeActivities.rows[0].count,
       participants: participants.rows[0].count,
@@ -158,9 +177,10 @@ export class PlanLimitError extends Error {
   }
 }
 
-export function requireAllowance(feature: string, current: number, limitValue: number, code = 'PLAN_LIMIT_REACHED') {
+export function requireAllowance(feature: string, current: number, limitValue: number, code = 'PLAN_LIMIT_REACHED', plan: PlanName = 'free') {
   if (current < limitValue) return;
-  throw new PlanLimitError(code, feature, current, limitValue, `Your Free plan has reached its ${feature} limit. Upgrade to Pro to continue.`);
+  const planLabel = plan === 'pro' ? 'Your Pro plan' : 'Your Free plan';
+  throw new PlanLimitError(code, feature, current, limitValue, `${planLabel} has reached its ${feature} limit.${plan === 'free' ? ' Upgrade to Pro to continue.' : ' Contact LexAMS support if you need more capacity.'}`);
 }
 
 export function requirePro(feature: string, allowed: boolean) {
@@ -178,34 +198,34 @@ export async function assertCreationEntitlement(
   const limits = snapshot.entitlements;
 
   if (table === 'activities' && ['Upcoming', 'Ongoing'].includes(row.status || 'Upcoming')) {
-    requireAllowance('active activities', snapshot.usage.activeActivities, limits.activeActivities, 'ACTIVITY_LIMIT_REACHED');
+    requireAllowance('active activities', snapshot.usage.activeActivities, limits.activeActivities, 'ACTIVITY_LIMIT_REACHED', snapshot.subscription.plan);
   }
   if (table === 'participants') {
-    requireAllowance('participants', snapshot.usage.participants, limits.participants, 'PARTICIPANT_LIMIT_REACHED');
+    requireAllowance('participants', snapshot.usage.participants, limits.participants, 'PARTICIPANT_LIMIT_REACHED', snapshot.subscription.plan);
   }
   if (table === 'team_invites') {
     requirePro('team collaboration', limits.teamCollaboration);
-    requireAllowance('team seats', snapshot.usage.teamSeats, limits.teamSeats, 'TEAM_SEAT_LIMIT_REACHED');
+    requireAllowance('team seats', snapshot.usage.teamSeats, limits.teamSeats, 'TEAM_SEAT_LIMIT_REACHED', snapshot.subscription.plan);
   }
   if (table === 'certificates') {
-    requireAllowance('monthly certificates', snapshot.usage.monthlyCertificates, limits.monthlyCertificates, 'CERTIFICATE_LIMIT_REACHED');
+    requireAllowance('monthly certificates', snapshot.usage.monthlyCertificates, limits.monthlyCertificates, 'CERTIFICATE_LIMIT_REACHED', snapshot.subscription.plan);
   }
   if (table === 'surveys') {
     const result = await db.query('select count(*)::int as count from surveys where organization_id = $1 and activity_id is not distinct from $2', [organizationId, row.activity_id ?? null]);
-    requireAllowance('surveys per activity', result.rows[0].count, limits.surveysPerActivity);
+    requireAllowance('surveys per activity', result.rows[0].count, limits.surveysPerActivity, undefined, snapshot.subscription.plan);
   }
   if (table === 'survey_questions') {
     const result = await db.query('select count(*)::int as count from survey_questions where survey_id = $1', [row.survey_id]);
-    requireAllowance('survey questions', result.rows[0].count, limits.surveyQuestions);
+    requireAllowance('survey questions', result.rows[0].count, limits.surveyQuestions, undefined, snapshot.subscription.plan);
   }
   if (table === 'assessments') {
     const result = await db.query('select count(*)::int as count from assessments where organization_id = $1 and activity_id is not distinct from $2', [organizationId, row.activity_id ?? null]);
-    requireAllowance('assessments per activity', result.rows[0].count, limits.assessmentsPerActivity);
+    requireAllowance('assessments per activity', result.rows[0].count, limits.assessmentsPerActivity, undefined, snapshot.subscription.plan);
     if (row.time_limit_minutes) requirePro('timed assessments', limits.timedAssessments);
   }
   if (table === 'assessment_questions') {
     const result = await db.query('select count(*)::int as count from assessment_questions where assessment_id = $1', [row.assessment_id]);
-    requireAllowance('assessment questions', result.rows[0].count, limits.assessmentQuestions);
+    requireAllowance('assessment questions', result.rows[0].count, limits.assessmentQuestions, undefined, snapshot.subscription.plan);
   }
 }
 

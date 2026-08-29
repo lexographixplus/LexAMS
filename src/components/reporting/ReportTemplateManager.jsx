@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, FilePlus2, GripVertical, Plus, Save, Trash2, X } from 'lucide-react';
+import { Copy, FilePlus2, GripVertical, LockKeyhole, Plus, Save, Trash2, X } from 'lucide-react';
 import { REPORT_SECTION_TYPES, REPORT_SOURCE_TYPES, REPORT_VISUALIZATIONS, reportSourceLabel } from '../../../shared/reporting.js';
 
 function blankSection(position = 10) {
@@ -16,12 +16,13 @@ function cloneTemplate(template) {
   };
 }
 
-export default function ReportTemplateManager({ data, saving, onClose, onMutate }) {
+export default function ReportTemplateManager({ data, saving, onClose, onMutate, onUpgrade }) {
   const initial = data.templates.find(template => !template.is_builtin) || data.templates[0];
   const [selectedId, setSelectedId] = useState(initial?.id || 'new');
   const [draft, setDraft] = useState(() => cloneTemplate(initial));
   const selected = useMemo(() => data.templates.find(template => String(template.id) === String(selectedId)), [data.templates, selectedId]);
-  const editable = data.permissions.canManageTemplates && !draft.is_builtin;
+  const commercialEnabled = Boolean(data.commercial?.entitlements?.customReportTemplates);
+  const editable = data.permissions.canManageTemplates && commercialEnabled && !draft.is_builtin;
 
   function choose(template) {
     setSelectedId(template.id);
@@ -78,8 +79,9 @@ export default function ReportTemplateManager({ data, saving, onClose, onMutate 
     <section className="activity-report-modal activity-report-template-modal" role="dialog" aria-modal="true" aria-labelledby="report-template-manager-title">
       <header><div><span>Organisation reporting</span><h3 id="report-template-manager-title">Report template library</h3><p>Reuse a consistent report structure across activities. Built-in templates can be copied before customisation.</p></div><button onClick={onClose} aria-label="Close"><X size={18}/></button></header>
       {data.permissions.readOnlyPreview && <div className="activity-report-preview-note">Template management is visible for review in this read-only deploy preview.</div>}
+      {!commercialEnabled && <div className="activity-report-pro-note"><LockKeyhole size={16}/><span>Your existing organisation templates remain readable. Pro is required to create, copy, edit or delete templates.</span><button className="secondary pro-locked" onClick={() => onUpgrade('custom-report-templates')}>View Pro</button></div>}
       <div className="activity-report-template-layout">
-        <aside><div className="activity-report-template-side-head"><strong>Templates</strong>{data.permissions.canManageTemplates && <button onClick={startNew}><FilePlus2 size={14}/>New</button>}</div>{data.templates.map(template => <button key={template.id} className={String(selectedId) === String(template.id) ? 'active' : ''} onClick={() => choose(template)}><span>{template.name}</span><small>{template.is_builtin ? 'Built-in starter' : 'Organisation template'} · {template.sections.length} sections</small></button>)}</aside>
+        <aside><div className="activity-report-template-side-head"><strong>Templates</strong>{data.permissions.canManageTemplates && (commercialEnabled ? <button onClick={startNew}><FilePlus2 size={14}/>New</button> : <button className="pro-locked" onClick={() => onUpgrade('custom-report-templates')}><LockKeyhole size={13}/>Pro</button>)}</div>{data.templates.map(template => <button key={template.id} className={String(selectedId) === String(template.id) ? 'active' : ''} onClick={() => choose(template)}><span>{template.name}</span><small>{template.is_builtin ? 'Built-in starter' : 'Organisation template'} · {template.sections.length} sections</small></button>)}</aside>
         <div className="activity-report-template-editor">
           <div className="activity-report-template-fields"><label><span>Template name</span><input value={draft.name} disabled={!editable} onChange={event => setDraft({ ...draft, name: event.target.value })}/></label><label><span>Description</span><textarea value={draft.description} disabled={!editable} onChange={event => setDraft({ ...draft, description: event.target.value })}/></label></div>
           <div className="activity-report-template-section-head"><div><strong>Report sections</strong><small>Order, source and instructions are copied into each new activity report.</small></div>{editable && <button onClick={() => setDraft(current => ({ ...current, sections: [...current.sections, blankSection((current.sections.length + 1) * 10)] }))}><Plus size={14}/>Add section</button>}</div>
@@ -90,7 +92,7 @@ export default function ReportTemplateManager({ data, saving, onClose, onMutate 
           </article>)}</div>
         </div>
       </div>
-      <footer><div>{selected?.is_builtin && data.permissions.canManageTemplates && <button className="secondary" onClick={duplicate} disabled={saving}><Copy size={14}/>Copy to organisation</button>}{selected && !selected.is_builtin && data.permissions.canManageTemplates && <button className="danger-text" onClick={remove} disabled={saving}><Trash2 size={14}/>Delete template</button>}</div><div><button className="secondary" onClick={onClose}>Close</button>{editable && <button className="primary" onClick={save} disabled={saving || !draft.name.trim() || !draft.sections.length}><Save size={14}/>{saving ? 'Saving…' : 'Save template'}</button>}</div></footer>
+      <footer><div>{selected?.is_builtin && data.permissions.canManageTemplates && (commercialEnabled ? <button className="secondary" onClick={duplicate} disabled={saving}><Copy size={14}/>Copy to organisation</button> : <button className="secondary pro-locked" onClick={() => onUpgrade('custom-report-templates')}><LockKeyhole size={14}/>Copy · Pro</button>)}{selected && !selected.is_builtin && data.permissions.canManageTemplates && commercialEnabled && <button className="danger-text" onClick={remove} disabled={saving}><Trash2 size={14}/>Delete template</button>}</div><div><button className="secondary" onClick={onClose}>Close</button>{editable && <button className="primary" onClick={save} disabled={saving || !draft.name.trim() || !draft.sections.length}><Save size={14}/>{saving ? 'Saving…' : 'Save template'}</button>}</div></footer>
     </section>
   </div>;
 }
