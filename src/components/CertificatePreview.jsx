@@ -1,6 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CertificateSignatureGrid from './CertificateSignatureGrid';
 import { isRecognitionCertificate, recognitionTitle } from '../../shared/recognition.js';
+
+const CERTIFICATE_WIDTH = 860;
+const CERTIFICATE_HEIGHT = CERTIFICATE_WIDTH * 210 / 297;
+
+function certificatePreviewScale() {
+  if (typeof window === 'undefined') return 1;
+
+  const mobile = window.innerWidth <= 720;
+  const availableWidth = window.innerWidth - (mobile ? 24 : 64);
+  const availableHeight = window.innerHeight - (mobile ? 104 : 96);
+  return Math.min(1, availableWidth / CERTIFICATE_WIDTH, availableHeight / CERTIFICATE_HEIGHT);
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -14,6 +26,7 @@ function escapeHtml(value) {
 export default function CertificatePreview({ cert, participant, activity, orgName, logoUrl, onClose, downloadEnabled = true }) {
   const certRef = useRef(null);
   const dialogRef = useRef(null);
+  const [previewScale, setPreviewScale] = useState(certificatePreviewScale);
   const metadata = cert?.metadata || {};
   const signatories = Array.isArray(cert?.metadata?.signatories) ? cert.metadata.signatories.slice(0, 4) : [];
   const recognition = isRecognitionCertificate(cert);
@@ -26,6 +39,15 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [onClose]);
+
+  useEffect(() => {
+    function resizePreview() {
+      setPreviewScale(certificatePreviewScale());
+    }
+
+    window.addEventListener('resize', resizePreview);
+    return () => window.removeEventListener('resize', resizePreview);
+  }, []);
 
   function fmtDate(iso) {
     if (!iso) return '';
@@ -169,8 +191,9 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
           <button onClick={onClose} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'rgba(255,255,255,0.9)', color: 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>Close</button>
         </div>
 
-        <div className="certificate-preview-sheet" ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: 860, maxWidth: '95vw', padding: 10 }}>
-          <div className="certificate-preview-content" style={{ border: '1px solid var(--color-gold-500)', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+        <div className="certificate-preview-stage" style={{ width: CERTIFICATE_WIDTH * previewScale, height: CERTIFICATE_HEIGHT * previewScale }}>
+          <div className="certificate-preview-sheet" ref={certRef} style={{ background: '#FFFFFF', border: '2.5px solid var(--color-navy-900)', borderRadius: 4, boxShadow: 'var(--shadow-raised)', width: CERTIFICATE_WIDTH, height: CERTIFICATE_HEIGHT, maxWidth: 'none', padding: 10, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
+            <div className="certificate-preview-content" style={{ border: '1px solid var(--color-gold-500)', height: '100%', padding: '38px 56px 30px', textAlign: 'center', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-navy-900)' }}>{orgName || 'Organization'}</div>
             <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-navy-700)', marginTop: 14 }}><span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span>&nbsp;&nbsp;{certificateLabel}&nbsp;&nbsp;<span style={{ color: 'var(--color-gold-500)' }}>{'\u25CF'}</span></div>
@@ -192,6 +215,7 @@ export default function CertificatePreview({ cert, participant, activity, orgNam
                 <div className="certificate-preview-signature" style={{ textAlign: 'right' }}><div className="certificate-preview-signature-line" style={{ width: 180, borderBottom: '1px solid var(--color-ink-500)', marginLeft: 'auto' }} /><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-navy-900)', marginTop: 8 }}>{orgName || ''}</div><div style={{ fontSize: 11, color: 'var(--color-ink-500)' }}>Issuing Organization</div></div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
