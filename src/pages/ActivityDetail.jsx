@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { fmtRange, fmtDate, statusChip, initials as getInitials } from '../lib/format';
-import { Copy, Pencil, Trash2, Link as LinkIcon, ExternalLink, Eye } from 'lucide-react';
+import { fmtRange, fmtDate, statusChip } from '../lib/format';
+import { Copy, Pencil, Trash2, ExternalLink, Eye } from 'lucide-react';
 import CertificatePreview from '../components/CertificatePreview';
 import { useAuth } from '../contexts/AuthContext';
+import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
 
-const TABS = ['Overview', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
+const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates'];
 
 export default function ActivityDetail() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function ActivityDetail() {
   const [tab, setTab] = useState('Overview');
   const [session, setSession] = useState('Day 1');
   const [certType, setCertType] = useState('completion');
-  const { profile } = useAuth();
+  const { profile, isDemo } = useAuth();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -150,7 +151,7 @@ export default function ActivityDetail() {
             Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        {!isDemo && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={openEdit} title="Edit activity" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', fontSize: 13, fontWeight: 600,
@@ -163,11 +164,11 @@ export default function ActivityDetail() {
             background: 'transparent', border: '1.5px solid var(--color-danger)',
             borderRadius: 'var(--radius-md)', color: 'var(--color-danger)', cursor: 'pointer',
           }}><Trash2 size={14} /> Delete</button>
-        </div>
+        </div>}
       </div>
 
       {/* Tabs */}
-      <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4 }}>
+      <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4, overflowX: 'auto' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>{t}</button>
         ))}
@@ -282,6 +283,13 @@ export default function ActivityDetail() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Planning Tab */}
+      {tab === 'Planning' && (
+        <div style={{ marginTop: 22 }}>
+          <ActivityPlanningWorkspace activity={activity} />
         </div>
       )}
 

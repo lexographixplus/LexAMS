@@ -3,9 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import ActivityDetail from './ActivityDetail';
 import ActivityOperationsPanel from '../components/ActivityOperationsPanel';
 import ActivityWideCheckinPanel from '../components/ActivityWideCheckinPanel';
+import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 
 export default function ActivityDetailFrame() {
   const { id } = useParams();
+  const preview = isReportingPreviewDemo();
   return (
     <div className="lexams-activity-detail-v2">
       <style>{`
@@ -54,9 +56,9 @@ export default function ActivityDetailFrame() {
           .lexams-activity-detail-v2 > div > div:nth-of-type(n+3) > div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
         }
       `}</style>
-      <div className="lexams-activity-award-shortcut"><Link to={`/certificates?awardActivity=${encodeURIComponent(id || '')}#awards-recognition`}><Award size={15}/>Give award / recognition</Link></div>
-      <ActivityWideCheckinPanel />
-      <ActivityOperationsPanel />
+      <div className="lexams-activity-award-shortcut"><Link to={`/app/certificates?awardActivity=${encodeURIComponent(id || '')}#awards-recognition`}><Award size={15}/>Give award / recognition</Link></div>
+      {!preview && <ActivityWideCheckinPanel />}
+      {!preview && <ActivityOperationsPanel />}
       <ActivityDetail />
     </div>
   );
