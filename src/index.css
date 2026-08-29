@@ -249,6 +249,82 @@ input, select, textarea { font-family: var(--font-body); }
   gap: 18px !important;
 }
 
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html.certificate-printing,
+  html.certificate-printing body,
+  html.certificate-printing #root {
+    width: 297mm !important;
+    height: 210mm !important;
+    overflow: hidden !important;
+    background: #fff !important;
+  }
+
+  body.certificate-printing {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.certificate-printing * {
+    visibility: hidden !important;
+  }
+
+  body.certificate-printing .certificate-print-target,
+  body.certificate-printing .certificate-print-target * {
+    visibility: visible !important;
+  }
+
+  body.certificate-printing .certificate-preview-backdrop {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  body.certificate-printing .certificate-preview-actions {
+    display: none !important;
+  }
+
+  body.certificate-printing .certificate-preview-stage {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 297mm !important;
+    height: 210mm !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  body.certificate-printing .certificate-preview-sheet {
+    width: 273mm !important;
+    height: 186mm !important;
+    max-width: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  body.certificate-printing #certificate-print {
+    position: fixed !important;
+    left: 12mm !important;
+    top: 12mm !important;
+    width: 273mm !important;
+    height: 186mm !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+  }
+
+  body.certificate-printing .certificate-public-content {
+    height: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+}
+
 /* Settings and Team */
 .lexams-ui-settings > div,
 .lexams-ui-team > div {
