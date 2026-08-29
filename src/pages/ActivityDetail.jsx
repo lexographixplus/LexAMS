@@ -21,7 +21,7 @@ export default function ActivityDetail() {
   const [tab, setTab] = useState('Overview');
   const [session, setSession] = useState('Day 1');
   const [certType, setCertType] = useState('completion');
-  const { profile } = useAuth();
+  const { profile, isDemo } = useAuth();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -151,7 +151,7 @@ export default function ActivityDetail() {
             Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        {!isDemo && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={openEdit} title="Edit activity" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', fontSize: 13, fontWeight: 600,
@@ -164,7 +164,7 @@ export default function ActivityDetail() {
             background: 'transparent', border: '1.5px solid var(--color-danger)',
             borderRadius: 'var(--radius-md)', color: 'var(--color-danger)', cursor: 'pointer',
           }}><Trash2 size={14} /> Delete</button>
-        </div>
+        </div>}
       </div>
 
       {/* Tabs */}
