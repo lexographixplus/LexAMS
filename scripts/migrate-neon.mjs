@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { Pool } from '@neondatabase/serverless';
+import { normalizeMigrationSql } from './migration-utils.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const migrationsDirectory = path.join(root, 'db', 'migrations');
@@ -15,7 +16,10 @@ async function migrationFiles() {
     if (!name.startsWith(`${expected}_`)) throw new Error(`Migration sequence is incomplete at ${name}; expected ${expected}_*.sql.`);
   });
   return Promise.all(names.map(async name => {
-    const sql = await readFile(path.join(migrationsDirectory, name), 'utf8');
+    // Git may check SQL files out with CRLF on Windows while Netlify applies
+    // them with LF. Normalize line endings so the migration ledger checksum is
+    // stable across environments.
+    const sql = normalizeMigrationSql(await readFile(path.join(migrationsDirectory, name), 'utf8'));
     return { name, sql, checksum: createHash('sha256').update(sql).digest('hex') };
   }));
 }
