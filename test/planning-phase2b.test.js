@@ -6,11 +6,13 @@ import {
   calculateJournalSummary,
   canEditJournalEntry,
   filterSessionFacilitatorsToTeam,
+  inferSpreadsheetDateOrder,
   normalizeBudgetItem,
   normalizeJournalEntry,
   normalizeSessionImportRow,
   normalizeSpreadsheetDate,
   planningPermissions,
+  sessionImportIdentity,
 } from '../shared/planning.js';
 import { autoMapCsvHeaders, parseCsv } from '../shared/csv.js';
 
@@ -101,6 +103,31 @@ test('session CSV accepts spreadsheet date formats and resolves them against the
 
   const normalized = normalizeSessionImportRow({ title: 'Opening session', session_date: '9/1/2026' }, activityPeriod);
   assert.equal(normalized.session_date, '2026-09-01');
+});
+
+test('session CSV detects one date order and resolves otherwise ambiguous dates consistently', () => {
+  const values = ['31/08/2026', '01/09/2026', '10/09/2026', '09/10/2026'];
+  const dateOrder = inferSpreadsheetDateOrder(values);
+  assert.equal(dateOrder, 'dmy');
+  const activityPeriod = { minDate: '2026-08-31', maxDate: '2026-10-09', dateOrder };
+  assert.equal(normalizeSpreadsheetDate('10/09/2026', 'Session date', activityPeriod), '2026-09-10');
+  assert.equal(normalizeSpreadsheetDate('09/10/2026', 'Session date', activityPeriod), '2026-10-09');
+  assert.equal(inferSpreadsheetDateOrder(['08/31/2026', '09/10/2026']), 'mdy');
+});
+
+test('recurring titles are distinct sessions while exact schedule copies share an import identity', () => {
+  assert.notEqual(
+    sessionImportIdentity({ title: 'Overnight Mail', session_date: '2026-09-10', starts_at: '09:00' }),
+    sessionImportIdentity({ title: 'Overnight Mail', session_date: '2026-10-09', starts_at: '09:00' }),
+  );
+  assert.notEqual(
+    sessionImportIdentity({ title: 'M&E', session_date: '2026-09-11', starts_at: '10:00' }),
+    sessionImportIdentity({ title: 'M&E', session_date: '2026-09-11', starts_at: '11:30' }),
+  );
+  assert.equal(
+    sessionImportIdentity({ title: ' Teambuilding Activities ', session_date: '2026-09-10', starts_at: '09:00' }),
+    sessionImportIdentity({ title: 'teambuilding activities', session_date: '2026-09-10', starts_at: '09:00' }),
+  );
 });
 
 test('legacy downloaded session templates do not block imports with placeholder facilitator emails', () => {

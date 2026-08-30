@@ -15,6 +15,7 @@ import {
   normalizeSessionPlan,
   planningPermissions,
   SESSION_PLANNING_STATUSES,
+  sessionImportIdentity,
 } from '../../shared/planning.js';
 
 function json(data: unknown, status = 200) {
@@ -425,16 +426,23 @@ export default async (request: Request, context: Context) => {
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : 'The session CSV contains invalid data.' }, 400);
       }
-      const seenTitles = new Set<string>();
+      const seenSessions = new Set<string>();
+      const uniqueRows = [];
+      let duplicateRowsSkipped = 0;
       for (const row of rows) {
-        const key = row.title.trim().toLowerCase();
-        if (seenTitles.has(key)) return json({ error: `Row ${row.rowNumber}: session title “${row.title}” appears more than once.` }, 400);
-        seenTitles.add(key);
         const date = row.session_date;
         if (date < activityStart || date > activityEnd) {
           return json({ error: `Row ${row.rowNumber}: session date ${date} must fall within the activity period (${activityStart} to ${activityEnd}).` }, 400);
         }
+        const key = sessionImportIdentity(row);
+        if (seenSessions.has(key)) {
+          duplicateRowsSkipped += 1;
+          continue;
+        }
+        seenSessions.add(key);
+        uniqueRows.push(row);
       }
+      rows = uniqueRows;
 
       const membersResult = await db.query(
         `select om.user_id::text as id,lower(u.email) as email
@@ -452,12 +460,12 @@ export default async (request: Request, context: Context) => {
         `select * from activity_sessions where organization_id=$1 and activity_id=$2 order by sort_order,id`,
         [organizationId, activityId],
       );
-      const existingByTitle = new Map(existingResult.rows.map(session => [String(session.title).trim().toLowerCase(), session]));
+      const existingBySession = new Map(existingResult.rows.map(session => [sessionImportIdentity(session), session]));
       let nextSortOrder = existingResult.rows.reduce((maximum, session) => Math.max(maximum, Number(session.sort_order || 0)), -1) + 1;
       const summary = {
         created: 0,
         updated: 0,
-        skipped: 0,
+        skipped: duplicateRowsSkipped,
         facilitatorsAssigned: 0,
         facilitatorsSkipped: rows.reduce((total, row) => total + row.skipped_facilitator_emails.length, 0),
       };
@@ -465,8 +473,8 @@ export default async (request: Request, context: Context) => {
       try {
         await client.query('begin');
         for (const row of rows) {
-          const key = row.title.trim().toLowerCase();
-          const existing = existingByTitle.get(key);
+          const key = sessionImportIdentity(row);
+          const existing = existingBySession.get(key);
           if (existing && duplicateMode === 'skip') { summary.skipped += 1; continue; }
           let saved;
           if (existing) {
@@ -488,7 +496,7 @@ export default async (request: Request, context: Context) => {
                 row.venue, row.description, row.learning_objectives, row.planning_status, nextSortOrder],
             );
             saved = result.rows[0];
-            existingByTitle.set(key, saved);
+            existingBySession.set(key, saved);
             nextSortOrder += 1;
             summary.created += 1;
           }
