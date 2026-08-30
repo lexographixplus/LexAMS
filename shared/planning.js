@@ -9,6 +9,7 @@ export const BUDGET_CURRENCIES = ['GMD', 'USD', 'EUR', 'GBP', 'XOF'];
 const PLANNING_MANAGERS = new Set(['owner', 'admin', 'programme_manager']);
 const ASSIGNED_TASK_CONTRIBUTORS = new Set(['facilitator', 'me_officer']);
 const JOURNAL_CONTRIBUTORS = new Set(['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer']);
+const LEGACY_SESSION_TEMPLATE_EMAILS = new Set(['lead@example.org', 'cofacilitator@example.org']);
 
 export function planningPermissions(role) {
   return {
@@ -228,8 +229,10 @@ export function normalizeEmailList(value) {
 }
 
 export function normalizeSessionImportRow(input = {}, dateRange = {}) {
-  const facilitatorEmails = normalizeEmailList(input.facilitator_emails);
-  const leadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
+  const facilitatorEmails = normalizeEmailList(input.facilitator_emails)
+    .filter(email => !LEGACY_SESSION_TEMPLATE_EMAILS.has(email));
+  const requestedLeadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
+  const leadEmail = LEGACY_SESSION_TEMPLATE_EMAILS.has(requestedLeadEmail) ? '' : requestedLeadEmail;
   if (leadEmail && !validEmail(leadEmail)) throw new Error(`Invalid lead facilitator email: ${leadEmail}.`);
   const emails = leadEmail && !facilitatorEmails.includes(leadEmail) ? [leadEmail, ...facilitatorEmails] : facilitatorEmails;
   const sessionDate = normalizeSpreadsheetDate(input.session_date, 'Session date', dateRange);

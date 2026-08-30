@@ -73,7 +73,7 @@ test('multi-week activities are split into seven-day planning windows', () => {
 });
 
 test('session CSV supports quoted cells, automatic mapping and facilitator lists', () => {
-  const rows = parseCsv('session_title,date,lead_facilitator_email,facilitator_emails\r\n"Data, tools",2026-08-12,LEAD@example.org,"one@example.org; two@example.org"\r\n');
+  const rows = parseCsv('session_title,date,lead_facilitator_email,facilitator_emails\r\n"Data, tools",2026-08-12,LEAD@workspace.org,"one@example.org; two@example.org"\r\n');
   assert.equal(rows[1][0], 'Data, tools');
   const fields = [
     { key: 'title', aliases: ['sessiontitle'] },
@@ -83,8 +83,8 @@ test('session CSV supports quoted cells, automatic mapping and facilitator lists
   const normalized = normalizeSessionImportRow({
     title: rows[1][0], session_date: rows[1][1], lead_facilitator_email: rows[1][2], facilitator_emails: rows[1][3],
   });
-  assert.deepEqual(normalized.facilitator_emails, ['lead@example.org', 'one@example.org', 'two@example.org']);
-  assert.equal(normalized.lead_facilitator_email, 'lead@example.org');
+  assert.deepEqual(normalized.facilitator_emails, ['lead@workspace.org', 'one@example.org', 'two@example.org']);
+  assert.equal(normalized.lead_facilitator_email, 'lead@workspace.org');
 });
 
 test('session CSV accepts spreadsheet date formats and resolves them against the activity period', () => {
@@ -100,4 +100,15 @@ test('session CSV accepts spreadsheet date formats and resolves them against the
 
   const normalized = normalizeSessionImportRow({ title: 'Opening session', session_date: '9/1/2026' }, activityPeriod);
   assert.equal(normalized.session_date, '2026-09-01');
+});
+
+test('legacy downloaded session templates do not block imports with placeholder facilitator emails', () => {
+  const normalized = normalizeSessionImportRow({
+    title: 'Opening and orientation',
+    session_date: '2026-08-31',
+    lead_facilitator_email: 'lead@example.org',
+    facilitator_emails: 'cofacilitator@example.org',
+  }, { minDate: '2026-08-31', maxDate: '2026-10-09' });
+  assert.deepEqual(normalized.facilitator_emails, []);
+  assert.equal(normalized.lead_facilitator_email, null);
 });

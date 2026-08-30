@@ -54,6 +54,13 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
 
   const validRows = preparedRows.filter(row => !row.problems.length);
   const invalidCount = preparedRows.length - validRows.length;
+  const importButtonLabel = preview
+    ? 'Preview only'
+    : saving
+      ? 'Importing…'
+      : invalidCount
+        ? `Fix ${invalidCount} row${invalidCount === 1 ? '' : 's'} to import`
+        : `Import ${validRows.length} session${validRows.length === 1 ? '' : 's'}`;
 
   function reset() {
     setFileName(''); setHeaders([]); setRows([]); setMapping({}); setError(''); setResult(null); setDuplicateMode('skip');
@@ -125,12 +132,13 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
               <div className="planning-import-map">{FIELDS.map(field => <label key={field.key}><span>{field.label}{field.required ? ' *' : ''}</span><select value={mapping[field.key] ?? ''} onChange={event => setMapping(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Not mapped</option>{headers.map((header, index) => <option key={`${header}-${index}`} value={String(index)}>{header || `Column ${index + 1}`}</option>)}</select></label>)}</div>
             </section>
             <div className="planning-import-summary"><div><strong>{preparedRows.length}</strong><span>Rows</span></div><div><strong>{validRows.length}</strong><span>Ready</span></div><div><strong>{invalidCount}</strong><span>Needs fixing</span></div><div><strong>{new Set(validRows.flatMap(row => row.data.facilitator_emails)).size}</strong><span>Facilitators</span></div></div>
+            {invalidCount > 0 && <div id="planning-import-blocker" className="planning-message error"><span><strong>Import is paused.</strong> {invalidCount} row{invalidCount === 1 ? '' : 's'} need fixing. Check the Status column below for the exact date, mapping, or facilitator issue.</span></div>}
             <section className="planning-import-preview"><div className="planning-import-row planning-import-row-head"><span>Row</span><span>Session</span><span>Date & time</span><span>Facilitators</span><span>Status</span></div>{preparedRows.slice(0, 10).map(row => <div className="planning-import-row" key={row.rowNumber}><span>{row.rowNumber}</span><span><strong>{row.data.title || '—'}</strong><small>{row.data.venue || 'Venue not set'}</small></span><span>{row.data.session_date || '—'}<small>{row.data.starts_at || 'Time not set'}{row.data.ends_at ? `–${row.data.ends_at}` : ''}</small></span><span>{row.data.facilitator_emails?.join(', ') || 'Unassigned'}</span><span className={row.problems.length ? 'planning-import-invalid' : 'planning-import-valid'}>{row.problems.length ? row.problems.join(' · ') : 'Ready'}</span></div>)}</section>
             {preparedRows.length > 10 && <p className="planning-import-help">Showing 10 of {preparedRows.length} rows.</p>}
           </>}
           {result && <div className="planning-message success"><span><strong>Import complete.</strong> {result.created || 0} created, {result.updated || 0} updated, {result.skipped || 0} skipped, {result.facilitatorsAssigned || 0} facilitator assignments.</span></div>}
         </div>
-        <footer><button className="planning-secondary-button" onClick={() => setOpen(false)} disabled={saving}>Close</button><button className="planning-primary-button" onClick={runImport} disabled={saving || !validRows.length || Boolean(invalidCount) || preview}>{preview ? 'Preview only' : saving ? 'Importing…' : `Import ${validRows.length} session${validRows.length === 1 ? '' : 's'}`}</button></footer>
+        <footer><button className="planning-secondary-button" onClick={() => setOpen(false)} disabled={saving}>Close</button><button className="planning-primary-button" onClick={runImport} disabled={saving || !validRows.length || Boolean(invalidCount) || preview} aria-describedby={invalidCount ? 'planning-import-blocker' : undefined}>{importButtonLabel}</button></footer>
       </section>
     </div>}
   </>;
