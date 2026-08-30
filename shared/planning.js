@@ -9,6 +9,7 @@ export const BUDGET_CURRENCIES = ['GMD', 'USD', 'EUR', 'GBP', 'XOF'];
 const PLANNING_MANAGERS = new Set(['owner', 'admin', 'programme_manager']);
 const ASSIGNED_TASK_CONTRIBUTORS = new Set(['facilitator', 'me_officer']);
 const JOURNAL_CONTRIBUTORS = new Set(['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer']);
+const LEGACY_SESSION_TEMPLATE_EMAILS = new Set(['lead@example.org', 'cofacilitator@example.org']);
 
 export function planningPermissions(role) {
   return {
@@ -228,8 +229,10 @@ export function normalizeEmailList(value) {
 }
 
 export function normalizeSessionImportRow(input = {}, dateRange = {}) {
-  const facilitatorEmails = normalizeEmailList(input.facilitator_emails);
-  const leadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
+  const facilitatorEmails = normalizeEmailList(input.facilitator_emails)
+    .filter(email => !LEGACY_SESSION_TEMPLATE_EMAILS.has(email));
+  const requestedLeadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
+  const leadEmail = LEGACY_SESSION_TEMPLATE_EMAILS.has(requestedLeadEmail) ? '' : requestedLeadEmail;
   if (leadEmail && !validEmail(leadEmail)) throw new Error(`Invalid lead facilitator email: ${leadEmail}.`);
   const emails = leadEmail && !facilitatorEmails.includes(leadEmail) ? [leadEmail, ...facilitatorEmails] : facilitatorEmails;
   const sessionDate = normalizeSpreadsheetDate(input.session_date, 'Session date', dateRange);
@@ -237,6 +240,23 @@ export function normalizeSessionImportRow(input = {}, dateRange = {}) {
     ...normalizeSessionPlan({ ...input, session_date: sessionDate, facilitator_ids: [] }),
     facilitator_emails: emails,
     lead_facilitator_email: leadEmail || emails[0] || null,
+  };
+}
+
+export function filterSessionFacilitatorsToTeam(input = {}, allowedEmails = []) {
+  const allowed = new Set(Array.from(allowedEmails, email => String(email || '').trim().toLowerCase()).filter(Boolean));
+  const requestedEmails = (Array.isArray(input.facilitator_emails) ? input.facilitator_emails : [])
+    .map(email => String(email || '').trim().toLowerCase()).filter(Boolean);
+  const facilitatorEmails = requestedEmails.filter(email => allowed.has(email));
+  const skippedFacilitatorEmails = requestedEmails.filter(email => !allowed.has(email));
+  const requestedLeadEmail = String(input.lead_facilitator_email || '').trim().toLowerCase();
+  const leadFacilitatorEmail = requestedLeadEmail && facilitatorEmails.includes(requestedLeadEmail)
+    ? requestedLeadEmail
+    : facilitatorEmails[0] || null;
+  return {
+    facilitator_emails: facilitatorEmails,
+    lead_facilitator_email: leadFacilitatorEmail,
+    skipped_facilitator_emails: skippedFacilitatorEmails,
   };
 }
 
