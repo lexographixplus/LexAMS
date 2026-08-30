@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, CreditCard, Sparkles } from 'lucide-react';
 import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
@@ -24,7 +24,7 @@ function Meter({ label, current, limit }) {
 export default function BillingPlan({ isAdmin, notify }) {
   const navigate = useNavigate();
   const { billing: accessBilling, isDemo } = useAuth();
-  const [billing, setBilling] = useState(null);
+  const [serverBilling, setServerBilling] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [cycle, setCycle] = useState('annual');
   const [loading, setLoading] = useState(true);
@@ -38,10 +38,7 @@ export default function BillingPlan({ isAdmin, notify }) {
       if (!active) return;
       if (planResponse.ok) {
         const plan = await planResponse.json();
-        const previewTrial = isDemo && isTrialingSubscription(accessBilling?.subscription)
-          ? accessBilling.subscription
-          : null;
-        setBilling(previewTrial ? { ...plan, subscription: { ...plan.subscription, ...previewTrial } } : plan);
+        setServerBilling(plan);
       }
       if (invoicesResponse.ok) {
         const data = await invoicesResponse.json();
@@ -53,7 +50,14 @@ export default function BillingPlan({ isAdmin, notify }) {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [accessBilling?.subscription, isDemo, notify]);
+  }, [notify]);
+
+  const previewTrial = isDemo && isTrialingSubscription(accessBilling?.subscription)
+    ? accessBilling.subscription
+    : null;
+  const billing = previewTrial
+    ? { ...serverBilling, subscription: { ...serverBilling?.subscription, ...previewTrial } }
+    : serverBilling;
 
   const isPro = billing?.subscription?.plan === 'pro';
   const isTrialing = isTrialingSubscription(billing?.subscription);
@@ -61,12 +65,16 @@ export default function BillingPlan({ isAdmin, notify }) {
     ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
   const entitlement = billing?.entitlements;
   const usage = billing?.usage;
-  const renewalLabel = useMemo(() => {
-    if (!billing?.subscription) return '';
-    if (isTrialing) return `Trial ends ${formatDate(billing.subscription.trial_ends_at || billing.subscription.current_period_end)} · ${trialDaysLabel(trialDays)}`;
-    if (billing.subscription.status === 'grace') return `Grace period ends ${formatDate(billing.subscription.grace_period_end)}`;
-    return billing.subscription.current_period_end ? `Renews or expires ${formatDate(billing.subscription.current_period_end)}` : 'No paid renewal is scheduled';
-  }, [billing, isTrialing, trialDays]);
+  let renewalLabel = '';
+  if (billing?.subscription) {
+    renewalLabel = isTrialing
+      ? `Trial ends ${formatDate(billing.subscription.trial_ends_at || billing.subscription.current_period_end)} · ${trialDaysLabel(trialDays)}`
+      : billing.subscription.status === 'grace'
+        ? `Grace period ends ${formatDate(billing.subscription.grace_period_end)}`
+        : billing.subscription.current_period_end
+          ? `Renews or expires ${formatDate(billing.subscription.current_period_end)}`
+          : 'No paid renewal is scheduled';
+  }
 
   if (loading) return <section style={card}><div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading billing and plan details…</div></section>;
 
