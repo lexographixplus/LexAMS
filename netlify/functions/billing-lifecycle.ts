@@ -3,7 +3,7 @@ import { getPool } from './_shared/db';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 // This job only advances subscriptions whose recorded dates have already passed.
-// It never deletes workspace data or changes customer-facing entitlement records.
+// It never deletes workspace or customer records.
 export default async (request: Request) => {
   if (!['GET', 'POST'].includes(request.method)) return Response.json({ error: 'Method not allowed' }, { status: 405 });
   if (isPreviewDeployment(request)) return previewReadOnlyResponse();
@@ -12,6 +12,17 @@ export default async (request: Request) => {
   const client = await db.connect();
   try {
     await client.query('begin');
+    const trialsExpired = await client.query(
+      `update organization_subscriptions
+       set plan = 'free', status = 'active', billing_cycle = null,
+           current_period_start = null, current_period_end = null, grace_period_end = null,
+           cancel_at_period_end = false, updated_at = now()
+       where plan = 'pro'
+         and status = 'trialing'
+         and trial_ends_at is not null
+         and trial_ends_at <= now()
+       returning id, organization_id, trial_ends_at`
+    );
     const graceStarted = await client.query(
       `update organization_subscriptions
        set status = 'grace',
@@ -33,6 +44,13 @@ export default async (request: Request) => {
        returning id, organization_id, current_period_end, grace_period_end`
     );
 
+    for (const subscription of trialsExpired.rows) {
+      await client.query(
+        `insert into billing_events (provider, event_type, processing_status, payload, processed_at)
+         values ('manual', 'subscription.trial_expired', 'processed', $1::jsonb, now())`,
+        [JSON.stringify({ organization_id: subscription.organization_id, subscription_id: subscription.id, trial_ends_at: subscription.trial_ends_at })]
+      );
+    }
     for (const subscription of graceStarted.rows) {
       await client.query(
         `insert into billing_events (provider, event_type, processing_status, payload, processed_at)
@@ -48,7 +66,7 @@ export default async (request: Request) => {
       );
     }
     await client.query('commit');
-    return Response.json({ grace_started: graceStarted.rowCount || 0, expired: expired.rowCount || 0 });
+    return Response.json({ trial_expired: trialsExpired.rowCount || 0, grace_started: graceStarted.rowCount || 0, expired: expired.rowCount || 0 });
   } catch (error) {
     await client.query('rollback').catch(() => undefined);
     console.error('Billing lifecycle job failed', error);

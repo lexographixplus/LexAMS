@@ -1,4 +1,5 @@
 import { phaseTwoEntitlements } from '../../../shared/commercial.js';
+import { PRO_TRIAL_DAYS, trialDaysRemaining } from '../../../shared/trial.js';
 
 type Queryable = { query: (...args: any[]) => Promise<any> };
 
@@ -78,6 +79,9 @@ export type BillingSnapshot = {
     current_period_start: string | null;
     current_period_end: string | null;
     grace_period_end: string | null;
+    trial_started_at: string | null;
+    trial_ends_at: string | null;
+    trial_days_remaining: number | null;
     provider: string;
     cancel_at_period_end: boolean;
   };
@@ -97,6 +101,8 @@ function effectivePlan(subscription: any): PlanName {
   const now = Date.now();
   const graceEnd = subscription.grace_period_end ? new Date(subscription.grace_period_end).getTime() : 0;
   const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end).getTime() : 0;
+  const trialEnd = subscription.trial_ends_at ? new Date(subscription.trial_ends_at).getTime() : periodEnd;
+  if (subscription.status === 'trialing' && trialEnd > now) return 'pro';
   if (subscription.status === 'active' && (!periodEnd || periodEnd >= now)) return 'pro';
   if (subscription.status === 'grace' && graceEnd >= now) return 'pro';
   return 'free';
@@ -109,6 +115,36 @@ export async function ensureFreeSubscription(db: Queryable, organizationId: stri
      on conflict (organization_id) do nothing`,
     [organizationId]
   );
+}
+
+export async function startProTrial(db: Queryable, organizationId: string) {
+  const result = await db.query(
+    `insert into organization_subscriptions (
+       organization_id, plan, status, provider, current_period_start, current_period_end,
+       trial_started_at, trial_ends_at
+     ) values (
+       $1, 'pro', 'trialing', 'manual', now(), now() + ($2 || ' days')::interval,
+       now(), now() + ($2 || ' days')::interval
+     )
+     on conflict (organization_id) do nothing
+     returning id, trial_ends_at`,
+    [organizationId, PRO_TRIAL_DAYS]
+  );
+
+  if (result.rowCount) {
+    await db.query(
+      `insert into billing_events (provider, event_type, processing_status, payload, processed_at)
+       values ('manual', 'subscription.trial_started', 'processed', $1::jsonb, now())`,
+      [JSON.stringify({
+        organization_id: organizationId,
+        subscription_id: result.rows[0].id,
+        trial_days: PRO_TRIAL_DAYS,
+        trial_ends_at: result.rows[0].trial_ends_at,
+      })]
+    );
+  }
+
+  return result.rows[0] || null;
 }
 
 export async function getPlanAccess(db: Queryable, organizationId: string): Promise<PlanAccess> {
@@ -129,6 +165,11 @@ export async function getPlanAccess(db: Queryable, organizationId: string): Prom
       current_period_start: record?.current_period_start || null,
       current_period_end: record?.current_period_end || null,
       grace_period_end: record?.grace_period_end || null,
+      trial_started_at: record?.trial_started_at || null,
+      trial_ends_at: record?.trial_ends_at || null,
+      trial_days_remaining: record?.status === 'trialing'
+        ? trialDaysRemaining(record.trial_ends_at || record.current_period_end)
+        : null,
       provider: record?.provider || 'manual',
       cancel_at_period_end: Boolean(record?.cancel_at_period_end),
     },

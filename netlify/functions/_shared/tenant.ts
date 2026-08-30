@@ -1,6 +1,6 @@
 import { getPool } from './db';
 import { requireUser } from './session';
-import { ensureFreeSubscription } from './billing';
+import { startProTrial } from './billing';
 import { isPreviewDeployment } from './preview';
 
 function slugify(value: string) {
@@ -59,7 +59,7 @@ export async function requireTenant(request: Request) {
        on conflict (user_id) do update set active_organization_id = excluded.active_organization_id`,
       [user.id, user.name || baseName, organization.id]
     );
-    await ensureFreeSubscription(client, organization.id);
+    await startProTrial(client, organization.id);
     await client.query('commit');
 
     return {

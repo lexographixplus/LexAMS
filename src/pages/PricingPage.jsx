@@ -47,7 +47,7 @@ export default function PricingPage() {
     <MarketingLayout>
       <Seo
         title="LexAMS Pricing | Free & Pro Plans"
-        description="Start LexAMS free with up to 50 participants, or upgrade to Pro for expanded capacity, collaboration and professional reporting."
+        description="Start with a 30-day LexAMS Pro trial, then upgrade or continue on Free with up to 50 participants. No card required."
         path="/pricing"
         schema={productSchema}
       />
@@ -55,8 +55,8 @@ export default function PricingPage() {
       <section className="mk-page-hero mk-pricing-hero">
         <div className="mk-container mk-pricing-heading">
           <div className="mk-kicker">Simple pricing</div>
-          <h1>Start useful. Upgrade when your programmes grow.</h1>
-          <p>Choose the plan that fits your programme today. Start Free with no card required and upgrade when you need more capacity, collaboration, automation and professional reporting.</p>
+          <h1>Try every Pro workflow for 30 days.</h1>
+          <p>Every new workspace starts with full Pro access. No card is required. Upgrade to keep Pro after day 30, or continue automatically on the useful Free plan.</p>
         </div>
       </section>
 
@@ -69,7 +69,7 @@ export default function PricingPage() {
               <div className="mk-kicker">Compare plans</div>
               <h2>See the limits side by side.</h2>
             </div>
-            <p>Free is designed to be genuinely useful. Pro expands the exact areas that typically become constraints as programme delivery grows.</p>
+            <p>During the trial you receive the Pro column. Afterward, choose Pro or continue with the Free limits shown here—your existing records remain available.</p>
           </div>
 
           <div className="mk-table-wrap">
@@ -85,7 +85,7 @@ export default function PricingPage() {
 
           <div className="mk-card mk-payment-note">
             <h3>Payment</h3>
-            <p>Payments for LexAMS Pro are handled securely. Monthly billing is GMD 1,000 and annual billing is GMD 10,000.</p>
+            <p>The 30-day Pro trial requires no card and never charges automatically. To keep Pro, choose monthly billing at GMD 1,000 or annual billing at GMD 10,000 before or after the trial.</p>
           </div>
         </div>
       </section>

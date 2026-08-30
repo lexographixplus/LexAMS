@@ -37,6 +37,10 @@ export default async (request: Request) => {
   const billing = await getBillingSnapshot(db, tenant.organization_id);
   const internalReference = `LEXAMS-${billingCycle.slice(0, 1).toUpperCase()}-${randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`;
   const amount = PRICES[billingCycle];
+  const trialEnd = billing.subscription.status === 'trialing' && billing.subscription.trial_ends_at
+    ? new Date(billing.subscription.trial_ends_at)
+    : null;
+  const paidPeriodStart = trialEnd && trialEnd.getTime() > Date.now() ? trialEnd.toISOString() : new Date().toISOString();
   // Use the exact deployment that initiated checkout. This keeps preview tests
   // inside their preview and prevents a stale static APP_URL from taking users
   // back to an older deployment.
@@ -45,13 +49,14 @@ export default async (request: Request) => {
     `insert into billing_invoices (
        organization_id, subscription_id, provider, internal_reference, amount, currency, status,
        billing_period_start, billing_period_end, metadata
-     ) values ($1,$2,'modempay',$3,$4,'GMD','pending',now(),now() + $5::interval,$6::jsonb)
+     ) values ($1,$2,'modempay',$3,$4,'GMD','pending',$5::timestamptz,$5::timestamptz + $6::interval,$7::jsonb)
      returning id`,
     [
       tenant.organization_id,
       billing.subscription.id,
       internalReference,
       amount,
+      paidPeriodStart,
       billingCycle === 'annual' ? '1 year' : '1 month',
       JSON.stringify({
         organization_id: tenant.organization_id,
@@ -77,8 +82,8 @@ export default async (request: Request) => {
           description: `LexAMS Pro subscription for ${tenant.organization_name}`,
           customer_name: tenant.profile_full_name || tenant.organization_name,
           customer_email: tenant.user.email || undefined,
-          return_url: `${appUrl}/app/settings?billing=success`,
-          cancel_url: `${appUrl}/app/settings?billing=cancelled`,
+          return_url: `${appUrl}/app/billing?billing=success`,
+          cancel_url: `${appUrl}/app/billing?billing=cancelled`,
           callback_url: `${appUrl}/api/billing/webhook`,
           metadata: {
             invoice_id: invoiceId,

@@ -56,13 +56,14 @@ export default async (request: Request) => {
 
   if (request.method === 'GET') {
     const [summary, subscriptions, invoices, auditLog] = await Promise.all([
-      db.query(`select count(*) filter (where plan = 'pro' and status in ('active', 'grace'))::int as pro_organizations,
+      db.query(`select count(*) filter (where plan = 'pro' and status in ('trialing', 'active', 'grace'))::int as pro_organizations,
                        count(*) filter (where plan = 'free')::int as free_organizations,
+                       count(*) filter (where status = 'trialing')::int as in_trial,
                        count(*) filter (where status = 'grace')::int as in_grace,
                        count(*) filter (where status in ('expired', 'past_due'))::int as expired_or_past_due
                 from organization_subscriptions`),
       db.query(`select s.organization_id, o.name as organization_name, s.plan, s.status, s.billing_cycle,
-                       s.current_period_end, s.grace_period_end, s.provider, s.cancel_at_period_end, s.updated_at
+                       s.current_period_end, s.grace_period_end, s.trial_ends_at, s.provider, s.cancel_at_period_end, s.updated_at
                 from organization_subscriptions s join organizations o on o.id = s.organization_id
                 order by s.updated_at desc limit 100`),
       db.query(`select i.id, i.organization_id, o.name as organization_name, i.internal_reference, i.amount, i.currency,

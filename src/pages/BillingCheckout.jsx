@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check, CreditCard, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
 
 const plans = {
   annual: { label: 'Annual', amount: 10000, detail: 'GMD 833/month equivalent · Save 17%', period: '12 months of Pro access' },
@@ -18,6 +20,7 @@ const featureReasons = {
 };
 
 export default function BillingCheckout() {
+  const { billing } = useAuth();
   const [params, setParams] = useSearchParams();
   const initialCycle = params.get('cycle') === 'monthly' ? 'monthly' : 'annual';
   const [cycle, setCycle] = useState(initialCycle);
@@ -26,6 +29,9 @@ export default function BillingCheckout() {
   const plan = plans[cycle];
   const requestedFeature = params.get('feature');
   const featureReason = featureReasons[requestedFeature] || '';
+  const isTrialing = isTrialingSubscription(billing?.subscription);
+  const trialDays = billing?.subscription?.trial_days_remaining
+    ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
 
   function chooseCycle(nextCycle) {
     setCycle(nextCycle);
@@ -54,13 +60,13 @@ export default function BillingCheckout() {
 
   return <div style={shell}>
     <div style={topbar}>
-      <Link to="/app/settings" style={backLink}><ArrowLeft size={16} />Back to billing</Link>
+      <Link to="/app/billing" style={backLink}><ArrowLeft size={16} />Back to billing</Link>
       <div style={brand}>Lex<span style={{ color: '#FAB72D' }}>AMS</span></div>
       <div style={secureMark}><LockKeyhole size={14} />Secure checkout</div>
     </div>
     <main className="billing-checkout-main" style={main}>
       <section style={checkoutCard}>
-        <div style={intro}><div style={eyebrow}><Sparkles size={14} />LEXAMS PRO</div><h1 style={title}>Upgrade with confidence.</h1><p style={subtitle}>Choose your plan, review the total, then complete payment securely with Modem Pay.</p></div>
+        <div style={intro}><div style={eyebrow}><Sparkles size={14} />LEXAMS PRO</div><h1 style={title}>{isTrialing ? 'Keep Pro after your trial.' : 'Upgrade with confidence.'}</h1><p style={subtitle}>{isTrialing ? `Your trial has ${trialDaysLabel(trialDays)}. Choose a plan now and your paid access period will begin after the trial ends.` : 'Choose your plan, review the total, then complete payment securely with Modem Pay.'}</p></div>
         {featureReason && <div style={featureContext}><Sparkles size={17}/><div><strong style={{ display: 'block' }}>Unlock this workflow</strong><span style={{ display: 'block', marginTop: 2 }}>{featureReason}</span></div></div>}
         <div style={planPicker}>
           {Object.entries(plans).map(([key, item]) => <button key={key} onClick={() => chooseCycle(key)} style={{ ...planOption, ...(cycle === key ? selectedPlanOption : {}) }}>
@@ -72,6 +78,7 @@ export default function BillingCheckout() {
         <div style={summary}>
           <div style={summaryRow}><span>LexAMS Pro · {plan.label}</span><strong>GMD {plan.amount.toLocaleString()}</strong></div>
           <div style={summaryRow}><span>Access period</span><span>{plan.period}</span></div>
+          {isTrialing && <div style={summaryRow}><span>Paid period begins</span><span>After your Pro trial</span></div>}
           <div style={totalRow}><span>Total due today</span><strong>GMD {plan.amount.toLocaleString()}</strong></div>
         </div>
         {error && <div role="alert" style={errorBox}>{error}</div>}
