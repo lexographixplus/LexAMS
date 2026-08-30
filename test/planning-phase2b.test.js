@@ -8,6 +8,7 @@ import {
   normalizeBudgetItem,
   normalizeJournalEntry,
   normalizeSessionImportRow,
+  normalizeSpreadsheetDate,
   planningPermissions,
 } from '../shared/planning.js';
 import { autoMapCsvHeaders, parseCsv } from '../shared/csv.js';
@@ -84,4 +85,19 @@ test('session CSV supports quoted cells, automatic mapping and facilitator lists
   });
   assert.deepEqual(normalized.facilitator_emails, ['lead@example.org', 'one@example.org', 'two@example.org']);
   assert.equal(normalized.lead_facilitator_email, 'lead@example.org');
+});
+
+test('session CSV accepts spreadsheet date formats and resolves them against the activity period', () => {
+  const activityPeriod = { minDate: '2026-08-31', maxDate: '2026-10-09' };
+  assert.equal(normalizeSpreadsheetDate('2026-08-31', 'Session date', activityPeriod), '2026-08-31');
+  assert.equal(normalizeSpreadsheetDate('31/08/2026', 'Session date', activityPeriod), '2026-08-31');
+  assert.equal(normalizeSpreadsheetDate('9/1/2026', 'Session date', activityPeriod), '2026-09-01');
+  assert.equal(normalizeSpreadsheetDate('46266', 'Session date', activityPeriod), '2026-09-01');
+  assert.throws(
+    () => normalizeSpreadsheetDate('09/10/2026', 'Session date', activityPeriod),
+    /ambiguous.*YYYY-MM-DD/,
+  );
+
+  const normalized = normalizeSessionImportRow({ title: 'Opening session', session_date: '9/1/2026' }, activityPeriod);
+  assert.equal(normalized.session_date, '2026-09-01');
 });

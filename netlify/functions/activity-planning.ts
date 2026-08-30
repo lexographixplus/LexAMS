@@ -413,9 +413,14 @@ export default async (request: Request, context: Context) => {
       const sourceRows = Array.isArray(body.rows) ? body.rows : [];
       if (!sourceRows.length || sourceRows.length > 200) return json({ error: 'Import between 1 and 200 sessions at a time.' }, 400);
       const duplicateMode = body.duplicateMode === 'update' ? 'update' : 'skip';
+      const activityStart = String(activity.start_date).slice(0, 10);
+      const activityEnd = String(activity.end_date).slice(0, 10);
       let rows;
       try {
-        rows = sourceRows.map((row, index) => ({ ...normalizeSessionImportRow(row), rowNumber: index + 2 }));
+        rows = sourceRows.map((row, index) => ({
+          ...normalizeSessionImportRow(row, { minDate: activityStart, maxDate: activityEnd }),
+          rowNumber: index + 2,
+        }));
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : 'The session CSV contains invalid data.' }, 400);
       }
@@ -425,8 +430,8 @@ export default async (request: Request, context: Context) => {
         if (seenTitles.has(key)) return json({ error: `Row ${row.rowNumber}: session title “${row.title}” appears more than once.` }, 400);
         seenTitles.add(key);
         const date = row.session_date;
-        if (date < String(activity.start_date).slice(0, 10) || date > String(activity.end_date).slice(0, 10)) {
-          return json({ error: `Row ${row.rowNumber}: the session date must fall within the activity dates.` }, 400);
+        if (date < activityStart || date > activityEnd) {
+          return json({ error: `Row ${row.rowNumber}: session date ${date} must fall within the activity period (${activityStart} to ${activityEnd}).` }, 400);
         }
       }
 
