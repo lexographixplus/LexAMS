@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, CreditCard, Sparkles } from 'lucide-react';
 import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
+import { useAuth } from '../contexts/AuthContext';
 
 const formatDate = (value) => value ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : '—';
 const formatMoney = (amount) => `GMD ${Number(amount || 0).toLocaleString()}`;
@@ -22,6 +23,7 @@ function Meter({ label, current, limit }) {
 
 export default function BillingPlan({ isAdmin, notify }) {
   const navigate = useNavigate();
+  const { billing: accessBilling, isDemo } = useAuth();
   const [billing, setBilling] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [cycle, setCycle] = useState('annual');
@@ -34,7 +36,13 @@ export default function BillingPlan({ isAdmin, notify }) {
       fetch('/api/billing/invoices', { credentials: 'include' }),
     ]).then(async ([planResponse, invoicesResponse]) => {
       if (!active) return;
-      if (planResponse.ok) setBilling(await planResponse.json());
+      if (planResponse.ok) {
+        const plan = await planResponse.json();
+        const previewTrial = isDemo && isTrialingSubscription(accessBilling?.subscription)
+          ? accessBilling.subscription
+          : null;
+        setBilling(previewTrial ? { ...plan, subscription: { ...plan.subscription, ...previewTrial } } : plan);
+      }
       if (invoicesResponse.ok) {
         const data = await invoicesResponse.json();
         if (active) setInvoices(data.invoices || []);
@@ -45,7 +53,7 @@ export default function BillingPlan({ isAdmin, notify }) {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [notify]);
+  }, [accessBilling?.subscription, isDemo, notify]);
 
   const isPro = billing?.subscription?.plan === 'pro';
   const isTrialing = isTrialingSubscription(billing?.subscription);
