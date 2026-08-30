@@ -48,7 +48,23 @@ function isoDateFromParts(year, month, day) {
   return date.toISOString().slice(0, 10);
 }
 
-export function normalizeSpreadsheetDate(value, label = 'Date', { minDate = '', maxDate = '' } = {}) {
+export function inferSpreadsheetDateOrder(values = []) {
+  let dayFirst = false;
+  let monthFirst = false;
+  for (const value of values) {
+    const raw = cleanText(value, 64).replace(/^\uFEFF/, '').replace(/^'/, '');
+    const match = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (!match) continue;
+    const first = Number(match[1]);
+    const second = Number(match[2]);
+    if (first > 12 && second <= 12) dayFirst = true;
+    if (second > 12 && first <= 12) monthFirst = true;
+  }
+  if (dayFirst === monthFirst) return null;
+  return dayFirst ? 'dmy' : 'mdy';
+}
+
+export function normalizeSpreadsheetDate(value, label = 'Date', { minDate = '', maxDate = '', dateOrder = null } = {}) {
   const raw = cleanText(value, 64).replace(/^\uFEFF/, '').replace(/^'/, '');
   if (!raw) return null;
 
@@ -64,6 +80,14 @@ export function normalizeSpreadsheetDate(value, label = 'Date', { minDate = '', 
     const [, first, second, year] = localMatch;
     const dayFirst = isoDateFromParts(year, second, first);
     const monthFirst = isoDateFromParts(year, first, second);
+    if (dateOrder === 'dmy') {
+      if (dayFirst) return dayFirst;
+      throw new Error(`${label} “${raw}” does not match the detected DD/MM/YYYY format.`);
+    }
+    if (dateOrder === 'mdy') {
+      if (monthFirst) return monthFirst;
+      throw new Error(`${label} “${raw}” does not match the detected MM/DD/YYYY format.`);
+    }
     if (dayFirst) candidates.add(dayFirst);
     if (monthFirst) candidates.add(monthFirst);
   }
@@ -241,6 +265,14 @@ export function normalizeSessionImportRow(input = {}, dateRange = {}) {
     facilitator_emails: emails,
     lead_facilitator_email: leadEmail || emails[0] || null,
   };
+}
+
+export function sessionImportIdentity(input = {}) {
+  return [
+    cleanText(input.title, 180).toLowerCase(),
+    String(input.session_date || '').slice(0, 10),
+    String(input.starts_at || '').slice(0, 5),
+  ].join('|');
 }
 
 export function filterSessionFacilitatorsToTeam(input = {}, allowedEmails = []) {

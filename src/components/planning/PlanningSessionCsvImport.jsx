@@ -1,7 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
 import { Download, FileSpreadsheet, Upload, X } from 'lucide-react';
 import { autoMapCsvHeaders, parseCsv } from '../../../shared/csv.js';
-import { filterSessionFacilitatorsToTeam, normalizeSessionImportRow } from '../../../shared/planning.js';
+import {
+  filterSessionFacilitatorsToTeam,
+  inferSpreadsheetDateOrder,
+  normalizeSessionImportRow,
+  sessionImportIdentity,
+} from '../../../shared/planning.js';
 
 const FIELDS = [
   { key: 'title', label: 'Session title', required: true, aliases: ['title', 'sessiontitle', 'session', 'topic'] },
@@ -35,34 +40,57 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
   const activityEnd = String(activity.end_date || activityStart).slice(0, 10);
 
   const teamEmails = useMemo(() => new Set(members.map(member => String(member.email || '').toLowerCase())), [members]);
-  const preparedRows = useMemo(() => rows.map((cells, index) => {
-    const raw = Object.fromEntries(FIELDS.map(field => [field.key, mappedValue(cells, mapping, field.key)]));
-    const problems = [];
-    const warnings = [];
-    let data = raw;
-    let displayFacilitatorEmails = [];
-    try {
-      data = normalizeSessionImportRow(raw, { minDate: activityStart, maxDate: activityEnd });
-      if (data.session_date < activityStart || data.session_date > activityEnd) {
-        problems.push(`Date ${data.session_date} is outside the activity period (${activityStart} to ${activityEnd})`);
+  const dateOrder = useMemo(() => inferSpreadsheetDateOrder(
+    rows.map(cells => mappedValue(cells, mapping, 'session_date')),
+  ), [mapping, rows]);
+  const preparedRows = useMemo(() => {
+    const prepared = rows.map((cells, index) => {
+      const raw = Object.fromEntries(FIELDS.map(field => [field.key, mappedValue(cells, mapping, field.key)]));
+      const problems = [];
+      const warnings = [];
+      let data = raw;
+      let displayFacilitatorEmails = [];
+      try {
+        data = normalizeSessionImportRow(raw, { minDate: activityStart, maxDate: activityEnd, dateOrder });
+        if (data.session_date < activityStart || data.session_date > activityEnd) {
+          problems.push(`Date ${data.session_date} is outside the activity period (${activityStart} to ${activityEnd})`);
+        }
+        const facilitatorMatch = filterSessionFacilitatorsToTeam(data, teamEmails);
+        displayFacilitatorEmails = facilitatorMatch.facilitator_emails;
+        if (facilitatorMatch.skipped_facilitator_emails.length) {
+          warnings.push(`${facilitatorMatch.skipped_facilitator_emails.join(', ')} not on the team and will be skipped; session will still import`);
+        }
+      } catch (rowError) {
+        problems.push(rowError.message);
       }
-      const facilitatorMatch = filterSessionFacilitatorsToTeam(data, teamEmails);
-      displayFacilitatorEmails = facilitatorMatch.facilitator_emails;
-      if (facilitatorMatch.skipped_facilitator_emails.length) {
-        warnings.push(`${facilitatorMatch.skipped_facilitator_emails.join(', ')} not on the team and will be skipped; session will still import`);
+      return { rowNumber: index + 2, data, displayFacilitatorEmails, problems, warnings, duplicate: false };
+    });
+    const seenSessions = new Set();
+    for (const row of prepared) {
+      if (row.problems.length) continue;
+      const identity = sessionImportIdentity(row.data);
+      if (seenSessions.has(identity)) {
+        row.duplicate = true;
+        row.warnings.push('Exact duplicate schedule row; this later copy will be skipped');
+      } else {
+        seenSessions.add(identity);
       }
-    } catch (rowError) {
-      problems.push(rowError.message);
     }
-    return { rowNumber: index + 2, data, displayFacilitatorEmails, problems, warnings };
-  }), [activityEnd, activityStart, mapping, rows, teamEmails]);
+    return prepared;
+  }, [activityEnd, activityStart, dateOrder, mapping, rows, teamEmails]);
 
   const validRows = preparedRows.filter(row => !row.problems.length);
   const invalidCount = preparedRows.length - validRows.length;
   const warningCount = preparedRows.filter(row => row.warnings.length).length;
-  const skippedFacilitatorCount = new Set(preparedRows.flatMap(row => row.warnings.length
+  const duplicateCount = preparedRows.filter(row => row.duplicate).length;
+  const skippedFacilitatorCount = new Set(preparedRows.flatMap(row => Array.isArray(row.data.facilitator_emails)
     ? row.data.facilitator_emails.filter(email => !teamEmails.has(email))
     : [])).size;
+  const previewRows = [...preparedRows]
+    .sort((first, second) => Number(Boolean(second.problems.length)) - Number(Boolean(first.problems.length))
+      || Number(Boolean(second.warnings.length)) - Number(Boolean(first.warnings.length))
+      || first.rowNumber - second.rowNumber)
+    .slice(0, 10);
   const importButtonLabel = preview
     ? 'Preview only'
     : saving
@@ -135,16 +163,17 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
             <input ref={inputRef} hidden type="file" accept=".csv,text/csv" onChange={event => loadFile(event.target.files?.[0])}/>
           </div>
           <p className="planning-import-help">Only <strong>Session title</strong> and <strong>Date</strong> are required. All other columns may be blank and completed later. Activity period: <strong>{activityStart} to {activityEnd}</strong>. Use YYYY-MM-DD where possible; dates saved by Excel in DD/MM/YYYY, MM/DD/YYYY, or serial form are also accepted. Use semicolons between multiple facilitator emails.</p>
+          {dateOrder && headers.length > 0 && <div className="planning-message neutral"><span><strong>{dateOrder === 'dmy' ? 'DD/MM/YYYY' : 'MM/DD/YYYY'} detected.</strong> Ambiguous dates in this file will follow that same date order.</span></div>}
           {error && <div className="planning-message error">{error}</div>}
           {headers.length > 0 && <>
-            <section className="planning-import-section"><div className="planning-import-section-heading"><div><span className="planning-kicker">Step 1</span><h5>Map spreadsheet columns</h5></div><label><span>Existing session titles</span><select value={duplicateMode} onChange={event => setDuplicateMode(event.target.value)}><option value="skip">Skip existing</option><option value="update">Update existing</option></select></label></div>
+            <section className="planning-import-section"><div className="planning-import-section-heading"><div><span className="planning-kicker">Step 1</span><h5>Map spreadsheet columns</h5></div><label><span>Existing schedule rows</span><select value={duplicateMode} onChange={event => setDuplicateMode(event.target.value)}><option value="skip">Skip existing</option><option value="update">Update existing</option></select></label></div>
               <div className="planning-import-map">{FIELDS.map(field => <label key={field.key}><span>{field.label}{field.required ? ' *' : ''}</span><select value={mapping[field.key] ?? ''} onChange={event => setMapping(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Not mapped</option>{headers.map((header, index) => <option key={`${header}-${index}`} value={String(index)}>{header || `Column ${index + 1}`}</option>)}</select></label>)}</div>
             </section>
             <div className="planning-import-summary"><div><strong>{preparedRows.length}</strong><span>Rows</span></div><div><strong>{validRows.length}</strong><span>Ready</span></div><div><strong>{invalidCount}</strong><span>Needs fixing</span></div><div><strong>{new Set(validRows.flatMap(row => row.data.facilitator_emails)).size}</strong><span>Facilitators</span></div></div>
             {invalidCount > 0 && <div id="planning-import-blocker" className="planning-message error"><span><strong>Import is paused.</strong> {invalidCount} row{invalidCount === 1 ? '' : 's'} need fixing. Check the Status column below for the exact date, mapping, or facilitator issue.</span></div>}
-            {warningCount > 0 && <div className="planning-message warning"><span><strong>{warningCount} row{warningCount === 1 ? '' : 's'} will still import.</strong> {skippedFacilitatorCount} facilitator email{skippedFacilitatorCount === 1 ? '' : 's'} will be skipped because they are not active team members. Assign them after import when ready.</span></div>}
-            <section className="planning-import-preview"><div className="planning-import-row planning-import-row-head"><span>Row</span><span>Session</span><span>Date & time</span><span>Facilitators</span><span>Status</span></div>{preparedRows.slice(0, 10).map(row => <div className="planning-import-row" key={row.rowNumber}><span>{row.rowNumber}</span><span><strong>{row.data.title || '—'}</strong><small>{row.data.venue || 'Venue not set'}</small></span><span>{row.data.session_date || '—'}<small>{row.data.starts_at || 'Time not set'}{row.data.ends_at ? `–${row.data.ends_at}` : ''}</small></span><span>{row.displayFacilitatorEmails.join(', ') || 'Unassigned'}</span><span className={row.problems.length ? 'planning-import-invalid' : row.warnings.length ? 'planning-import-warning' : 'planning-import-valid'}>{row.problems.length ? row.problems.join(' · ') : row.warnings.length ? row.warnings.join(' · ') : 'Ready'}</span></div>)}</section>
-            {preparedRows.length > 10 && <p className="planning-import-help">Showing 10 of {preparedRows.length} rows.</p>}
+            {warningCount > 0 && <div className="planning-message warning"><span><strong>{warningCount} row{warningCount === 1 ? '' : 's'} have non-blocking warnings.</strong>{duplicateCount ? ` ${duplicateCount} exact duplicate ${duplicateCount === 1 ? 'row will' : 'rows will'} be skipped.` : ''}{skippedFacilitatorCount ? ` ${skippedFacilitatorCount} unavailable facilitator ${skippedFacilitatorCount === 1 ? 'email will' : 'emails will'} be left unassigned.` : ''}</span></div>}
+            <section className="planning-import-preview"><div className="planning-import-row planning-import-row-head"><span>Row</span><span>Session</span><span>Date & time</span><span>Facilitators</span><span>Status</span></div>{previewRows.map(row => <div className="planning-import-row" key={row.rowNumber}><span>{row.rowNumber}</span><span><strong>{row.data.title || '—'}</strong><small>{row.data.venue || 'Venue not set'}</small></span><span>{row.data.session_date || '—'}<small>{row.data.starts_at || 'Time not set'}{row.data.ends_at ? `–${row.data.ends_at}` : ''}</small></span><span>{row.displayFacilitatorEmails.join(', ') || 'Unassigned'}</span><span className={row.problems.length ? 'planning-import-invalid' : row.warnings.length ? 'planning-import-warning' : 'planning-import-valid'}>{row.problems.length ? row.problems.join(' · ') : row.warnings.length ? row.warnings.join(' · ') : 'Ready'}</span></div>)}</section>
+            {preparedRows.length > 10 && <p className="planning-import-help">Showing the 10 rows that need the most attention out of {preparedRows.length} total rows.</p>}
           </>}
           {result && <div className="planning-message success"><span><strong>Import complete.</strong> {result.created || 0} created, {result.updated || 0} updated, {result.skipped || 0} skipped, {result.facilitatorsAssigned || 0} facilitator assignments{result.facilitatorsSkipped ? `, ${result.facilitatorsSkipped} unavailable facilitator ${result.facilitatorsSkipped === 1 ? 'email' : 'emails'} left unassigned` : ''}.</span></div>}
         </div>
