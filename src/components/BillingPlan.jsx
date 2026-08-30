@@ -105,7 +105,7 @@ export default function BillingPlan({ isAdmin, notify }) {
 
       {(!isPro || isTrialing) && <div style={{ ...panel, border: '1.5px solid var(--color-accent)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15 }}><Sparkles size={17} color="var(--color-accent)" /> {isTrialing ? 'Keep Pro after your trial' : 'Upgrade to Pro'}</div>
-        <p style={{ ...subtext, marginTop: 7 }}>{isTrialing ? `Choose a plan now to keep Pro access after the remaining ${trialDaysLabel(trialDays)}. Your paid period begins after the trial.` : 'Team collaboration, larger programme capacity, full reporting and professional outputs.'}</p>
+        <p style={{ ...subtext, marginTop: 7 }}>{isTrialing ? `Choose a plan now to keep Pro access. You have ${trialDaysLabel(trialDays)}, and your paid period begins only when the trial ends.` : 'Team collaboration, larger programme capacity, full reporting and professional outputs.'}</p>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={() => setCycle('annual')} style={{ ...optionButton, ...(cycle === 'annual' ? selectedOption : {}) }}>Annual <strong>GMD 10,000</strong><small>GMD 833/month · Save 17%</small></button>
           <button onClick={() => setCycle('monthly')} style={{ ...optionButton, ...(cycle === 'monthly' ? selectedOption : {}) }}>Monthly <strong>GMD 1,000</strong><small>Flexible access</small></button>
