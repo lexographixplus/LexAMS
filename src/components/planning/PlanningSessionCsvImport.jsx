@@ -31,6 +31,8 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
   const [duplicateMode, setDuplicateMode] = useState('skip');
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const activityStart = String(activity.start_date || '').slice(0, 10);
+  const activityEnd = String(activity.end_date || activityStart).slice(0, 10);
 
   const teamEmails = useMemo(() => new Set(members.map(member => String(member.email || '').toLowerCase())), [members]);
   const preparedRows = useMemo(() => rows.map((cells, index) => {
@@ -38,9 +40,9 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
     const problems = [];
     let data = raw;
     try {
-      data = normalizeSessionImportRow(raw);
-      if (data.session_date < String(activity.start_date).slice(0, 10) || data.session_date > String(activity.end_date).slice(0, 10)) {
-        problems.push('Date is outside this activity');
+      data = normalizeSessionImportRow(raw, { minDate: activityStart, maxDate: activityEnd });
+      if (data.session_date < activityStart || data.session_date > activityEnd) {
+        problems.push(`Date ${data.session_date} is outside the activity period (${activityStart} to ${activityEnd})`);
       }
       const missing = data.facilitator_emails.find(email => !teamEmails.has(email));
       if (missing) problems.push(`${missing} is not on the team`);
@@ -48,7 +50,7 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
       problems.push(rowError.message);
     }
     return { rowNumber: index + 2, data, problems };
-  }), [activity.end_date, activity.start_date, mapping, rows, teamEmails]);
+  }), [activityEnd, activityStart, mapping, rows, teamEmails]);
 
   const validRows = preparedRows.filter(row => !row.problems.length);
   const invalidCount = preparedRows.length - validRows.length;
@@ -74,15 +76,18 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
   }
 
   function downloadTemplate() {
-    const firstDate = String(activity.start_date || '').slice(0, 10);
-    const activityEnd = String(activity.end_date || firstDate).slice(0, 10);
-    const secondDateValue = new Date(`${firstDate}T00:00:00Z`);
+    const secondDateValue = new Date(`${activityStart}T00:00:00Z`);
     secondDateValue.setUTCDate(secondDateValue.getUTCDate() + 7);
     const secondDate = secondDateValue.toISOString().slice(0, 10) > activityEnd ? activityEnd : secondDateValue.toISOString().slice(0, 10);
+    const facilitatorEmails = members.map(member => String(member.email || '').trim().toLowerCase()).filter(Boolean);
+    const leadEmail = facilitatorEmails[0] || '';
+    const coFacilitatorEmail = facilitatorEmails[1] || '';
+    const secondLeadEmail = coFacilitatorEmail || leadEmail;
+    const secondFacilitatorEmail = coFacilitatorEmail ? leadEmail : '';
     const csv = [
       'session_title,date,start_time,end_time,venue,objectives,outline,planning_status,lead_facilitator_email,facilitator_emails',
-      `Opening and orientation,${firstDate},09:00,12:00,Training room A,Agree expectations and baseline skills,Welcome and practical orientation,ready,lead@example.org,cofacilitator@example.org`,
-      `Applied practice lab,${secondDate},09:00,15:00,Innovation lab,Apply the learning in a practical task,Facilitated group project,draft,cofacilitator@example.org,lead@example.org`,
+      `Opening and orientation,${activityStart},09:00,12:00,Training room A,Agree expectations and baseline skills,Welcome and practical orientation,ready,${leadEmail},${coFacilitatorEmail}`,
+      `Applied practice lab,${secondDate},09:00,15:00,Innovation lab,Apply the learning in a practical task,Facilitated group project,draft,${secondLeadEmail},${secondFacilitatorEmail}`,
     ].join('\r\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -113,7 +118,7 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
             <button className="planning-secondary-button" onClick={downloadTemplate}><Download size={15}/>Download template</button>
             <input ref={inputRef} hidden type="file" accept=".csv,text/csv" onChange={event => loadFile(event.target.files?.[0])}/>
           </div>
-          <p className="planning-import-help">Use semicolons between multiple facilitator email addresses. Every email must already belong to this workspace.</p>
+          <p className="planning-import-help">Activity period: <strong>{activityStart} to {activityEnd}</strong>. Use YYYY-MM-DD where possible; dates saved by Excel in DD/MM/YYYY, MM/DD/YYYY, or serial form are also accepted. Use semicolons between multiple facilitator emails, and make sure every email already belongs to this workspace.</p>
           {error && <div className="planning-message error">{error}</div>}
           {headers.length > 0 && <>
             <section className="planning-import-section"><div className="planning-import-section-heading"><div><span className="planning-kicker">Step 1</span><h5>Map spreadsheet columns</h5></div><label><span>Existing session titles</span><select value={duplicateMode} onChange={event => setDuplicateMode(event.target.value)}><option value="skip">Skip existing</option><option value="update">Update existing</option></select></label></div>

@@ -38,6 +38,52 @@ function cleanDate(value, label) {
   return date;
 }
 
+function isoDateFromParts(year, month, day) {
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (Number.isNaN(date.getTime())
+    || date.getUTCFullYear() !== Number(year)
+    || date.getUTCMonth() !== Number(month) - 1
+    || date.getUTCDate() !== Number(day)) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+export function normalizeSpreadsheetDate(value, label = 'Date', { minDate = '', maxDate = '' } = {}) {
+  const raw = cleanText(value, 64).replace(/^\uFEFF/, '').replace(/^'/, '');
+  if (!raw) return null;
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if (isoMatch) {
+    const normalized = isoDateFromParts(isoMatch[1], isoMatch[2], isoMatch[3]);
+    if (normalized) return normalized;
+  }
+
+  const candidates = new Set();
+  const localMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (localMatch) {
+    const [, first, second, year] = localMatch;
+    const dayFirst = isoDateFromParts(year, second, first);
+    const monthFirst = isoDateFromParts(year, first, second);
+    if (dayFirst) candidates.add(dayFirst);
+    if (monthFirst) candidates.add(monthFirst);
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    const serial = Number(raw);
+    if (Number.isFinite(serial) && serial >= 1 && serial <= 2958465) {
+      const excelDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+      if (!Number.isNaN(excelDate.getTime())) candidates.add(excelDate.toISOString().slice(0, 10));
+    }
+  }
+
+  if (candidates.size === 1) return [...candidates][0];
+  if (candidates.size > 1 && (minDate || maxDate)) {
+    const inRange = [...candidates].filter(candidate => (!minDate || candidate >= minDate) && (!maxDate || candidate <= maxDate));
+    if (inRange.length === 1) return inRange[0];
+  }
+  if (candidates.size > 1) throw new Error(`${label} “${raw}” is ambiguous. Use YYYY-MM-DD.`);
+  throw new Error(`${label} must use YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, or an Excel date value.`);
+}
+
 function cleanTime(value, label) {
   const time = cleanText(value, 8);
   if (!time) return null;
@@ -181,13 +227,14 @@ export function normalizeEmailList(value) {
   return emails;
 }
 
-export function normalizeSessionImportRow(input = {}) {
+export function normalizeSessionImportRow(input = {}, dateRange = {}) {
   const facilitatorEmails = normalizeEmailList(input.facilitator_emails);
   const leadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
   if (leadEmail && !validEmail(leadEmail)) throw new Error(`Invalid lead facilitator email: ${leadEmail}.`);
   const emails = leadEmail && !facilitatorEmails.includes(leadEmail) ? [leadEmail, ...facilitatorEmails] : facilitatorEmails;
+  const sessionDate = normalizeSpreadsheetDate(input.session_date, 'Session date', dateRange);
   return {
-    ...normalizeSessionPlan({ ...input, facilitator_ids: [] }),
+    ...normalizeSessionPlan({ ...input, session_date: sessionDate, facilitator_ids: [] }),
     facilitator_emails: emails,
     lead_facilitator_email: leadEmail || emails[0] || null,
   };
