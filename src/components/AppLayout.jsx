@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound, Mail,
@@ -39,7 +40,7 @@ const pageTitles = {
 };
 
 export default function AppLayout() {
-  const { user, profile, signOut, isPro } = useAuth();
+  const { user, profile, billing, signOut, isPro } = useAuth();
   const { activities, participants, certificates, surveys, assessments, error: dataError, refetch } = useData();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,6 +55,10 @@ export default function AppLayout() {
     ? [...planNavItems, { to: '/app/admin/billing', icon: ShieldCheck, label: 'Billing admin' }]
     : planNavItems;
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const isTrialing = isTrialingSubscription(billing?.subscription);
+  const trialDays = billing?.subscription?.trial_days_remaining
+    ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
+  const planLabel = isTrialing ? `Pro trial · ${trialDaysLabel(trialDays)}` : (isPro ? 'Pro plan' : 'Free plan');
 
   const pageTitle = pageTitles[location.pathname] ||
     (location.pathname.startsWith('/app/activities/') ? 'Activity Detail' : 'LexAMS');
@@ -97,7 +102,7 @@ export default function AppLayout() {
 
       <div style={{ padding: '18px 24px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{orgName}</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{isPro ? 'Pro plan' : 'Free plan'}</div>
+        <div style={{ fontSize: 11, color: isTrialing ? 'var(--color-gold-500)' : 'rgba(255,255,255,0.5)', marginTop: 3 }}>{planLabel}</div>
         <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: 'var(--color-gold-500)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><LogOut size={14} /> Sign out</button>
       </div>
     </>
@@ -122,6 +127,8 @@ export default function AppLayout() {
           .user-account-label { display: none; }
           .content-pad { padding: 20px 16px 60px; }
           .topbar-pad { padding: 12px 16px; }
+          .trial-banner { align-items: flex-start !important; }
+          .trial-banner a { width: 100%; justify-content: center; }
           .mobile-overlay { display: block; position: fixed; inset: 0; background: rgba(0,43,84,0.4); z-index: 200; }
           .mobile-sidebar { display: flex; position: fixed; top: 0; left: 0; bottom: 0; width: 270px; z-index: 210; flex-direction: column; background: var(--surface-inverse); box-shadow: var(--shadow-raised); }
         }
@@ -152,6 +159,10 @@ export default function AppLayout() {
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <div className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
+              {isTrialing && <div className="trial-banner" role="status" style={{ marginBottom: 18, padding: '12px 14px', border: '1px solid #E8C568', borderRadius: 'var(--radius-md)', background: '#FFF8E8', color: '#5F4300', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', fontSize: 13, lineHeight: 1.5 }}>
+                <span><strong>Pro trial · {trialDaysLabel(trialDays)}</strong> Explore every Pro feature. Your workspace moves to Free automatically when the trial ends unless you upgrade.</span>
+                <NavLink to="/app/billing" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '7px 11px', borderRadius: 'var(--radius-sm)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>View plan</NavLink>
+              </div>}
               {dataError && <div role="alert" style={{ marginBottom: 18, padding: 14, border: '1px solid #F1B7B2', borderRadius: 9, background: '#FFF1F0', color: '#8B2727', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13 }}><span><strong>Workspace data could not be loaded.</strong> {dataError}</span><button onClick={refetch} style={{ border: '1px solid currentColor', borderRadius: 7, background: 'transparent', color: 'inherit', padding: '7px 10px', fontWeight: 800, cursor: 'pointer' }}>Try again</button></div>}
               <Outlet />
             </div>

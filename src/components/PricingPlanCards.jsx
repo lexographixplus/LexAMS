@@ -46,8 +46,8 @@ function FeatureList({ items, pro = false }) {
 }
 
 export default function PricingPlanCards({
-  freeCta = 'Start free',
-  proCta = 'Start with Free',
+  freeCta = 'Start 30-day Pro trial',
+  proCta = 'Start 30-day Pro trial',
   freeTo = '/signup',
   proTo = '/signup',
 }) {
@@ -70,7 +70,7 @@ export default function PricingPlanCards({
             <div>
               <div className="mk-plan-label">Free</div>
               <h2>Free</h2>
-              <p>For small programmes, pilots and teams getting started.</p>
+              <p>Your permanent no-cost plan after the Pro trial, for small programmes and pilots.</p>
             </div>
             <div className="mk-plan-price-row"><span className="mk-plan-currency">GMD</span><strong>0</strong></div>
           </div>
@@ -86,7 +86,7 @@ export default function PricingPlanCards({
             <div>
               <div className="mk-plan-label">Pro</div>
               <h2>Pro</h2>
-              <p>For growing organisations running larger or recurring programmes.</p>
+              <p>Every new workspace can explore all Pro features free for 30 days.</p>
             </div>
             <div className="mk-plan-price-row pro"><span className="mk-plan-currency">GMD</span><strong key={proPrice}>{proPrice}</strong><small>{proPeriod}</small></div>
             <p className="mk-plan-price-note">{annual ? 'GMD 833/month equivalent · billed annually' : 'Billed monthly'}</p>

@@ -70,6 +70,7 @@ export default function BillingAdmin() {
       <div style={statGrid}>
         <Stat label="Pro organisations" value={stats.pro_organizations || 0} />
         <Stat label="Free organisations" value={stats.free_organizations || 0} />
+        <Stat label="In trial" value={stats.in_trial || 0} />
         <Stat label="In grace" value={stats.in_grace || 0} />
         <Stat label="Expired / past due" value={stats.expired_or_past_due || 0} />
       </div>
@@ -81,7 +82,7 @@ export default function BillingAdmin() {
       <div style={{ fontWeight: 700, fontSize: 16 }}>Organisation subscriptions</div>
       <p style={subtext}>Select an organisation to record an approved manual payment, grant time-limited complimentary Pro access or downgrade a Pro account to Free.</p>
       <div style={tableWrap}><table style={table}><thead><tr><th>Organisation</th><th>Plan / status</th><th>Cycle</th><th>Ends</th><th /></tr></thead><tbody>
-        {data.subscriptions.map(subscription => <tr key={subscription.organization_id}><td><strong>{subscription.organization_name}</strong><br /><span style={muted}>{subscription.provider}</span></td><td><span style={badge}>{subscription.plan} · {subscription.status}</span></td><td>{subscription.billing_cycle || '—'}</td><td>{date(subscription.grace_period_end || subscription.current_period_end)}</td><td><button onClick={() => setSelected(subscription)} style={smallButton}>Manage</button></td></tr>)}
+        {data.subscriptions.map(subscription => <tr key={subscription.organization_id}><td><strong>{subscription.organization_name}</strong><br /><span style={muted}>{subscription.provider}</span></td><td><span style={badge}>{subscription.plan} · {subscription.status}</span></td><td>{subscription.billing_cycle || '—'}</td><td>{date(subscription.trial_ends_at || subscription.grace_period_end || subscription.current_period_end)}</td><td><button onClick={() => setSelected(subscription)} style={smallButton}>Manage</button></td></tr>)}
       </tbody></table></div>
     </section>
 
@@ -115,7 +116,7 @@ const eyebrow = { color: 'var(--text-tertiary)', fontSize: 11, letterSpacing: '.
 const title = { fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--color-navy-900)', margin: '4px 0 0' };
 const subtext = { color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, margin: '7px 0 0' };
 const muted = { color: 'var(--text-tertiary)', fontSize: 12 };
-const statGrid = { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginTop: 20 };
+const statGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginTop: 20 };
 const tableWrap = { overflowX: 'auto', marginTop: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' };
 const table = { width: '100%', borderCollapse: 'collapse', minWidth: 700, fontSize: 13 };
 const smallButton = { border: '1px solid var(--border-default)', background: 'var(--surface-card)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, color: 'var(--color-navy-700)', cursor: 'pointer' };

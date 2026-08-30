@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, CreditCard, Sparkles } from 'lucide-react';
+import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
 
 const formatDate = (value) => value ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : '—';
 const formatMoney = (amount) => `GMD ${Number(amount || 0).toLocaleString()}`;
@@ -47,13 +48,17 @@ export default function BillingPlan({ isAdmin, notify }) {
   }, [notify]);
 
   const isPro = billing?.subscription?.plan === 'pro';
+  const isTrialing = isTrialingSubscription(billing?.subscription);
+  const trialDays = billing?.subscription?.trial_days_remaining
+    ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
   const entitlement = billing?.entitlements;
   const usage = billing?.usage;
   const renewalLabel = useMemo(() => {
     if (!billing?.subscription) return '';
+    if (isTrialing) return `Trial ends ${formatDate(billing.subscription.trial_ends_at || billing.subscription.current_period_end)} · ${trialDaysLabel(trialDays)}`;
     if (billing.subscription.status === 'grace') return `Grace period ends ${formatDate(billing.subscription.grace_period_end)}`;
     return billing.subscription.current_period_end ? `Renews or expires ${formatDate(billing.subscription.current_period_end)}` : 'No paid renewal is scheduled';
-  }, [billing]);
+  }, [billing, isTrialing, trialDays]);
 
   if (loading) return <section style={card}><div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading billing and plan details…</div></section>;
 
@@ -62,10 +67,10 @@ export default function BillingPlan({ isAdmin, notify }) {
       <div>
         <div style={eyebrow}>Billing & plan</div>
         <h3 style={heading}>Your LexAMS plan</h3>
-        <p style={subtext}>{isPro ? 'Your organisation has professional operating capacity.' : 'Start small today; upgrade when your programme needs more scale.'}</p>
+        <p style={subtext}>{isTrialing ? 'Your organisation has full Pro access during its 30-day trial.' : isPro ? 'Your organisation has professional operating capacity.' : 'Start small today; upgrade when your programme needs more scale.'}</p>
       </div>
-      <span style={{ ...pill, background: isPro ? '#E8F7EE' : '#EEF3F8', color: isPro ? '#18733B' : 'var(--color-navy-700)' }}>
-        {isPro ? <Sparkles size={14} /> : <Clock3 size={14} />}{isPro ? 'LexAMS Pro' : 'Free plan'}
+      <span style={{ ...pill, background: isTrialing ? '#FFF1C7' : isPro ? '#E8F7EE' : '#EEF3F8', color: isTrialing ? '#765300' : isPro ? '#18733B' : 'var(--color-navy-700)' }}>
+        {isPro ? <Sparkles size={14} /> : <Clock3 size={14} />}{isTrialing ? `Pro trial · ${trialDaysLabel(trialDays)}` : isPro ? 'LexAMS Pro' : 'Free plan'}
       </span>
     </div>
 
@@ -79,12 +84,12 @@ export default function BillingPlan({ isAdmin, notify }) {
           <Meter label="Team seats" current={usage.teamSeats} limit={entitlement.teamSeats} />
           <Meter label="Certificates this month" current={usage.monthlyCertificates} limit={entitlement.monthlyCertificates} />
         </>}
-        {isPro && <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginTop: 20, padding: 12, borderRadius: 'var(--radius-sm)', background: '#F4FBF6', color: '#1B6A3A', fontSize: 13 }}><CheckCircle2 size={17} /> Pro features are enabled for your whole organisation.</div>}
+        {isPro && <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginTop: 20, padding: 12, borderRadius: 'var(--radius-sm)', background: isTrialing ? '#FFF8E8' : '#F4FBF6', color: isTrialing ? '#6B4A00' : '#1B6A3A', fontSize: 13 }}><CheckCircle2 size={17} /> {isTrialing ? 'All Pro features are enabled until the trial ends. No card has been charged.' : 'Pro features are enabled for your whole organisation.'}</div>}
       </div>
 
-      {!isPro && <div style={{ ...panel, border: '1.5px solid var(--color-accent)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15 }}><Sparkles size={17} color="var(--color-accent)" /> Upgrade to Pro</div>
-        <p style={{ ...subtext, marginTop: 7 }}>Team collaboration, larger programme capacity, full reporting and professional outputs.</p>
+      {(!isPro || isTrialing) && <div style={{ ...panel, border: '1.5px solid var(--color-accent)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15 }}><Sparkles size={17} color="var(--color-accent)" /> {isTrialing ? 'Keep Pro after your trial' : 'Upgrade to Pro'}</div>
+        <p style={{ ...subtext, marginTop: 7 }}>{isTrialing ? `Choose a plan now to keep Pro access after the remaining ${trialDaysLabel(trialDays)}. Your paid period begins after the trial.` : 'Team collaboration, larger programme capacity, full reporting and professional outputs.'}</p>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={() => setCycle('annual')} style={{ ...optionButton, ...(cycle === 'annual' ? selectedOption : {}) }}>Annual <strong>GMD 10,000</strong><small>GMD 833/month · Save 17%</small></button>
           <button onClick={() => setCycle('monthly')} style={{ ...optionButton, ...(cycle === 'monthly' ? selectedOption : {}) }}>Monthly <strong>GMD 1,000</strong><small>Flexible access</small></button>

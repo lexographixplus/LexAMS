@@ -27,10 +27,14 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = useCallback(async () => {
     if (isReportingPreviewDemo()) {
+      const previewTrialDays = Math.min(30, Math.max(0, Number(new URLSearchParams(window.location.search).get('trial')) || 0));
+      const trialEndsAt = previewTrialDays ? new Date(Date.now() + previewTrialDays * 86400000).toISOString() : null;
       const preview = {
         user: { id: 'preview-user', name: 'Preview Administrator', email: 'preview@example.invalid' },
         profile: { full_name: 'Preview Administrator', org_name: 'LexAMS Demo Workspace', role: 'owner', team_role: 'admin', platform_admin: false },
-        billing: { subscription: { plan: 'pro', status: 'active' } },
+        billing: { subscription: previewTrialDays
+          ? { plan: 'pro', status: 'trialing', trial_ends_at: trialEndsAt, current_period_end: trialEndsAt, trial_days_remaining: previewTrialDays }
+          : { plan: 'pro', status: 'active' } },
       };
       setUser(preview.user); setProfile(preview.profile); setBilling(preview.billing); setLoading(false);
       return preview;
