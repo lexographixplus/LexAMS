@@ -5,6 +5,7 @@ import {
   calculateBudgetSummary,
   calculateJournalSummary,
   canEditJournalEntry,
+  filterSessionFacilitatorsToTeam,
   normalizeBudgetItem,
   normalizeJournalEntry,
   normalizeSessionImportRow,
@@ -111,4 +112,37 @@ test('legacy downloaded session templates do not block imports with placeholder 
   }, { minDate: '2026-08-31', maxDate: '2026-10-09' });
   assert.deepEqual(normalized.facilitator_emails, []);
   assert.equal(normalized.lead_facilitator_email, null);
+});
+
+test('session CSV accepts title and date while leaving every optional field blank', () => {
+  const normalized = normalizeSessionImportRow({
+    title: 'Participant safeguarding',
+    session_date: '2026-09-02',
+  }, { minDate: '2026-08-31', maxDate: '2026-10-09' });
+  assert.deepEqual(normalized, {
+    title: 'Participant safeguarding',
+    session_date: '2026-09-02',
+    starts_at: null,
+    ends_at: null,
+    venue: '',
+    description: '',
+    learning_objectives: '',
+    planning_status: 'draft',
+    facilitator_ids: [],
+    lead_facilitator_id: null,
+    facilitator_emails: [],
+    lead_facilitator_email: null,
+  });
+});
+
+test('unavailable facilitator emails are skipped without rejecting the session', () => {
+  const filtered = filterSessionFacilitatorsToTeam({
+    facilitator_emails: ['lead@workspace.org', 'later@example.org', 'second@workspace.org'],
+    lead_facilitator_email: 'later@example.org',
+  }, ['lead@workspace.org', 'second@workspace.org']);
+  assert.deepEqual(filtered, {
+    facilitator_emails: ['lead@workspace.org', 'second@workspace.org'],
+    lead_facilitator_email: 'lead@workspace.org',
+    skipped_facilitator_emails: ['later@example.org'],
+  });
 });

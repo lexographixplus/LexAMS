@@ -7,6 +7,7 @@ import {
   BUDGET_CURRENCIES,
   canEditJournalEntry,
   canUpdatePlanningTask,
+  filterSessionFacilitatorsToTeam,
   normalizeBudgetItem,
   normalizeJournalEntry,
   normalizePlanningTask,
@@ -442,10 +443,10 @@ export default async (request: Request, context: Context) => {
         [organizationId],
       );
       const memberByEmail = new Map(membersResult.rows.map(member => [String(member.email), String(member.id)]));
-      for (const row of rows) {
-        const missing = row.facilitator_emails.find(email => !memberByEmail.has(email));
-        if (missing) return json({ error: `Row ${row.rowNumber}: ${missing} is not an active team member.` }, 400);
-      }
+      rows = rows.map(row => ({
+        ...row,
+        ...filterSessionFacilitatorsToTeam(row, memberByEmail.keys()),
+      }));
 
       const existingResult = await db.query(
         `select * from activity_sessions where organization_id=$1 and activity_id=$2 order by sort_order,id`,
@@ -453,7 +454,13 @@ export default async (request: Request, context: Context) => {
       );
       const existingByTitle = new Map(existingResult.rows.map(session => [String(session.title).trim().toLowerCase(), session]));
       let nextSortOrder = existingResult.rows.reduce((maximum, session) => Math.max(maximum, Number(session.sort_order || 0)), -1) + 1;
-      const summary = { created: 0, updated: 0, skipped: 0, facilitatorsAssigned: 0 };
+      const summary = {
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        facilitatorsAssigned: 0,
+        facilitatorsSkipped: rows.reduce((total, row) => total + row.skipped_facilitator_emails.length, 0),
+      };
       const client = await db.connect();
       try {
         await client.query('begin');

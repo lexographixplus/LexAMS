@@ -243,6 +243,23 @@ export function normalizeSessionImportRow(input = {}, dateRange = {}) {
   };
 }
 
+export function filterSessionFacilitatorsToTeam(input = {}, allowedEmails = []) {
+  const allowed = new Set(Array.from(allowedEmails, email => String(email || '').trim().toLowerCase()).filter(Boolean));
+  const requestedEmails = (Array.isArray(input.facilitator_emails) ? input.facilitator_emails : [])
+    .map(email => String(email || '').trim().toLowerCase()).filter(Boolean);
+  const facilitatorEmails = requestedEmails.filter(email => allowed.has(email));
+  const skippedFacilitatorEmails = requestedEmails.filter(email => !allowed.has(email));
+  const requestedLeadEmail = String(input.lead_facilitator_email || '').trim().toLowerCase();
+  const leadFacilitatorEmail = requestedLeadEmail && facilitatorEmails.includes(requestedLeadEmail)
+    ? requestedLeadEmail
+    : facilitatorEmails[0] || null;
+  return {
+    facilitator_emails: facilitatorEmails,
+    lead_facilitator_email: leadFacilitatorEmail,
+    skipped_facilitator_emails: skippedFacilitatorEmails,
+  };
+}
+
 function percent(value, total) {
   return total ? Math.round((value / total) * 100) : 0;
 }

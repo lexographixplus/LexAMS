@@ -84,6 +84,7 @@
 
 .planning-message.neutral { background: #eef5fb; color: #31516f; }
 .planning-message.success { background: #edf8f0; color: #176b3a; }
+.planning-message.warning { background: #fff7e6; color: #7a4d00; }
 .planning-message.error { background: #fff0ef; color: #9a2e29; }
 .planning-message button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: inherit; font-weight: 800; }
 .planning-commercial-note { display: flex; align-items: center; gap: 10px; }
@@ -423,6 +424,7 @@
 .planning-import-row > span small { margin-top: 2px; color: var(--text-tertiary); font-size: 8px; }
 .planning-import-row-head { background: var(--surface-muted); color: var(--text-tertiary); font-size: 8px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .planning-import-valid { color: var(--color-success); font-weight: 800; }
+.planning-import-warning { color: #8a5a00; font-weight: 800; }
 .planning-import-invalid { color: var(--color-danger); font-weight: 800; }
 
 .planning-budget-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
