@@ -1,0 +1,232 @@
+/* ---------------------------------------------------------------------------
+   Participants screen.
+
+   Written as classes rather than inline styles so that this screen's mobile
+   behaviour lives here, beside the rules it modifies, instead of in the global
+   overrides that matched fragments of inline style attributes.
+   --------------------------------------------------------------------------- */
+
+.lx-participants-filters {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.lx-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lx-person-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lx-person-email {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.lx-person:hover .lx-person-name {
+  color: var(--color-navy-700);
+  text-decoration: underline;
+}
+
+.lx-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Drawer ---------------------------------------------------------------- */
+
+.lx-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  background: rgba(0, 43, 84, 0.25);
+  border: 0;
+}
+
+.lx-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.lx-drawer-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lx-drawer-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lx-drawer-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.lx-drawer-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.lx-drawer-section:last-child {
+  border-bottom: 0;
+}
+
+.lx-facts {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.lx-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lx-facts dt,
+.lx-fact-label {
+  color: var(--text-tertiary);
+}
+
+.lx-drawer-actions {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 8px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.lx-drawer-actions > * {
+  min-height: 38px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.lx-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.lx-history-item {
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.lx-history-item strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lx-history-item span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* --- Dialog ---------------------------------------------------------------- */
+
+.lx-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 43, 84, 0.25);
+}
+
+.lx-form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.lx-check-list {
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+.lx-check-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.lx-check-list label:last-child {
+  border-bottom: 0;
+}
+
+.lx-check-list input {
+  accent-color: var(--color-navy-900);
+}
+
+.lx-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* --- Phone ----------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .lx-participants-filters {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .lx-drawer-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .lx-dialog-actions > * {
+    flex: 1 1 auto;
+  }
+
+}

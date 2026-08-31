@@ -6,6 +6,7 @@ import { DataProvider } from './contexts/DataContext';
 import App from './App';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import './index.css';
+import './ui.css';
 import './responsive.css';
 
 createRoot(document.getElementById('root')).render(

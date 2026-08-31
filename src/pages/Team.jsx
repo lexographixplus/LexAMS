@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { fmtDate } from '../lib/format';
-import { UserPlus, Check, X, Trash2, Shield, User } from 'lucide-react';
+import { UserPlus, Check, X, Trash2, Shield, User, AlertCircle } from 'lucide-react';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Team() {
   const { user, profile, isAdmin } = useAuth();
@@ -10,6 +11,7 @@ export default function Team() {
   const [invites, setInvites] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -24,20 +26,25 @@ export default function Team() {
   const teamId = profile?.team_id;
 
   useEffect(() => {
-    if (!teamId) return;
+    // Without a team there is nothing to fetch, but the screen still has to
+    // stop loading — it previously sat on its loading state indefinitely.
+    if (!teamId) { setLoading(false); return; }
     loadTeamData();
   }, [teamId]);
 
   async function loadTeamData() {
     setLoading(true);
-    const [{ data: m }, { data: inv }, { data: pa }] = await Promise.all([
+    setLoadError('');
+    const [membersResult, invitesResult, approvalsResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('team_id', teamId),
       supabase.from('team_invites').select('*').eq('invited_by', teamId).order('created_at', { ascending: false }),
       supabase.from('pending_approvals').select('*').eq('team_id', teamId).order('created_at', { ascending: false }),
     ]);
-    setMembers(m || []);
-    setInvites(inv || []);
-    setPendingApprovals(pa || []);
+    const failure = [membersResult, invitesResult, approvalsResult].find(result => result.error);
+    if (failure) setLoadError(failure.error.message || 'Your team could not be loaded.');
+    setMembers(membersResult.data || []);
+    setInvites(invitesResult.data || []);
+    setPendingApprovals(approvalsResult.data || []);
     setLoading(false);
   }
 
@@ -110,13 +117,28 @@ export default function Team() {
     background: 'var(--surface-card)', outline: 'none', color: 'var(--text-primary)',
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>Loading team...</div>;
+  if (loading) return <SkeletonScreen cards={2} label="Loading your team" />;
+
+  if (loadError) {
+    return (
+      <div className="lx-state lx-state-error" role="alert">
+        <AlertCircle className="lx-state-icon" size={20} color="var(--color-danger)" aria-hidden="true" />
+        <div>
+          <strong>Your team could not be loaded</strong>
+          <p>{loadError}</p>
+          <div className="lx-state-actions">
+            <button type="button" className="lx-btn lx-btn-secondary lx-btn-small" onClick={loadTeamData}>Try again</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Team</h2>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Team</h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>Manage members, invitations and approval requests.</p>
         </div>
         {isAdmin && (
@@ -255,7 +277,7 @@ function approvalDetail(a) {
 
 function Stat({ label, value }) {
   return <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px' }}>
-    <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{label}</div>
+    <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{label}</div>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginTop: 8 }}>{value}</div>
   </div>;
 }
@@ -278,11 +300,11 @@ function Empty({ children }) {
 function Avatar({ member }) {
   const admin = member.team_role === 'admin';
   const initials = member.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  return <div style={{ width: 32, height: 32, borderRadius: 999, background: admin ? 'var(--color-navy-900)' : 'var(--surface-muted)', color: admin ? '#FFFFFF' : 'var(--color-navy-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{initials}</div>;
+  return <div style={{ width: 32, height: 32, borderRadius: 999, background: admin ? 'var(--color-navy-900)' : 'var(--surface-muted)', color: admin ? '#FFFFFF' : 'var(--color-navy-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{initials}</div>;
 }
 
 function RolePill({ admin }) {
-  return <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: admin ? '#E4F3E9' : 'var(--surface-muted)', color: admin ? 'var(--color-success)' : 'var(--text-secondary)' }}>
+  return <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: admin ? '#E4F3E9' : 'var(--surface-muted)', color: admin ? 'var(--color-success)' : 'var(--text-secondary)' }}>
     {admin ? <><Shield size={12} /> Admin</> : <><User size={12} /> Member</>}
   </span>;
 }
@@ -290,7 +312,7 @@ function RolePill({ admin }) {
 function StatusPill({ status }) {
   const approved = status === 'accepted' || status === 'approved';
   const pending = status === 'pending';
-  return <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: pending ? '#FDF3DC' : approved ? '#E4F3E9' : '#F9E4E2', color: pending ? '#8A6210' : approved ? 'var(--color-success)' : 'var(--color-danger)' }}>{status}</span>;
+  return <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: pending ? '#FDF3DC' : approved ? '#E4F3E9' : '#F9E4E2', color: pending ? '#8A6210' : approved ? 'var(--color-success)' : 'var(--color-danger)' }}>{status}</span>;
 }
 
 const primaryButton = { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: 'var(--color-navy-900)', background: 'var(--color-gold-500)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' };

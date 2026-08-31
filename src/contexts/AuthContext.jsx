@@ -10,6 +10,19 @@ async function getCsrfToken() {
   return data.csrfToken;
 }
 
+/**
+ * Reads a JSON body, returning null when the response is not actually JSON.
+ * Gateways, CDNs and offline proxies answer with HTML error pages, and an
+ * unguarded parse of those throws where nothing is listening.
+ */
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 function authErrorFromResponse(data) {
   if (data?.error) return data.error;
   if (typeof data?.url === 'string') {
@@ -24,6 +37,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(null);
 
   const refreshProfile = useCallback(async () => {
     if (isReportingPreviewDemo()) {
@@ -36,14 +50,34 @@ export function AuthProvider({ children }) {
           ? { plan: 'pro', status: 'trialing', trial_ends_at: trialEndsAt, current_period_end: trialEndsAt, trial_days_remaining: previewTrialDays }
           : { plan: 'pro', status: 'active' } },
       };
-      setUser(preview.user); setProfile(preview.profile); setBilling(preview.billing); setLoading(false);
+      setUser(preview.user); setProfile(preview.profile); setBilling(preview.billing);
+      setSessionError(null); setLoading(false);
       return preview;
     }
-    const response = await fetch('/api/me', { credentials: 'include' });
-    if (!response.ok) {
-      setUser(null); setProfile(null); setBilling(null); setLoading(false); return null;
+    let response;
+    try {
+      response = await fetch('/api/me', { credentials: 'include' });
+    } catch {
+      // The network is unreachable, or the request was blocked. This is
+      // recoverable, so surface it rather than leaving the app on its splash.
+      setUser(null); setProfile(null); setBilling(null);
+      setSessionError('We could not reach LexAMS. Check your connection and try again.');
+      setLoading(false);
+      return null;
     }
-    const data = await response.json();
+    if (!response.ok) {
+      // A signed-out visitor is the normal case here, not a failure.
+      setUser(null); setProfile(null); setBilling(null); setSessionError(null); setLoading(false); return null;
+    }
+    const data = await readJson(response);
+    if (!data) {
+      // A gateway or CDN returned an error page where session data was expected.
+      setUser(null); setProfile(null); setBilling(null);
+      setSessionError('LexAMS returned an unexpected response. This is usually temporary.');
+      setLoading(false);
+      return null;
+    }
+    setSessionError(null);
     setUser(data.user); setProfile(data.profile); setBilling(data.billing || null);
 
     const pending = localStorage.getItem('lexams_pending_onboarding');
@@ -52,8 +86,8 @@ export function AuthProvider({ children }) {
         await fetch('/api/onboarding', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: pending });
         localStorage.removeItem('lexams_pending_onboarding');
         const refreshed = await fetch('/api/me', { credentials: 'include' });
-        if (refreshed.ok) {
-          const next = await refreshed.json();
+        const next = refreshed.ok ? await readJson(refreshed) : null;
+        if (next) {
           setUser(next.user); setProfile(next.profile); setBilling(next.billing || null);
         }
       } catch {
@@ -114,7 +148,7 @@ export function AuthProvider({ children }) {
   const isAdmin = ['owner', 'admin'].includes(profile?.team_role);
   const isPro = billing?.subscription?.plan === 'pro';
 
-  return <AuthContext.Provider value={{ user, profile, billing, loading, signUp, signIn, signOut, isDemo: isReportingPreviewDemo(), isAdmin, isPro, refreshProfile }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, profile, billing, loading, sessionError, signUp, signIn, signOut, isDemo: isReportingPreviewDemo(), isAdmin, isPro, refreshProfile }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

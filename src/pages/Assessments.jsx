@@ -131,7 +131,7 @@ export default function Assessments() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Assessments</h2>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Assessments</h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
             Create pre/post tests or standalone assessments with auto-grading.
           </p>
@@ -164,7 +164,7 @@ export default function Assessments() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 600 }}>{a.title}</span>
                     <span style={{
-                      padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                      padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600,
                       background: 'var(--surface-muted)', color: 'var(--text-tertiary)',
                     }}>{a.assessment_type}</span>
                   </div>
@@ -398,7 +398,7 @@ export default function Assessments() {
               background: 'var(--surface-card)', border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px',
             }}>
-              <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{s.label}</div>
+              <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{s.label}</div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginTop: 8 }}>{s.value}</div>
             </div>
           ))}
@@ -412,7 +412,7 @@ export default function Assessments() {
           <div style={{ padding: '16px 22px', fontSize: 14, fontWeight: 600 }}>Submissions</div>
           <div style={{
             display: 'grid', gridTemplateColumns: '1.5fr 2fr 1fr 1fr 0.8fr',
-            gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em',
+            gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
             textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
             background: 'var(--surface-muted)',
           }}>

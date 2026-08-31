@@ -3,8 +3,10 @@ import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import QrCode from '../../components/QrCode';
 import { fmtRange } from '../../lib/format';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 export default function ParticipantPassPublic() {
+  useDocumentTitle('Your participant pass');
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function ParticipantPassPublic() {
                     <div style={{ color: '#002B54', fontWeight: 800 }}>{reg.title}</div>
                     <div style={{ marginTop: 4, color: '#687587', fontSize: 12 }}>{reg.type || 'Activity'} · {fmtRange({ start: reg.start_date, end: reg.end_date })}{reg.venue ? ` · ${reg.venue}` : ''}</div>
                   </div>
-                  <span style={{ flexShrink: 0, padding: '5px 9px', borderRadius: 999, background: reg.status === 'confirmed' ? '#EAF6EE' : reg.status === 'waitlisted' ? '#FFF6DF' : '#EEF3F8', color: reg.status === 'confirmed' ? '#24633D' : '#31516F', fontSize: 11, fontWeight: 800, textTransform: 'capitalize' }}>{reg.status}</span>
+                  <span style={{ flexShrink: 0, padding: '5px 9px', borderRadius: 999, background: reg.status === 'confirmed' ? '#EAF6EE' : reg.status === 'waitlisted' ? '#FFF6DF' : '#EEF3F8', color: reg.status === 'confirmed' ? '#24633D' : '#31516F', fontSize: 12, fontWeight: 800, textTransform: 'capitalize' }}>{reg.status}</span>
                 </div>
                 <div style={{ marginTop: 10, fontSize: 12, color: '#687587' }}>Registration reference <strong style={{ color: '#002B54' }}>{reg.reference_code}</strong></div>
               </div>

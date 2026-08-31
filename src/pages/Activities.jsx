@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Filter, MapPin, Plus, Search, Users } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, statusChip } from '../lib/format';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Activities() {
   const { activities, loading, addActivity, getRegsForActivity, getAttendancePct } = useData();
@@ -65,7 +66,7 @@ export default function Activities() {
   };
 
   if (loading) {
-    return <div style={{ minHeight: 360, display: 'grid', placeItems: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading activities...</div>;
+    return <SkeletonScreen cards={3} label="Loading activities" />;
   }
 
   return (
@@ -79,7 +80,7 @@ export default function Activities() {
         .activities-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; background: var(--surface-card); }
         .activities-summary-item { padding: 18px 20px; border-right: 1px solid var(--border-default); }
         .activities-summary-item:last-child { border-right: 0; }
-        .activities-summary-label { color: var(--text-tertiary); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
+        .activities-summary-label { color: var(--text-tertiary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
         .activities-summary-value { margin-top: 7px; font-family: var(--font-display); color: var(--color-navy-900); font-size: 25px; font-weight: 700; }
         .activities-tools { display: grid; grid-template-columns: minmax(240px, 1fr) 180px 180px; gap: 10px; align-items: center; }
         .activities-search { position: relative; }
@@ -94,9 +95,9 @@ export default function Activities() {
         .activities-card:last-child { border-bottom: 0; }
         .activities-card:hover { background: var(--surface-muted); }
         .activities-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-        .activities-meta { margin-top: 7px; display: flex; gap: 13px; flex-wrap: wrap; color: var(--text-tertiary); font-size: 11px; }
+        .activities-meta { margin-top: 7px; display: flex; gap: 13px; flex-wrap: wrap; color: var(--text-tertiary); font-size: 12px; }
         .activities-meta span { display: inline-flex; align-items: center; gap: 5px; }
-        .activities-metric-label { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+        .activities-metric-label { color: var(--text-tertiary); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
         .activities-metric-value { margin-top: 6px; color: var(--text-primary); font-size: 13px; font-weight: 600; }
         .activities-empty { padding: 54px 24px; text-align: center; }
         .activities-empty-title { font-family: var(--font-display); font-size: 20px; color: var(--color-navy-900); font-weight: 700; }
@@ -142,13 +143,16 @@ export default function Activities() {
 
       <section className="activities-tools" aria-label="Activity filters">
         <div className="activities-search">
-          <Search size={16} />
-          <input style={inputStyle} placeholder="Search title, venue or facilitator" value={q} onChange={e => setQ(e.target.value)} />
+          <Search size={16} aria-hidden="true" />
+          <label className="lx-visually-hidden" htmlFor="activity-search">Search activities</label>
+          <input id="activity-search" type="search" style={inputStyle} placeholder="Search title, venue or facilitator" value={q} onChange={e => setQ(e.target.value)} />
         </div>
-        <select value={typeF} onChange={e => setTypeF(e.target.value)} style={inputStyle}>
+        <label className="lx-visually-hidden" htmlFor="activity-type-filter">Filter by type</label>
+        <select id="activity-type-filter" value={typeF} onChange={e => setTypeF(e.target.value)} style={inputStyle}>
           {types.map(t => <option key={t} value={t}>{t === 'all' ? 'All types' : t}</option>)}
         </select>
-        <select value={statusF} onChange={e => setStatusF(e.target.value)} style={inputStyle}>
+        <label className="lx-visually-hidden" htmlFor="activity-status-filter">Filter by status</label>
+        <select id="activity-status-filter" value={statusF} onChange={e => setStatusF(e.target.value)} style={inputStyle}>
           {statuses.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s}</option>)}
         </select>
       </section>
@@ -197,27 +201,44 @@ export default function Activities() {
       </section>
 
       {showNewDlg && (
-        <div onClick={() => setShowNewDlg(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,43,84,.34)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface-card)', borderRadius: 16, boxShadow: 'var(--shadow-raised)', padding: '28px 30px', width: 520, maxWidth: '100%' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--color-navy-900)' }}>Create activity</div>
-            <p style={{ margin: '7px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>Add the core delivery details now. Registration, attendance and outcomes can be managed from the activity workspace after creation.</p>
-            <form onSubmit={createActivity} style={{ marginTop: 20, display: 'grid', gap: 13 }}>
-              <input placeholder="Activity title" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
-                  {['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(t => <option key={t}>{t}</option>)}
-                </select>
-                <input placeholder="Venue" value={form.venue} onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} style={inputStyle} />
+        <div className="lx-dialog-backdrop" onClick={() => setShowNewDlg(false)}>
+          <div className="lx-dialog" role="dialog" aria-modal="true" aria-labelledby="create-activity-title" onClick={e => e.stopPropagation()}>
+            <h2 id="create-activity-title">Create activity</h2>
+            <p style={{ margin: '7px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              Add the core delivery details now. Registration, attendance and outcomes can be managed from the activity workspace after creation.
+            </p>
+            <form className="lx-form" onSubmit={createActivity}>
+              <label className="lx-visually-hidden" htmlFor="new-activity-title">Activity title</label>
+              <input id="new-activity-title" className="lx-field" placeholder="Activity title" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <div className="lx-field-pair">
+                <div>
+                  <label className="lx-visually-hidden" htmlFor="new-activity-type">Activity type</label>
+                  <select id="new-activity-type" className="lx-field" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                    {['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="lx-visually-hidden" htmlFor="new-activity-venue">Venue</label>
+                  <input id="new-activity-venue" className="lx-field" placeholder="Venue" value={form.venue} onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} />
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={inputStyle} />
-                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={inputStyle} />
+              <div className="lx-field-pair">
+                <div>
+                  <label className="lx-field-label" htmlFor="new-activity-start">Start date</label>
+                  <input id="new-activity-start" className="lx-field" type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="lx-field-label" htmlFor="new-activity-end">End date</label>
+                  <input id="new-activity-end" className="lx-field" type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                </div>
               </div>
-              <input placeholder="Lead facilitator" value={form.facilitator} onChange={e => setForm(f => ({ ...f, facilitator: e.target.value }))} style={inputStyle} />
-              <textarea placeholder="Description" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                <button type="button" onClick={() => setShowNewDlg(false)} style={{ padding: '10px 18px', borderRadius: 9, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ padding: '10px 18px', borderRadius: 9, border: 0, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: submitting ? .65 : 1 }}>{submitting ? 'Creating...' : 'Create activity'}</button>
+              <label className="lx-visually-hidden" htmlFor="new-activity-facilitator">Lead facilitator</label>
+              <input id="new-activity-facilitator" className="lx-field" placeholder="Lead facilitator" value={form.facilitator} onChange={e => setForm(f => ({ ...f, facilitator: e.target.value }))} />
+              <label className="lx-visually-hidden" htmlFor="new-activity-description">Description</label>
+              <textarea id="new-activity-description" className="lx-field" placeholder="Description" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ resize: 'vertical' }} />
+              <div className="lx-dialog-actions">
+                <button type="button" className="lx-btn lx-btn-secondary" onClick={() => setShowNewDlg(false)}>Cancel</button>
+                <button type="submit" className="lx-btn lx-btn-primary" disabled={submitting}>{submitting ? 'Creating…' : 'Create activity'}</button>
               </div>
             </form>
           </div>

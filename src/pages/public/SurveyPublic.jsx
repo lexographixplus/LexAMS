@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import { publicApi } from '../../lib/publicApi';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 export default function SurveyPublic(){
+  useDocumentTitle('Survey');
  const {token}=useParams(); const [survey,setSurvey]=useState(null); const [questions,setQuestions]=useState([]); const [answers,setAnswers]=useState({}); const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [submitted,setSubmitted]=useState(false); const [sending,setSending]=useState(false);
  useEffect(()=>{publicApi('survey',token).then(b=>{setSurvey(b.survey);setQuestions(b.questions)}).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[token]);
  async function submit(e){e.preventDefault();setSending(true);setError('');try{await publicApi('survey',token,{method:'POST',body:JSON.stringify({name,email,answers})});setSubmitted(true)}catch(e){setError(e.message)}finally{setSending(false)}}

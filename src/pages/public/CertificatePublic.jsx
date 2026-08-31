@@ -4,6 +4,7 @@ import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../componen
 import CertificateSignatureGrid from '../../components/CertificateSignatureGrid';
 import { printCertificate } from '../../lib/printCertificate.js';
 import { isRecognitionCertificate } from '../../../shared/recognition.js';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -28,6 +29,7 @@ const labels = {
 };
 
 export default function CertificatePublic() {
+  useDocumentTitle('Verify certificate');
   const { token } = useParams();
   const [certificate, setCertificate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function CertificatePublic() {
           <div className="certificate-public-content" style={{ border: '1px solid #FAB72D', padding: '42px 34px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
             {certificate.organization_logo && <img src={certificate.organization_logo} alt="" style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12 }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#002B54' }}>{certificate.organization_name}</div>
-            <div style={{ marginTop: 14, textTransform: 'uppercase', letterSpacing: '.16em', fontSize: 11, color: '#0E4C8F' }}>{isAward ? (certificate.award_category || 'Certificate of Recognition') : type}</div>
+            <div style={{ marginTop: 14, textTransform: 'uppercase', letterSpacing: '.16em', fontSize: 12, color: '#0E4C8F' }}>{isAward ? (certificate.award_category || 'Certificate of Recognition') : type}</div>
             {isAward && <div style={{ marginTop: 12, fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: '#002B54' }}>{type}</div>}
             <div style={{ marginTop: isAward ? 20 : 28, color: '#687587', fontSize: 14 }}>{isAward || appreciation ? 'This certificate is proudly presented to' : 'This is to certify that'}</div>
             <div style={{ display: 'inline-block', marginTop: 10, padding: '0 24px 10px', borderBottom: '1px solid #FAB72D', fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700, color: '#002B54' }}>{certificate.participant_name}</div>
@@ -86,13 +88,13 @@ export default function CertificatePublic() {
             {signatories.length > 0 ? (
               <>
                 <div style={{ marginTop: 38 }}><CertificateSignatureGrid signatories={signatories} /></div>
-                <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#8793a3', fontSize: 11 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
+                <div style={{ marginTop: 16, textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#616C7D', fontSize: 12 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
               </>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 42, alignItems: 'flex-end' }}>
-                <div style={{ textAlign: 'left', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.facilitator || certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>{certificate.facilitator ? 'Facilitator' : 'Authorized Signatory'}</div></div>
-                <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#8793a3', fontSize: 11 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
-                <div style={{ textAlign: 'right', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.organization_name}</div><div style={{ color: '#8793a3', fontSize: 11 }}>Issuing Organization</div></div>
+                <div style={{ textAlign: 'left', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.facilitator || certificate.organization_name}</div><div style={{ color: '#616C7D', fontSize: 12 }}>{certificate.facilitator ? 'Facilitator' : 'Authorized Signatory'}</div></div>
+                <div style={{ textAlign: 'center' }}><div style={{ fontFamily: 'monospace', color: '#002B54', fontSize: 12 }}>{certificate.cert_no}</div><div style={{ marginTop: 4, color: '#616C7D', fontSize: 12 }}>Issued {fmtDate(certificate.issued_date)}</div></div>
+                <div style={{ textAlign: 'right', minWidth: 150 }}><div style={{ borderBottom: '1px solid #687587' }} /><div style={{ marginTop: 7, color: '#002B54', fontSize: 13, fontWeight: 600 }}>{certificate.organization_name}</div><div style={{ color: '#616C7D', fontSize: 12 }}>Issuing Organization</div></div>
               </div>
             )}
           </div>

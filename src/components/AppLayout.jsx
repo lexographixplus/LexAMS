@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
+import useDocumentTitle from '../lib/useDocumentTitle';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound, Mail,
@@ -42,12 +43,12 @@ const pageTitles = {
 export default function AppLayout() {
   const { user, profile, billing, signOut, isPro } = useAuth();
   const { activities, participants, certificates, surveys, assessments, error: dataError, refetch } = useData();
+  const orgName = profile?.org_name || 'Your workspace';
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
-  const orgName = profile?.org_name || 'Horizon Community Foundation';
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'Admin User';
   const role = profile?.role || 'Institution Administrator';
   const planNavItems = navItems.filter(item => !item.proOnly || isPro);
@@ -60,8 +61,20 @@ export default function AppLayout() {
     ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
   const planLabel = isTrialing ? `Pro trial · ${trialDaysLabel(trialDays)}` : (isPro ? 'Pro plan' : 'Free plan');
 
-  const pageTitle = pageTitles[location.pathname] ||
-    (location.pathname.startsWith('/app/activities/') ? 'Activity Detail' : 'LexAMS');
+  const isActivityDetail = location.pathname.startsWith('/app/activities/');
+  // Null for any address the shell does not recognise, so the not-found screen
+  // rendered inside it keeps the title it set for itself.
+  const knownTitle = pageTitles[location.pathname] || (isActivityDetail ? 'Activity' : null);
+  // Screens that know something more specific (an activity's own name, say) set
+  // their own title; this is the fallback so no tab is left with a generic one.
+  useDocumentTitle(knownTitle);
+
+  // The trail lists a page's ancestors and stops there. The page states its own
+  // name in its heading, so repeating it here is the duplication this replaced.
+  // The dashboard is the workspace root and therefore has no trail at all.
+  const isDashboard = location.pathname === '/app';
+  const crumbs = isDashboard ? [] : [{ label: orgName, to: '/app' }];
+  if (isActivityDetail) crumbs.push({ label: 'Activities', to: '/app/activities' });
 
   const counts = {
     Activities: activities.length,
@@ -77,32 +90,32 @@ export default function AppLayout() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: '#FFFFFF', lineHeight: 1.1 }}>LexAMS</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>by LexoStudio</div>
+            <div style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.66)', marginTop: 6 }}>by LexoStudio</div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="mobile-only" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', padding: 4, cursor: 'pointer' }}><X size={20} /></button>
+          <button onClick={() => setSidebarOpen(false)} aria-label="Close navigation menu" className="mobile-only" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', padding: 4, cursor: 'pointer' }}><X size={20} /></button>
         </div>
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 12px', flex: 1, overflowY: 'auto' }}>
+      <nav aria-label="Workspace sections" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 12px', flex: 1, overflowY: 'auto' }}>
         {visibleNavItems.map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '10px 12px', borderRadius: 'var(--radius-md)',
               fontSize: 14, fontWeight: 600, textDecoration: 'none',
-              color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+              color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
               background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
             })}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><item.icon size={18} />{item.label}</span>
-            {counts[item.label] !== undefined && <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>{counts[item.label]}</span>}
+            {counts[item.label] !== undefined && <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.66)' }}>{counts[item.label]}</span>}
           </NavLink>
         ))}
       </nav>
 
       <div style={{ padding: '18px 24px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{orgName}</div>
-        <div style={{ fontSize: 11, color: isTrialing ? 'var(--color-gold-500)' : 'rgba(255,255,255,0.5)', marginTop: 3 }}>{planLabel}</div>
+        <div style={{ fontSize: 12, color: isTrialing ? 'var(--color-gold-500)' : 'rgba(255,255,255,0.66)', marginTop: 3 }}>{planLabel}</div>
         <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: 'var(--color-gold-500)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><LogOut size={14} /> Sign out</button>
       </div>
     </>
@@ -133,14 +146,23 @@ export default function AppLayout() {
           .mobile-sidebar { display: flex; position: fixed; top: 0; left: 0; bottom: 0; width: 270px; z-index: 210; flex-direction: column; background: var(--surface-inverse); box-shadow: var(--shadow-raised); }
         }
       `}</style>
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <a className="lx-skip-link" href="#main-content">Skip to main content</a>
+      <div className="lx-app" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
         <div className="desktop-sidebar" style={{ width: 232, flexShrink: 0, background: 'var(--surface-inverse)', flexDirection: 'column' }}>{sidebarContent}</div>
         {sidebarOpen && <><div className="mobile-overlay" onClick={() => setSidebarOpen(false)} /><div className="mobile-sidebar">{sidebarContent}</div></>}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <div className="topbar-pad" style={{ background: 'var(--surface-card)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button className="hamburger" onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-primary)', cursor: 'pointer', alignItems: 'center' }}><Menu size={22} /></button>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-primary)' }}>{pageTitle}</div>
+              <button className="hamburger" aria-label="Open navigation menu" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-primary)', cursor: 'pointer', alignItems: 'center' }}><Menu size={22} /></button>
+              <nav aria-label="Breadcrumb" className="lx-crumbs">
+                <ol>
+                  {crumbs.map((crumb, index) => (
+                    <li key={`${crumb.label}-${index}`} className={index === crumbs.length - 1 ? 'lx-crumb-parent' : undefined}>
+                      {crumb.to ? <NavLink to={crumb.to}>{crumb.label}</NavLink> : <span>{crumb.label}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
             </div>
             <NavLink to="/app/account" className="user-account-link" aria-label="Open My account" title="My account" style={{ alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <div style={{
@@ -151,21 +173,21 @@ export default function AppLayout() {
               }}>{initials}</div>
               <div className="user-account-label">
                 <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{userName}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{role}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{role}</div>
               </div>
             </NavLink>
           </div>
 
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <div className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
+            <main id="main-content" tabIndex={-1} className="content-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
               {isTrialing && <div className="trial-banner" role="status" style={{ marginBottom: 18, padding: '12px 14px', border: '1px solid #E8C568', borderRadius: 'var(--radius-md)', background: '#FFF8E8', color: '#5F4300', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', fontSize: 13, lineHeight: 1.5 }}>
                 <span><strong>Pro trial · {trialDaysLabel(trialDays)}</strong> Explore every Pro feature. Your workspace moves to Free automatically when the trial ends unless you upgrade.</span>
                 <NavLink to="/app/billing" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '7px 11px', borderRadius: 'var(--radius-sm)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>View plan</NavLink>
               </div>}
               {dataError && <div role="alert" style={{ marginBottom: 18, padding: 14, border: '1px solid #F1B7B2', borderRadius: 9, background: '#FFF1F0', color: '#8B2727', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13 }}><span><strong>Workspace data could not be loaded.</strong> {dataError}</span><button onClick={refetch} style={{ border: '1px solid currentColor', borderRadius: 7, background: 'transparent', color: 'inherit', padding: '7px 10px', fontWeight: 800, cursor: 'pointer' }}>Try again</button></div>}
               <Outlet />
-            </div>
+            </main>
           </div>
         </div>
       </div>

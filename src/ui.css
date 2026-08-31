@@ -1,0 +1,784 @@
+/* ---------------------------------------------------------------------------
+   LexAMS shared interface layer.
+
+   Styling written here rather than inline in components, so that the mobile
+   rules in responsive.css can target real class names instead of matching
+   fragments of inline style attributes. Pages are being moved onto this layer
+   one at a time; see docs/phase-3-interface.md.
+   --------------------------------------------------------------------------- */
+
+/* --- Accessibility primitives --------------------------------------------- */
+
+.lx-skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.lx-skip-link:focus {
+  top: 12px;
+}
+
+.lx-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A single, consistent focus ring for every interactive element. Individual
+   components may restyle :focus, but must never remove this. */
+.lx-app a:focus-visible,
+.lx-app button:focus-visible,
+.lx-app input:focus-visible,
+.lx-app select:focus-visible,
+.lx-app textarea:focus-visible,
+.lx-app [tabindex]:focus-visible {
+  outline: 2px solid var(--color-navy-700);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Splash ---------------------------------------------------------------- */
+
+.lx-splash {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--surface-page);
+}
+
+.lx-splash-mark {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-navy-900);
+}
+
+/* --- Full-page message states (not found, auth failure) ------------------- */
+
+.lx-message-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: var(--surface-page);
+}
+
+/* The same card, placed inside the workspace content column. */
+.lx-message-inline {
+  display: grid;
+  place-items: center;
+  padding: 40px 0;
+}
+
+.lx-message-card {
+  width: min(560px, 100%);
+  padding: 40px 36px;
+  text-align: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.lx-message-brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-navy-900);
+  text-decoration: none;
+}
+
+.lx-message-code {
+  margin-top: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-message-card h1 {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.lx-message-card p {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.lx-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+
+.lx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+
+.lx-btn-primary {
+  background: var(--color-navy-900);
+  color: var(--color-white);
+}
+
+.lx-btn-primary:hover {
+  background: var(--color-navy-700);
+}
+
+.lx-btn-secondary {
+  background: var(--surface-card);
+  border-color: var(--border-default);
+  color: var(--color-navy-900);
+}
+
+.lx-btn-secondary:hover {
+  border-color: var(--color-navy-700);
+}
+
+.lx-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .lx-message-card {
+    padding: 32px 22px;
+  }
+
+  .lx-message-actions .lx-btn {
+    width: 100%;
+  }
+}
+
+/* --- Motion --------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Workspace breadcrumb -------------------------------------------------- */
+
+.lx-crumbs ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.lx-crumbs li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+
+.lx-crumbs li + li::before {
+  content: '/';
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.lx-crumbs a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.lx-crumbs a:hover {
+  color: var(--color-navy-700);
+  text-decoration: underline;
+}
+
+/* On a phone only the immediate parent is kept, since it is the one link that
+   is useful there, and the separator before it has nothing left to separate. */
+@media (max-width: 768px) {
+  .lx-crumbs li:not(.lx-crumb-parent) {
+    display: none;
+  }
+
+  .lx-crumbs li.lx-crumb-parent::before {
+    content: '←';
+    font-weight: 600;
+  }
+}
+
+/* --- Page heading ---------------------------------------------------------- */
+
+.lx-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.lx-page-head h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lx-page-head p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+
+.lx-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .lx-page-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lx-page-head h1 {
+    font-size: 23px;
+  }
+
+  .lx-page-actions .lx-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* --- Loading skeletons ----------------------------------------------------- */
+
+/* A skeleton stands in for the shape of the content that is coming, so the page
+   does not jump when it lands. Screens that use it must still handle the error
+   and empty cases; a skeleton is not a substitute for either. */
+.lx-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 25%,
+    var(--color-mist-200) 37%,
+    var(--surface-muted) 63%
+  );
+  background-size: 400% 100%;
+  animation: lx-skeleton-sweep 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes lx-skeleton-sweep {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.lx-skeleton-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 22px 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.lx-skeleton-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* --- Panel-level error and empty states ------------------------------------ */
+
+.lx-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+}
+
+.lx-state-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.lx-state h3,
+.lx-state strong {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lx-state p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.lx-state-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lx-state-error {
+  border-style: solid;
+  border-color: #F1B7B2;
+  background: #FFF6F5;
+}
+
+.lx-btn-small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* --- Activity detail header ------------------------------------------------
+   Written as classes so ActivityDetailFrame no longer has to reach into this
+   markup with nth-of-type and inline-style selectors to style it. */
+
+.lx-activity-head {
+  display: grid;
+  gap: 16px;
+  padding: 24px 26px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.lx-activity-head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.lx-activity-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.lx-activity-head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-navy-900);
+}
+
+.lx-activity-meta {
+  margin: 8px 0 0;
+  max-width: 82ch;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.lx-activity-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.lx-activity-actions .lx-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.lx-btn-danger {
+  background: var(--surface-card);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.lx-btn-danger:hover {
+  background: #FFF6F5;
+}
+
+.lx-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--color-navy-700);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lx-back-link:hover {
+  border-color: var(--color-navy-700);
+}
+
+@media (max-width: 760px) {
+  .lx-activity-head {
+    padding: 20px;
+  }
+
+  .lx-activity-actions {
+    width: 100%;
+  }
+
+  .lx-activity-actions .lx-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* --- Shared data-screen primitives ----------------------------------------
+   Table, drawer, dialog, form field and toast styling used by the screens
+   that have been moved off inline styles. */
+.lx-field {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+
+.lx-field:focus {
+  border-color: var(--color-navy-700);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+/* --- Table ----------------------------------------------------------------- */
+
+.lx-table-card {
+  margin-top: 18px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.lx-table-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lx-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.lx-table th {
+  padding: 0;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+.lx-table th > span,
+.lx-sort {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 12px 22px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-sort {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lx-sort:hover {
+  color: var(--color-navy-700);
+}
+
+.lx-sort[aria-sort='ascending'],
+.lx-sort[aria-sort='descending'],
+.lx-table th[aria-sort] .lx-sort {
+  color: var(--color-navy-900);
+}
+
+.lx-sort-mark {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.lx-table td {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border-default);
+  font-size: 13px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.lx-table tbody tr:hover {
+  background: var(--surface-muted);
+}
+
+.lx-table td.lx-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* A phone number broken across two lines is harder to read than a slightly
+   wider column, and the table scrolls sideways when it has to. */
+.lx-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.lx-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--color-navy-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* --- Pagination ------------------------------------------------------------ */
+
+.lx-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 22px;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.lx-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  width: 420px;
+  max-width: 96vw;
+  overflow-y: auto;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-raised);
+}
+
+.lx-drawer-head .lx-avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 15px;
+}
+
+.lx-btn-award {
+  background: #FFF4D6;
+  border-color: var(--color-gold-500);
+  color: var(--color-navy-900);
+}
+
+.lx-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-dialog {
+  width: 460px;
+  max-width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.lx-dialog h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lx-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.lx-danger-box {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-default);
+  background: #FEF2F2;
+}
+
+.lx-danger-box strong {
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.lx-danger-box p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* --- Toast ----------------------------------------------------------------- */
+
+.lx-toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-raised);
+}
+
+/* --- Shared primitives on a phone ------------------------------------------ */
+
+@media (max-width: 768px) {
+  .lx-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .lx-dialog {
+    width: 100%;
+    padding: 22px 20px;
+  }
+
+  .lx-pagination {
+    justify-content: center;
+  }
+}
+
+/* --- Field pairs and labels ------------------------------------------------ */
+
+.lx-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.lx-field-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 640px) {
+  .lx-field-pair {
+    grid-template-columns: 1fr;
+  }
+}

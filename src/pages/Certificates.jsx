@@ -7,6 +7,7 @@ import AwardsRecognitionPanel from '../components/AwardsRecognitionPanel';
 import { Eye, Mail, Send } from 'lucide-react';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Certificates() {
   const { certificates, loading, getActivity, getParticipant } = useData();
@@ -17,7 +18,7 @@ export default function Certificates() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState('');
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading certificates...</div>;
+  if (loading) return <SkeletonScreen cards={3} label="Loading certificates" />;
 
   const completionCertificates = certificates.filter(c => !isRecognitionCertificate(c));
   const uniqueActs = new Set(completionCertificates.map(c => c.activity_id).filter(Boolean)).size;
@@ -59,7 +60,7 @@ export default function Certificates() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Certificates & Recognition</h2>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Certificates & Recognition</h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{isPro ? 'Manage completion certificates, standalone recognition, recurring awards and certificate delivery.' : 'Generate, view and download completion certificates.'}</p>
         </div>
         {isPro && <span style={{ padding: '5px 10px', borderRadius: 999, background: previewReadOnly ? 'var(--surface-muted)' : '#E4F3E9', color: previewReadOnly ? 'var(--text-secondary)' : 'var(--color-success)', fontSize: 12, fontWeight: 800 }}>{previewReadOnly ? 'Email delivery disabled in preview' : 'Pro recognition active'}</span>}
@@ -80,7 +81,7 @@ export default function Certificates() {
             { label: 'Total issued', value: completionCertificates.length },
             { label: 'Activities covered', value: uniqueActs },
             { label: 'Unique recipients', value: new Set(completionCertificates.map(c => c.participant_id).filter(Boolean)).size },
-          ].map(k => <div key={k.label} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px' }}><div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{k.label}</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 700, marginTop: 8 }}>{k.value}</div></div>)}
+          ].map(k => <div key={k.label} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px' }}><div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{k.label}</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 700, marginTop: 8 }}>{k.value}</div></div>)}
         </div>
 
         {isPro && selected.size > 0 && (
@@ -92,7 +93,7 @@ export default function Certificates() {
 
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden', marginTop: 20 }}>
           <div className="table-scroll"><div style={{minWidth: isPro ? 790 : 700}}>
-          <div style={{ display: 'grid', gridTemplateColumns: isPro ? '0.35fr 1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.75fr' : '1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.5fr', gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, background: 'var(--surface-muted)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isPro ? '0.35fr 1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.75fr' : '1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.5fr', gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, background: 'var(--surface-muted)' }}>
             {isPro && <div>Select</div>}<div>Certificate no.</div><div>Participant</div><div>Activity</div><div>Type</div><div>Issued</div><div></div>
           </div>
           {completionCertificates.map(c => {
@@ -101,9 +102,9 @@ export default function Certificates() {
             return <div key={c.cert_no || c.id} style={{ display: 'grid', gridTemplateColumns: isPro ? '0.35fr 1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.75fr' : '1.2fr 1.4fr 1.8fr 0.8fr 0.8fr 0.5fr', gap: 14, alignItems: 'center', padding: '11px 22px', borderTop: '1px solid var(--border-default)' }}>
               {isPro && <div><input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} aria-label={`Select ${c.cert_no}`}/></div>}
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.cert_no}</div>
-              <div><div style={{ fontSize: 13, fontWeight: 600 }}>{p?.name || c.recipient_name || 'Recipient'}</div>{isPro && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{p?.email || c.recipient_email || 'No email'}</div>}</div>
+              <div><div style={{ fontSize: 13, fontWeight: 600 }}>{p?.name || c.recipient_name || 'Recipient'}</div>{isPro && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{p?.email || c.recipient_email || 'No email'}</div>}</div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{a?.title || '—'}</div>
-              <div><span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: 'var(--surface-muted)', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{c.certificate_type || 'completion'}</span></div>
+              <div><span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, background: 'var(--surface-muted)', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{c.certificate_type || 'completion'}</span></div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{fmtDate(c.issued_date)}</div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
                 <button onClick={() => setPreviewCert(c)} title="View & download" style={{ background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 4 }}><Eye size={16} /></button>

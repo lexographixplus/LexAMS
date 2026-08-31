@@ -99,7 +99,7 @@ export default function Settings() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Settings</h2>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Settings</h1>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
         Manage workspace details{isPro ? ' and branding' : ''}. Personal account details live under My account.
       </p>
@@ -112,8 +112,8 @@ export default function Settings() {
           <div style={{ fontSize: 16, fontWeight: 600 }}>Organization details</div>
           <form onSubmit={saveProfile} style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Organization name</label>
-              <input value={orgName} onChange={e => setOrgName(e.target.value)} style={inputStyle} />
+              <label htmlFor="settings-org-name" style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Organisation name</label>
+              <input id="settings-org-name" value={orgName} onChange={e => setOrgName(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" disabled={saving} style={{
@@ -146,7 +146,7 @@ export default function Settings() {
                 <div style={{ width: 200, height: 120, borderRadius: 'var(--radius-md)', border: '2px dashed var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No logo uploaded</div>
               )}
 
-              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoUpload} style={{ display: 'none' }} />
+              <input ref={fileRef} type="file" aria-label="Upload organisation logo" accept="image/png,image/jpeg,image/webp" onChange={handleLogoUpload} style={{ display: 'none' }} />
               <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'transparent', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--color-navy-700)', cursor: 'pointer', opacity: uploading ? 0.7 : 1 }}>
                 <Upload size={16} />
                 {uploading ? 'Uploading...' : logoUrl ? 'Replace logo' : 'Upload logo'}

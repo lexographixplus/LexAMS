@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
+/* Typefaces are linked from index.html so the browser can start fetching
+   them without waiting for this stylesheet to be parsed. */
 
 :root {
   --color-navy-900: #002B54;
@@ -11,7 +12,7 @@
   --color-white: #FFFFFF;
   --color-ink-900: #0F1B2B;
   --color-ink-700: #5B6B80;
-  --color-ink-500: #7A8699;
+  --color-ink-500: #616C7D;
   --color-border: #E0E4E9;
   --color-success: #2E7D4F;
   --color-warning: #B45309;
@@ -69,7 +70,7 @@
 }
 
 .classification-health small {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .award-preview-bar {
@@ -92,7 +93,7 @@
 .award-preview-bar span {
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {
@@ -188,49 +189,31 @@ input, select, textarea { font-family: var(--font-body); }
 }
 
 .lexams-ui-page .table-scroll::-webkit-scrollbar { height: 8px; }
-.lexams-ui-page .table-scroll::-webkit-scrollbar-thumb { background: var(--color-mist-200); border-radius: 999px; }
-
-/* Participants */
-.lexams-ui-participants > div > div:first-child,
-.lexams-ui-surveys > div > div:first-child,
+.lexams-ui-page .table-scroll::-webkit-scrollbar-thumb { background: var(--color-mist-200); border-radius: 999px; }.lexams-ui-surveys > div > div:first-child,
 .lexams-ui-assessments > div > div:first-child,
 .lexams-ui-certificates > div > div:first-child,
 .lexams-ui-settings > div > div:first-child,
 .lexams-ui-team > div > div:first-child {
   gap: 24px !important;
-}
-
-.lexams-ui-participants > div > div:first-child h2,
-.lexams-ui-surveys > div > div:first-child h2,
+}.lexams-ui-surveys > div > div:first-child h2,
 .lexams-ui-assessments > div > div:first-child h2,
 .lexams-ui-certificates h2,
 .lexams-ui-settings h2,
 .lexams-ui-team h2 {
   font-size: clamp(26px, 3vw, 34px) !important;
   line-height: 1.15 !important;
-}
-
-.lexams-ui-participants .table-scroll,
-.lexams-ui-surveys .table-scroll,
+}.lexams-ui-surveys .table-scroll,
 .lexams-ui-assessments .table-scroll,
 .lexams-ui-certificates .table-scroll,
 .lexams-ui-team .table-scroll {
   border-radius: inherit;
-}
-
-.lexams-ui-participants > div > div[style*="box-shadow"],
-.lexams-ui-surveys > div > div[style*="box-shadow"],
+}.lexams-ui-surveys > div > div[style*="box-shadow"],
 .lexams-ui-assessments > div > div[style*="box-shadow"],
 .lexams-ui-certificates > div > div[style*="box-shadow"],
 .lexams-ui-settings > div > div[style*="box-shadow"],
 .lexams-ui-team > div > div[style*="box-shadow"] {
   box-shadow: var(--shadow-card) !important;
   border-radius: var(--radius-xl) !important;
-}
-
-.lexams-ui-participants > div > div[style*="position: fixed"][style*="right: 0"] {
-  width: min(440px, 100vw) !important;
-  border-left: 1px solid var(--border-default);
 }
 
 /* Surveys and assessments */
@@ -345,11 +328,7 @@ input, select, textarea { font-family: var(--font-body); }
 .lexams-ui-reports article,
 .lexams-ui-reports [role="button"] {
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-}
-
-/* Global empty-state polish for core workspace pages */
-.lexams-ui-participants div[style*="text-align: center"],
-.lexams-ui-surveys div[style*="text-align: center"],
+}.lexams-ui-surveys div[style*="text-align: center"],
 .lexams-ui-assessments div[style*="text-align: center"],
 .lexams-ui-certificates div[style*="text-align: center"],
 .lexams-ui-reports div[style*="text-align: center"] {
@@ -360,9 +339,6 @@ input, select, textarea { font-family: var(--font-body); }
   .lexams-ui-page { max-width: none; }
   .lexams-ui-page > div > div:first-child {
     flex-wrap: wrap;
-  }
-  .lexams-ui-participants > div > div[style*="grid-template-columns: 1fr 220px"] {
-    grid-template-columns: 1fr !important;
   }
   .lexams-ui-certificates > div > div[style*="grid-template-columns: repeat(3"] {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -388,14 +364,11 @@ input, select, textarea { font-family: var(--font-body); }
   .lexams-ui-page > div > div:first-child > a {
     width: 100%;
     justify-content: center;
-  }
-
-  .lexams-ui-participants > div > div[style*="grid-template-columns"],
-  .lexams-ui-surveys > div > div[style*="grid-template-columns"],
-  .lexams-ui-assessments > div > div[style*="grid-template-columns"],
-  .lexams-ui-certificates > div > div[style*="grid-template-columns"],
-  .lexams-ui-settings > div > div[style*="grid-template-columns"],
-  .lexams-ui-team > div > div[style*="grid-template-columns"] {
+  }.lexams-ui-surveys > div > div[style*="grid-template-columns"],
+.lexams-ui-assessments > div > div[style*="grid-template-columns"],
+.lexams-ui-certificates > div > div[style*="grid-template-columns"],
+.lexams-ui-settings > div > div[style*="grid-template-columns"],
+.lexams-ui-team > div > div[style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
   }
 
@@ -410,10 +383,6 @@ input, select, textarea { font-family: var(--font-body); }
   .lexams-ui-assessments > div > div[style*="justify-content: space-between"] > div:last-child {
     width: 100%;
     justify-content: flex-start;
-  }
-
-  .lexams-ui-participants > div > div[style*="position: fixed"][style*="right: 0"] {
-    width: 100vw !important;
   }
 
   .lexams-ui-page .table-scroll > div {
