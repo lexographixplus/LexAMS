@@ -112,7 +112,7 @@ function Stat({ label, value }) { return <div style={{ background: 'var(--surfac
 
 const card = { background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '24px 28px', boxShadow: 'var(--shadow-card)' };
 const icon = { display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 12, background: '#EEF3F8', color: 'var(--color-navy-700)' };
-const eyebrow = { color: 'var(--text-tertiary)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 };
+const eyebrow = { color: 'var(--text-tertiary)', fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 };
 const title = { fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--color-navy-900)', margin: '4px 0 0' };
 const subtext = { color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, margin: '7px 0 0' };
 const muted = { color: 'var(--text-tertiary)', fontSize: 12 };
@@ -120,7 +120,7 @@ const statGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minma
 const tableWrap = { overflowX: 'auto', marginTop: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' };
 const table = { width: '100%', borderCollapse: 'collapse', minWidth: 700, fontSize: 13 };
 const smallButton = { border: '1px solid var(--border-default)', background: 'var(--surface-card)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, color: 'var(--color-navy-700)', cursor: 'pointer' };
-const badge = { display: 'inline-block', padding: '4px 7px', borderRadius: 99, background: '#EEF3F8', color: 'var(--color-navy-700)', fontSize: 11, fontWeight: 700 };
+const badge = { display: 'inline-block', padding: '4px 7px', borderRadius: 99, background: '#EEF3F8', color: 'var(--color-navy-700)', fontSize: 12, fontWeight: 700 };
 const input = { display: 'block', boxSizing: 'border-box', width: '100%', marginTop: 7, padding: 10, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'vertical' };
 const primary = { padding: '10px 13px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'var(--color-navy-900)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' };
 const secondary = { ...primary, background: 'var(--surface-muted)', color: 'var(--color-navy-700)', border: '1px solid var(--border-default)' };

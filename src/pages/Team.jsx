@@ -116,7 +116,7 @@ export default function Team() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Team</h2>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Team</h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>Manage members, invitations and approval requests.</p>
         </div>
         {isAdmin && (
@@ -255,7 +255,7 @@ function approvalDetail(a) {
 
 function Stat({ label, value }) {
   return <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px' }}>
-    <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{label}</div>
+    <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>{label}</div>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginTop: 8 }}>{value}</div>
   </div>;
 }
@@ -278,11 +278,11 @@ function Empty({ children }) {
 function Avatar({ member }) {
   const admin = member.team_role === 'admin';
   const initials = member.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  return <div style={{ width: 32, height: 32, borderRadius: 999, background: admin ? 'var(--color-navy-900)' : 'var(--surface-muted)', color: admin ? '#FFFFFF' : 'var(--color-navy-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{initials}</div>;
+  return <div style={{ width: 32, height: 32, borderRadius: 999, background: admin ? 'var(--color-navy-900)' : 'var(--surface-muted)', color: admin ? '#FFFFFF' : 'var(--color-navy-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{initials}</div>;
 }
 
 function RolePill({ admin }) {
-  return <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: admin ? '#E4F3E9' : 'var(--surface-muted)', color: admin ? 'var(--color-success)' : 'var(--text-secondary)' }}>
+  return <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: admin ? '#E4F3E9' : 'var(--surface-muted)', color: admin ? 'var(--color-success)' : 'var(--text-secondary)' }}>
     {admin ? <><Shield size={12} /> Admin</> : <><User size={12} /> Member</>}
   </span>;
 }
@@ -290,7 +290,7 @@ function RolePill({ admin }) {
 function StatusPill({ status }) {
   const approved = status === 'accepted' || status === 'approved';
   const pending = status === 'pending';
-  return <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: pending ? '#FDF3DC' : approved ? '#E4F3E9' : '#F9E4E2', color: pending ? '#8A6210' : approved ? 'var(--color-success)' : 'var(--color-danger)' }}>{status}</span>;
+  return <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: pending ? '#FDF3DC' : approved ? '#E4F3E9' : '#F9E4E2', color: pending ? '#8A6210' : approved ? 'var(--color-success)' : 'var(--color-danger)' }}>{status}</span>;
 }
 
 const primaryButton = { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', fontSize: 14, fontWeight: 600, color: 'var(--color-navy-900)', background: 'var(--color-gold-500)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' };

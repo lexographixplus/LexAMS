@@ -157,7 +157,7 @@ export default function Dashboard() {
         }}>
           <div style={{ position: 'absolute', width: 260, height: 260, borderRadius: '50%', background: 'rgba(250,183,45,.10)', right: -80, top: -100 }} />
           <div style={{ position: 'relative' }}>
-            <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.62)', fontWeight: 700 }}>
+            <div style={{ fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.62)', fontWeight: 700 }}>
               Operations overview
             </div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.15, margin: '12px 0 0', maxWidth: 540, color: '#FFFFFF' }}>
@@ -223,7 +223,7 @@ export default function Dashboard() {
               </div>
             ) : attention.slice(0, 6).map((item, index) => (
               <button key={`${item.kind}-${item.title}-${index}`} onClick={() => navigate(item.path)} style={attentionItemStyle}>
-                <div style={{ minWidth: 82, fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-navy-700)', fontWeight: 700 }}>{item.kind}</div>
+                <div style={{ minWidth: 82, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-navy-700)', fontWeight: 700 }}>{item.kind}</div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{item.title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>{item.detail}</div>
@@ -268,7 +268,7 @@ export default function Dashboard() {
             >
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{activity.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{getRegsForActivity(activity.id).length} registered</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3 }}>{getRegsForActivity(activity.id).length} registered</div>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'left' }}>{activity.type}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'left' }}>{fmtRange({ start: activity.start_date, end: activity.end_date })}</div>
@@ -297,7 +297,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{activity.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{fmtRange({ start: activity.start_date, end: activity.end_date })}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                     {days === null ? '' : days === 0 ? 'Today' : days > 0 ? `${days}d` : ''}
                   </div>
                 </button>
@@ -318,7 +318,7 @@ function Metric({ label, value, sub, icon: Icon }) {
         <Icon size={17} color="var(--color-navy-700)" />
       </div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: typeof value === 'string' && value.length > 6 ? 24 : 31, fontWeight: 700, marginTop: 13, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 9 }}>{sub}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 9 }}>{sub}</div>
     </div>
   );
 }
@@ -346,7 +346,7 @@ const metricStyle = {
 };
 
 const eyebrowStyle = {
-  fontSize: 10,
+  fontSize: 12,
   letterSpacing: '.11em',
   textTransform: 'uppercase',
   color: 'var(--text-tertiary)',

@@ -27,7 +27,7 @@ const smallLabel = {
   display: 'block',
   marginBottom: 5,
   color: 'var(--text-tertiary)',
-  fontSize: 10,
+  fontSize: 12,
   fontWeight: 800,
   letterSpacing: '.06em',
   textTransform: 'uppercase',
@@ -132,14 +132,14 @@ function ConfigEditor({ signatories, config, onChange, disabled }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 800 }}>{index + 1}. {signatory.full_name}</div>
-                    <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)' }}>{signatory.title || 'No title set'}</div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)' }}>{signatory.title || 'No title set'}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button type="button" disabled={disabled || index === 0} onClick={() => move(index, -1)} title="Move left" style={{ border: '1px solid var(--border-default)', background: '#fff', borderRadius: 6, padding: 5 }}><ArrowUp size={13} /></button>
                     <button type="button" disabled={disabled || index === config.length - 1} onClick={() => move(index, 1)} title="Move right" style={{ border: '1px solid var(--border-default)', background: '#fff', borderRadius: 6, padding: 5 }}><ArrowDown size={13} /></button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
                   {[
                     ['show_signature', 'Signature'],
                     ['show_name', 'Name'],
@@ -156,7 +156,7 @@ function ConfigEditor({ signatories, config, onChange, disabled }) {
           })}
         </div>
       )}
-      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>Up to four signatories. Their order here is the order shown on the certificate.</div>
+      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>Up to four signatories. Their order here is the order shown on the certificate.</div>
     </div>
   );
 }
@@ -308,14 +308,14 @@ export default function CertificateSignatoriesSettings() {
         <div>
           <div style={{ fontSize: 14, fontWeight: 800 }}>Signatory directory</div>
           <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>Upload PNG, JPEG, or WebP signatures up to 3MB. Transparent PNG is recommended. HEIC/HEIF phone photos should be converted first.</div>
-          <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>Uploaded signatures are captured when a new certificate is issued. Certificates already issued keep their original signature snapshot.</div>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>Uploaded signatures are captured when a new certificate is issued. Certificates already issued keep their original signature snapshot.</div>
 
           {isAdmin && (
             <div style={{ marginTop: 14, padding: 14, border: '1px solid var(--border-default)', borderRadius: 10, background: 'var(--surface-muted)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr', gap: 9 }}>
-                <div><label style={smallLabel}>Full name</label><input style={input} value={draft.fullName} onChange={event => setDraft(current => ({ ...current, fullName: event.target.value }))} placeholder="Full name" /></div>
-                <div><label style={smallLabel}>Title / position</label><input style={input} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} placeholder="Executive Director" /></div>
-                <div><label style={smallLabel}>Organisation label</label><input style={input} value={draft.organizationLabel} onChange={event => setDraft(current => ({ ...current, organizationLabel: event.target.value }))} placeholder="Optional" /></div>
+                <div><label htmlFor="signatory-full-name" style={smallLabel}>Full name</label><input id="signatory-full-name" style={input} value={draft.fullName} onChange={event => setDraft(current => ({ ...current, fullName: event.target.value }))} placeholder="Full name" /></div>
+                <div><label htmlFor="signatory-title" style={smallLabel}>Title / position</label><input id="signatory-title" style={input} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} placeholder="Executive Director" /></div>
+                <div><label htmlFor="signatory-org-label" style={smallLabel}>Organisation label</label><input id="signatory-org-label" style={input} value={draft.organizationLabel} onChange={event => setDraft(current => ({ ...current, organizationLabel: event.target.value }))} placeholder="Optional" /></div>
               </div>
               <button type="button" onClick={createSignatory} disabled={busy || !draft.fullName.trim()} style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', border: 0, borderRadius: 8, background: 'var(--color-navy-900)', color: '#fff', padding: '9px 12px', fontWeight: 800 }}><Plus size={14} />Add signatory</button>
             </div>

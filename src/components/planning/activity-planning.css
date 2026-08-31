@@ -30,7 +30,7 @@
 .planning-kicker {
   display: block;
   color: var(--planning-blue);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -67,7 +67,7 @@
 
 .planning-hero-progress span {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .planning-message {
@@ -124,9 +124,9 @@
 .planning-metric-green { --metric-color: #2e7d4f; }
 .planning-metric-warning { --metric-color: #b45309; }
 .planning-metric-danger { --metric-color: #c0362c; }
-.planning-metric span { display: block; color: var(--text-tertiary); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.planning-metric span { display: block; color: var(--text-tertiary); font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .planning-metric strong { display: block; margin-top: 7px; font-family: var(--font-display); font-size: 24px; }
-.planning-metric small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 11px; }
+.planning-metric small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 12px; }
 
 .planning-tabs {
   display: flex;
@@ -170,7 +170,7 @@
 .planning-readiness-parts div { padding-right: 10px; border-right: 1px solid var(--border-default); }
 .planning-readiness-parts div:last-child { border-right: 0; }
 .planning-readiness-parts span, .planning-readiness-parts strong { display: block; }
-.planning-readiness-parts span { color: var(--text-tertiary); font-size: 10px; }
+.planning-readiness-parts span { color: var(--text-tertiary); font-size: 12px; }
 .planning-readiness-parts strong { margin-top: 4px; font-size: 14px; }
 
 .planning-attention-list { display: grid; gap: 5px; margin-top: 13px; }
@@ -178,7 +178,7 @@
 .planning-attention-list button:hover { background: var(--surface-muted); }
 .planning-attention-list span > strong, .planning-attention-list span > small { display: block; }
 .planning-attention-list strong { font-size: 12px; }
-.planning-attention-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 10px; }
+.planning-attention-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .attention-dot { width: 9px; height: 9px; margin-top: 3px; border-radius: 999px; background: #718096; }
 .attention-dot.good { background: #2e7d4f; }
 .attention-dot.warning { background: #d48a12; }
@@ -189,13 +189,13 @@
 .planning-next-list > div { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border-default); }
 .planning-next-list strong, .planning-next-list small { display: block; }
 .planning-next-list strong { font-size: 12px; }
-.planning-next-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 10px; }
+.planning-next-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .planning-priority { display: inline-flex; width: 9px; height: 9px; border-radius: 999px; background: #718096; }
 .planning-priority.priority-medium { background: #0e4c8f; }
 .planning-priority.priority-high { background: #d48a12; }
 .planning-priority.priority-urgent { background: #c0362c; }
 
-.planning-status { display: inline-flex; align-items: center; min-height: 23px; padding: 0 8px; border-radius: 999px; background: #eef3f8; color: #31516f; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.planning-status { display: inline-flex; align-items: center; min-height: 23px; padding: 0 8px; border-radius: 999px; background: #eef3f8; color: #31516f; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .planning-status.status-done, .planning-status.status-ready, .planning-status.status-delivered { background: #eaf6ee; color: #24633d; }
 .planning-status.status-in_progress, .planning-status.status-draft { background: #fff6df; color: #8a5a00; }
 .planning-status.status-blocked, .planning-status.status-cancelled { background: #fbeaea; color: #a42c27; }
@@ -234,12 +234,12 @@
 .planning-task-stages > section > header { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
 .planning-task-stages > section > header > span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #eef5fb; color: var(--planning-blue); }
 .planning-task-stages > section > header h5 { font-size: 13px; }
-.planning-task-stages > section > header small { display: inline-grid; place-items: center; min-width: 21px; height: 21px; border-radius: 999px; background: var(--surface-muted); color: var(--text-tertiary); font-size: 10px; }
+.planning-task-stages > section > header small { display: inline-grid; place-items: center; min-width: 21px; height: 21px; border-radius: 999px; background: var(--surface-muted); color: var(--text-tertiary); font-size: 12px; }
 .planning-task-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
 .planning-task-card { display: flex; flex-direction: column; min-height: 245px; padding: 15px; border: 1px solid var(--border-default); border-radius: 13px; background: var(--surface-card); box-shadow: 0 5px 18px rgba(0, 43, 84, .035); }
 .planning-task-card.complete { opacity: .72; }
 .planning-task-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.planning-task-top > .planning-priority { width: auto; height: 21px; padding: 0 7px; color: #fff; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.planning-task-top > .planning-priority { width: auto; height: 21px; padding: 0 7px; color: #fff; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .planning-task-top > .priority-low { background: #718096; }
 .planning-task-top > .priority-medium { background: var(--planning-blue); }
 .planning-task-top > .priority-high { background: #b87408; }
@@ -248,28 +248,28 @@
 .planning-task-actions button, .planning-icon-button { display: inline-grid; place-items: center; width: 31px; height: 31px; padding: 0; border: 1px solid var(--border-default); border-radius: 7px; background: var(--surface-card); color: var(--planning-blue); }
 .planning-task-actions button.danger { color: var(--color-danger); }
 .planning-task-card h5 { margin-top: 12px; font-size: 13px; line-height: 1.4; }
-.planning-task-card > p { margin-top: 6px; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.planning-task-card > p { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .planning-task-meta { display: grid; gap: 6px; margin-top: auto; padding-top: 14px; }
-.planning-task-meta span { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 10px; }
+.planning-task-meta span { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; }
 .planning-task-meta span.overdue { color: var(--color-danger); font-weight: 700; }
 .planning-status-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--border-default); }
-.planning-status-select > span { color: var(--text-tertiary); font-size: 10px; font-weight: 700; }
+.planning-status-select > span { color: var(--text-tertiary); font-size: 12px; font-weight: 700; }
 .planning-status-select select { min-height: 32px; padding-block: 4px; }
 
 .planning-session-list { display: grid; gap: 11px; margin-top: 14px; }
 .planning-session-card { display: grid; grid-template-columns: 76px 1fr; overflow: hidden; border: 1px solid var(--border-default); border-radius: 14px; background: var(--surface-card); }
 .planning-session-date { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 175px; border-right: 1px solid var(--border-default); background: linear-gradient(180deg, #f5f9fd, #fffaf0); }
 .planning-session-date strong { font-family: var(--font-display); font-size: 25px; }
-.planning-session-date span { margin-top: 2px; color: var(--planning-blue); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.planning-session-date span { margin-top: 2px; color: var(--planning-blue); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .planning-session-body { padding: 17px 19px; }
 .planning-session-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .planning-session-body h5 { margin-top: 8px; font-family: var(--font-display); font-size: 16px; }
-.planning-session-body > p { margin-top: 6px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.planning-session-body > p { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
 .planning-session-meta { display: flex; flex-wrap: wrap; gap: 8px 17px; margin-top: 12px; }
-.planning-session-meta span { display: inline-flex; align-items: center; gap: 5px; color: var(--text-tertiary); font-size: 10px; }
+.planning-session-meta span { display: inline-flex; align-items: center; gap: 5px; color: var(--text-tertiary); font-size: 12px; }
 .planning-person-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-.planning-person-chips span { padding: 4px 7px; border-radius: 999px; background: #eef5fb; color: #31516f; font-size: 9px; }
-.planning-session-body details { margin-top: 11px; color: var(--text-secondary); font-size: 10px; }
+.planning-person-chips span { padding: 4px 7px; border-radius: 999px; background: #eef5fb; color: #31516f; font-size: 12px; }
+.planning-session-body details { margin-top: 11px; color: var(--text-secondary); font-size: 12px; }
 .planning-session-body details summary { color: var(--planning-blue); font-weight: 800; cursor: pointer; }
 .planning-session-body details p { margin-top: 6px; line-height: 1.55; }
 .planning-status-select.compact { justify-content: flex-start; }
@@ -278,18 +278,18 @@
 .planning-empty > svg, .planning-empty-icon { color: var(--planning-blue); }
 .planning-empty-icon { display: flex; gap: 4px; }
 .planning-empty strong { margin-top: 10px; font-size: 13px; }
-.planning-empty p { max-width: 460px; margin-top: 5px; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+.planning-empty p { max-width: 460px; margin-top: 5px; color: var(--text-tertiary); font-size: 12px; line-height: 1.5; }
 .planning-empty .planning-primary-button { margin-top: 14px; }
 .planning-empty-inline { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 16px; border-radius: 9px; background: #edf8f0; color: #176b3a; font-size: 12px; }
 
 .planning-facilitator-overview { margin-top: 14px; }
 .planning-facilitator-list { margin-top: 12px; }
 .planning-facilitator-list article { display: grid; grid-template-columns: auto minmax(140px, 1fr) auto minmax(180px, 1.4fr); align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border-default); }
-.planning-avatar { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: var(--planning-navy); color: #fff; font-size: 10px; font-weight: 800; }
+.planning-avatar { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: var(--planning-navy); color: #fff; font-size: 12px; font-weight: 800; }
 .planning-facilitator-list strong, .planning-facilitator-list small { display: block; }
 .planning-facilitator-list strong { font-size: 12px; }
-.planning-facilitator-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 9px; text-transform: capitalize; }
-.planning-facilitator-list article > span { color: var(--planning-blue); font-size: 10px; font-weight: 800; }
+.planning-facilitator-list small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; text-transform: capitalize; }
+.planning-facilitator-list article > span { color: var(--planning-blue); font-size: 12px; font-weight: 800; }
 .planning-facilitator-sessions { display: flex; flex-wrap: wrap; gap: 4px; }
 .planning-facilitator-sessions small { margin: 0; padding: 4px 7px; border-radius: 999px; background: var(--surface-muted); text-transform: none; }
 
@@ -302,18 +302,18 @@
 .planning-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 20px 22px; }
 .planning-form-grid label { display: grid; gap: 6px; }
 .planning-form-grid label.wide { grid-column: 1 / -1; }
-.planning-form-grid label > span, .planning-assignment-editor > div:first-child > strong { font-size: 11px; font-weight: 800; }
+.planning-form-grid label > span, .planning-assignment-editor > div:first-child > strong { font-size: 12px; font-weight: 800; }
 .planning-form-grid textarea { min-height: 82px; resize: vertical; }
 .planning-assignment-editor { margin: 0 22px 22px; padding: 16px; border: 1px solid var(--border-default); border-radius: 12px; background: #f9fbfd; }
-.planning-assignment-editor > div:first-child > small { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 10px; }
+.planning-assignment-editor > div:first-child > small { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .planning-member-checks { display: grid; gap: 7px; margin-top: 12px; }
 .planning-member-checks > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid var(--border-default); border-radius: 9px; background: #fff; }
 .planning-member-checks > div.selected { border-color: rgba(14, 76, 143, .35); background: #f4f8fc; }
 .planning-member-checks label { display: flex; align-items: center; gap: 9px; }
 .planning-member-checks label span strong, .planning-member-checks label span small { display: block; }
-.planning-member-checks label span strong { font-size: 11px; }
-.planning-member-checks label span small { margin-top: 2px; color: var(--text-tertiary); font-size: 9px; text-transform: capitalize; }
-.planning-member-checks .planning-lead-radio { color: var(--planning-blue); font-size: 10px; font-weight: 800; }
+.planning-member-checks label span strong { font-size: 12px; }
+.planning-member-checks label span small { margin-top: 2px; color: var(--text-tertiary); font-size: 12px; text-transform: capitalize; }
+.planning-member-checks .planning-lead-radio { color: var(--planning-blue); font-size: 12px; font-weight: 800; }
 
 @media (max-width: 900px) {
   .planning-task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -362,67 +362,67 @@
 .planning-budget-pulse-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 17px; }
 .planning-budget-pulse-values div { padding: 11px; border-radius: 10px; background: var(--surface-muted); }
 .planning-budget-pulse-values span, .planning-budget-pulse-values strong { display: block; }
-.planning-budget-pulse-values span { color: var(--text-tertiary); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.planning-budget-pulse-values span { color: var(--text-tertiary); font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .planning-budget-pulse-values strong { margin-top: 5px; font-size: 13px; }
 .planning-budget-pulse-values .danger strong { color: var(--color-danger); }
 .planning-latest-update > p { display: -webkit-box; margin-top: 16px; overflow: hidden; color: var(--text-secondary); font-size: 12px; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-.planning-follow-up-inline { display: inline-flex; margin-top: 12px; padding: 5px 8px; border-radius: 999px; background: #fff3dc; color: #8a5a00; font-size: 9px; font-weight: 800; }
-.planning-modal > header p { max-width: 620px; margin-top: 5px; color: var(--text-tertiary); font-size: 10px; line-height: 1.5; }
+.planning-follow-up-inline { display: inline-flex; margin-top: 12px; padding: 5px 8px; border-radius: 999px; background: #fff3dc; color: #8a5a00; font-size: 12px; font-weight: 800; }
+.planning-modal > header p { max-width: 620px; margin-top: 5px; color: var(--text-tertiary); font-size: 12px; line-height: 1.5; }
 
 .planning-view-toggle { display: inline-flex; padding: 3px; border: 1px solid var(--border-default); border-radius: 9px; background: var(--surface-muted); }
-.planning-view-toggle button { display: inline-flex; align-items: center; gap: 5px; min-height: 31px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text-tertiary); font-size: 10px; font-weight: 800; }
+.planning-view-toggle button { display: inline-flex; align-items: center; gap: 5px; min-height: 31px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text-tertiary); font-size: 12px; font-weight: 800; }
 .planning-view-toggle button.active { background: #fff; color: var(--planning-navy); box-shadow: 0 2px 7px rgba(0,43,84,.08); }
 .planning-week-strip { display: flex; gap: 8px; margin-top: 13px; padding-bottom: 2px; overflow-x: auto; scrollbar-width: thin; }
 .planning-week-strip button { min-width: 155px; padding: 11px 13px; border: 1px solid var(--border-default); border-radius: 11px; background: var(--surface-card); color: inherit; text-align: left; }
 .planning-week-strip button span, .planning-week-strip button strong, .planning-week-strip button small { display: block; }
-.planning-week-strip button span { color: var(--planning-blue); font-size: 9px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
-.planning-week-strip button strong { margin-top: 4px; font-size: 11px; }
-.planning-week-strip button small { margin-top: 3px; color: var(--text-tertiary); font-size: 9px; }
+.planning-week-strip button span { color: var(--planning-blue); font-size: 12px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.planning-week-strip button strong { margin-top: 4px; font-size: 12px; }
+.planning-week-strip button small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .planning-week-strip button.active { border-color: var(--planning-navy); background: var(--planning-navy); color: #fff; }
 .planning-week-strip button.active span, .planning-week-strip button.active small { color: rgba(255,255,255,.72); }
 .planning-week-schedule { margin-top: 12px; overflow: hidden; border: 1px solid var(--border-default); border-radius: 14px; background: var(--surface-card); }
 .planning-week-schedule > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px 17px; border-bottom: 1px solid var(--border-default); }
 .planning-week-schedule > header h5 { margin-top: 4px; font-family: var(--font-display); font-size: 15px; }
-.planning-week-schedule > header > span { color: var(--text-tertiary); font-size: 10px; }
+.planning-week-schedule > header > span { color: var(--text-tertiary); font-size: 12px; }
 .planning-week-days { display: grid; grid-template-columns: repeat(7, minmax(138px, 1fr)); overflow-x: auto; background: var(--border-default); gap: 1px; }
 .planning-week-days > section { min-height: 220px; background: #fafbfd; }
 .planning-week-days > section.has-sessions { background: #fff; }
 .planning-week-days > section > header { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 8px 10px; border-bottom: 1px solid var(--border-default); }
-.planning-week-days > section > header span { color: var(--text-tertiary); font-size: 9px; font-weight: 800; text-transform: uppercase; }
-.planning-week-days > section > header strong { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: #eef5fb; color: var(--planning-blue); font-size: 10px; }
+.planning-week-days > section > header span { color: var(--text-tertiary); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.planning-week-days > section > header strong { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: #eef5fb; color: var(--planning-blue); font-size: 12px; }
 .planning-week-days > section > div { display: grid; gap: 7px; padding: 8px; }
-.planning-week-empty { padding: 13px 4px; color: var(--text-tertiary); font-size: 9px; text-align: center; }
+.planning-week-empty { padding: 13px 4px; color: var(--text-tertiary); font-size: 12px; text-align: center; }
 .planning-week-days article { display: grid; gap: 6px; padding: 9px; border: 1px solid rgba(14,76,143,.13); border-radius: 9px; background: linear-gradient(145deg,#f9fcff,#fff); box-shadow: 0 3px 10px rgba(0,43,84,.04); }
-.planning-week-days article > div { display: flex; align-items: center; justify-content: space-between; gap: 5px; color: var(--planning-blue); font-size: 9px; font-weight: 800; }
-.planning-week-days article .planning-status { min-height: 18px; padding: 0 5px; font-size: 7px; }
-.planning-week-days article h6 { font-size: 10px; line-height: 1.4; }
-.planning-week-days article small { display: flex; align-items: center; gap: 4px; color: var(--text-tertiary); font-size: 8px; line-height: 1.3; }
-.planning-week-days article select { width: 100%; min-height: 29px; padding: 4px 6px; border: 1px solid var(--border-default); border-radius: 6px; background: #fff; color: var(--text-primary); font-size: 9px; }
-.planning-week-days article button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 27px; border: 1px solid var(--border-default); border-radius: 6px; background: #fff; color: var(--planning-blue); font-size: 9px; font-weight: 800; }
+.planning-week-days article > div { display: flex; align-items: center; justify-content: space-between; gap: 5px; color: var(--planning-blue); font-size: 12px; font-weight: 800; }
+.planning-week-days article .planning-status { min-height: 18px; padding: 0 5px; font-size: 12px; }
+.planning-week-days article h6 { font-size: 12px; line-height: 1.4; }
+.planning-week-days article small { display: flex; align-items: center; gap: 4px; color: var(--text-tertiary); font-size: 12px; line-height: 1.3; }
+.planning-week-days article select { width: 100%; min-height: 29px; padding: 4px 6px; border: 1px solid var(--border-default); border-radius: 6px; background: #fff; color: var(--text-primary); font-size: 12px; }
+.planning-week-days article button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 27px; border: 1px solid var(--border-default); border-radius: 6px; background: #fff; color: var(--planning-blue); font-size: 12px; font-weight: 800; }
 
 .planning-import-modal { width: min(1040px, 100%); }
 .planning-import-body { padding: 0 22px 22px; }
 .planning-import-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.planning-import-help { margin-top: 8px; color: var(--text-tertiary); font-size: 10px; line-height: 1.5; }
+.planning-import-help { margin-top: 8px; color: var(--text-tertiary); font-size: 12px; line-height: 1.5; }
 .planning-import-section { margin-top: 19px; padding-top: 18px; border-top: 1px solid var(--border-default); }
 .planning-import-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
 .planning-import-section-heading h5 { margin-top: 4px; font-size: 14px; }
 .planning-import-section-heading label { display: grid; gap: 5px; min-width: 180px; }
-.planning-import-section-heading label span, .planning-import-map label span { color: var(--text-secondary); font-size: 9px; font-weight: 800; }
-.planning-import-section-heading select, .planning-import-map select { width: 100%; min-height: 36px; padding: 6px 8px; border: 1px solid var(--border-default); border-radius: 7px; background: #fff; color: var(--text-primary); font-size: 10px; }
+.planning-import-section-heading label span, .planning-import-map label span { color: var(--text-secondary); font-size: 12px; font-weight: 800; }
+.planning-import-section-heading select, .planning-import-map select { width: 100%; min-height: 36px; padding: 6px 8px; border: 1px solid var(--border-default); border-radius: 7px; background: #fff; color: var(--text-primary); font-size: 12px; }
 .planning-import-map { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin-top: 13px; }
 .planning-import-map label { display: grid; gap: 5px; min-width: 0; }
 .planning-import-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 17px; }
 .planning-import-summary > div { padding: 12px 13px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-muted); }
 .planning-import-summary strong, .planning-import-summary span { display: block; }
 .planning-import-summary strong { font-family: var(--font-display); font-size: 19px; }
-.planning-import-summary span { margin-top: 3px; color: var(--text-tertiary); font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.planning-import-summary span { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .planning-import-preview { margin-top: 13px; overflow-x: auto; border: 1px solid var(--border-default); border-radius: 11px; }
-.planning-import-row { display: grid; grid-template-columns: 42px 1.2fr 1fr 1.4fr 1fr; gap: 10px; align-items: center; min-width: 850px; padding: 9px 12px; border-top: 1px solid var(--border-default); font-size: 10px; }
+.planning-import-row { display: grid; grid-template-columns: 42px 1.2fr 1fr 1.4fr 1fr; gap: 10px; align-items: center; min-width: 850px; padding: 9px 12px; border-top: 1px solid var(--border-default); font-size: 12px; }
 .planning-import-row:first-child { border-top: 0; }
 .planning-import-row > span strong, .planning-import-row > span small { display: block; }
-.planning-import-row > span small { margin-top: 2px; color: var(--text-tertiary); font-size: 8px; }
-.planning-import-row-head { background: var(--surface-muted); color: var(--text-tertiary); font-size: 8px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.planning-import-row > span small { margin-top: 2px; color: var(--text-tertiary); font-size: 12px; }
+.planning-import-row-head { background: var(--surface-muted); color: var(--text-tertiary); font-size: 12px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .planning-import-valid { color: var(--color-success); font-weight: 800; }
 .planning-import-warning { color: #8a5a00; font-weight: 800; }
 .planning-import-invalid { color: var(--color-danger); font-weight: 800; }
@@ -430,9 +430,9 @@
 .planning-budget-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
 .planning-budget-summary article { min-height: 105px; padding: 15px 16px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--surface-card); }
 .planning-budget-summary span, .planning-budget-summary strong, .planning-budget-summary small { display: block; }
-.planning-budget-summary span { color: var(--text-tertiary); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.planning-budget-summary span { color: var(--text-tertiary); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .planning-budget-summary strong { margin-top: 7px; font-family: var(--font-display); font-size: 20px; }
-.planning-budget-summary small { margin-top: 4px; color: var(--text-tertiary); font-size: 9px; }
+.planning-budget-summary small { margin-top: 4px; color: var(--text-tertiary); font-size: 12px; }
 .planning-budget-summary article.danger strong { color: var(--color-danger); }
 .planning-budget-meter { height: 6px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
 .planning-budget-meter i { display: block; height: 100%; border-radius: inherit; background: #2e7d4f; }
@@ -440,17 +440,17 @@
 .planning-budget-use.danger .planning-budget-meter i { background: var(--color-danger); }
 .planning-budget-categories { margin-top: 12px; }
 .planning-budget-categories > div:last-child { display: grid; gap: 9px; margin-top: 13px; }
-.planning-budget-categories > div:last-child > div { display: grid; grid-template-columns: minmax(100px,.8fr) minmax(120px,2fr) auto auto; align-items: center; gap: 10px; font-size: 10px; }
+.planning-budget-categories > div:last-child > div { display: grid; grid-template-columns: minmax(100px,.8fr) minmax(120px,2fr) auto auto; align-items: center; gap: 10px; font-size: 12px; }
 .planning-budget-categories > div:last-child > div > div { height: 7px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
 .planning-budget-categories i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--planning-blue),#4d87bd); }
 .planning-budget-categories small { color: var(--text-tertiary); }
 .planning-budget-table { margin-top: 12px; overflow: hidden; border: 1px solid var(--border-default); border-radius: 13px; background: var(--surface-card); }
-.planning-budget-row { display: grid; grid-template-columns: minmax(180px,1.8fr) repeat(3,minmax(90px,.75fr)) minmax(105px,.85fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border-default); font-size: 10px; }
+.planning-budget-row { display: grid; grid-template-columns: minmax(180px,1.8fr) repeat(3,minmax(90px,.75fr)) minmax(105px,.85fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border-default); font-size: 12px; }
 .planning-budget-row:first-child { border-top: 0; }
 .planning-budget-row > span:first-child strong, .planning-budget-row > span:first-child small { display: block; }
-.planning-budget-row > span:first-child strong { font-size: 11px; }
-.planning-budget-row > span:first-child small { display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--text-tertiary); font-size: 8px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.planning-budget-head { background: var(--surface-muted); color: var(--text-tertiary); font-size: 8px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.planning-budget-row > span:first-child strong { font-size: 12px; }
+.planning-budget-row > span:first-child small { display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--text-tertiary); font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.planning-budget-head { background: var(--surface-muted); color: var(--text-tertiary); font-size: 12px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .planning-money-over { color: var(--color-danger); font-weight: 800; }
 .planning-money-under { color: var(--color-success); font-weight: 800; }
 .planning-budget-row a { display: inline-flex; align-items: center; gap: 4px; color: var(--planning-blue); font-weight: 800; }
@@ -459,27 +459,27 @@
 .planning-row-actions button.danger, .planning-journal-actions button.danger { color: var(--color-danger); }
 
 .planning-journal-mode { display: inline-flex; gap: 4px; margin: 18px 22px 0; padding: 4px; border-radius: 9px; background: var(--surface-muted); }
-.planning-journal-mode button { min-height: 32px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: var(--text-tertiary); font-size: 10px; font-weight: 800; }
+.planning-journal-mode button { min-height: 32px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: var(--text-tertiary); font-size: 12px; font-weight: 800; }
 .planning-journal-mode button.active { background: #fff; color: var(--planning-navy); box-shadow: 0 2px 7px rgba(0,43,84,.08); }
 .planning-journal-form { padding-bottom: 10px; }
 .planning-journal-links { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; margin: 0 22px 13px; }
 .planning-link-picker { min-width: 0; padding: 13px; border: 1px solid var(--border-default); border-radius: 11px; background: #fafbfd; }
 .planning-link-picker > div:first-child strong, .planning-link-picker > div:first-child small { display: block; }
-.planning-link-picker > div:first-child strong { font-size: 10px; }
-.planning-link-picker > div:first-child small { margin-top: 3px; color: var(--text-tertiary); font-size: 8px; }
+.planning-link-picker > div:first-child strong { font-size: 12px; }
+.planning-link-picker > div:first-child small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .planning-link-picker > div:last-child { display: grid; gap: 5px; max-height: 150px; margin-top: 9px; overflow-y: auto; }
 .planning-link-picker label { display: flex; align-items: flex-start; gap: 7px; padding: 7px; border: 1px solid transparent; border-radius: 7px; }
 .planning-link-picker label.selected { border-color: rgba(14,76,143,.18); background: #eef5fb; }
 .planning-link-picker label span strong, .planning-link-picker label span small { display: block; }
-.planning-link-picker label span strong { font-size: 9px; }
-.planning-link-picker label span small { margin-top: 2px; color: var(--text-tertiary); font-size: 8px; text-transform: capitalize; }
+.planning-link-picker label span strong { font-size: 12px; }
+.planning-link-picker label span small { margin-top: 2px; color: var(--text-tertiary); font-size: 12px; text-transform: capitalize; }
 .planning-report-toggle { display: flex; align-items: flex-start; gap: 9px; margin: 0 22px 20px; padding: 12px 13px; border: 1px solid rgba(14,76,143,.15); border-radius: 10px; background: #f3f8fc; }
 .planning-report-toggle span strong, .planning-report-toggle span small { display: block; }
-.planning-report-toggle span strong { font-size: 10px; }
-.planning-report-toggle span small { margin-top: 3px; color: var(--text-tertiary); font-size: 8px; }
+.planning-report-toggle span strong { font-size: 12px; }
+.planning-report-toggle span small { margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
 .planning-journal-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin-top: 12px; }
 .planning-journal-summary > div { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: 11px; background: var(--surface-card); color: var(--planning-blue); }
-.planning-journal-summary span { color: var(--text-secondary); font-size: 10px; }
+.planning-journal-summary span { color: var(--text-secondary); font-size: 12px; }
 .planning-journal-summary strong { color: var(--text-primary); }
 .planning-journal-timeline { margin-top: 13px; }
 .planning-journal-entry { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 8px; }
@@ -490,20 +490,20 @@
 .planning-journal-card { margin-bottom: 11px; overflow: hidden; border: 1px solid var(--border-default); border-radius: 13px; background: var(--surface-card); box-shadow: 0 5px 18px rgba(0,43,84,.035); }
 .planning-journal-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 15px 16px; }
 .planning-journal-card > header h5 { max-width: 760px; margin-top: 6px; font-family: var(--font-display); font-size: 15px; line-height: 1.45; }
-.planning-journal-card > header small { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 9px; }
-.planning-report-badge, .planning-follow-up-badge { display: inline-flex; align-items: center; gap: 4px; min-height: 25px; padding: 0 7px; border-radius: 999px; background: #eaf6ee; color: #24633d; font-size: 8px; font-weight: 850; white-space: nowrap; }
+.planning-journal-card > header small { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 12px; }
+.planning-report-badge, .planning-follow-up-badge { display: inline-flex; align-items: center; gap: 4px; min-height: 25px; padding: 0 7px; border-radius: 999px; background: #eaf6ee; color: #24633d; font-size: 12px; font-weight: 850; white-space: nowrap; }
 .planning-follow-up-badge { background: #fff3dc; color: #8a5a00; }
 .planning-journal-content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; border-top: 1px solid var(--border-default); background: var(--border-default); }
 .planning-journal-block { min-height: 95px; padding: 13px 15px; background: #fff; }
-.planning-journal-block strong { color: var(--planning-blue); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
-.planning-journal-block p { margin-top: 6px; color: var(--text-secondary); font-size: 10px; line-height: 1.55; white-space: pre-wrap; }
+.planning-journal-block strong { color: var(--planning-blue); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+.planning-journal-block p { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
 .planning-journal-block.success { box-shadow: inset 3px 0 #2e7d4f; }
 .planning-journal-block.warning { box-shadow: inset 3px 0 #d48a12; }
 .planning-journal-block.action { box-shadow: inset 3px 0 var(--planning-blue); }
 .planning-journal-card > footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 15px; border-top: 1px solid var(--border-default); }
 .planning-journal-card > footer > div { display: flex; flex-wrap: wrap; gap: 4px; }
-.planning-journal-card > footer span { padding: 4px 7px; border-radius: 999px; background: var(--surface-muted); color: var(--text-tertiary); font-size: 8px; }
-.planning-journal-card > footer a { display: inline-flex; align-items: center; gap: 4px; color: var(--planning-blue); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.planning-journal-card > footer span { padding: 4px 7px; border-radius: 999px; background: var(--surface-muted); color: var(--text-tertiary); font-size: 12px; }
+.planning-journal-card > footer a { display: inline-flex; align-items: center; gap: 4px; color: var(--planning-blue); font-size: 12px; font-weight: 800; white-space: nowrap; }
 
 @media (max-width: 980px) {
   .planning-metrics-four, .planning-budget-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -524,7 +524,7 @@
   .planning-budget-head { display: none; }
   .planning-budget-row { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; padding: 15px; }
   .planning-budget-row > span:first-child { grid-column: 1 / -1; }
-  .planning-budget-row > span[data-label]::before { display: block; margin-bottom: 2px; color: var(--text-tertiary); content: attr(data-label); font-size: 8px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
+  .planning-budget-row > span[data-label]::before { display: block; margin-bottom: 2px; color: var(--text-tertiary); content: attr(data-label); font-size: 12px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
   .planning-row-actions { grid-column: 2; grid-row: 2 / span 2; align-self: start; }
   .planning-budget-categories > div:last-child > div { grid-template-columns: minmax(90px,.8fr) minmax(90px,1.4fr) auto; }
   .planning-budget-categories > div:last-child > div small { grid-column: 2 / -1; }

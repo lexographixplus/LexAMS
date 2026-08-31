@@ -110,9 +110,9 @@ export default function AttendancePublic() {
               {activityWide && activityWindow ? ` · ${activityWindow}` : ''}
               {!activityWide && sessionTime ? ` · ${sessionTime}` : ''}
             </div>
-            {activityWide && <div style={{ color: '#8A96A5', fontSize: 11, marginTop: 5 }}>Same activity QR every day · timezone {day?.timezone || 'UTC'}</div>}
+            {activityWide && <div style={{ color: '#8A96A5', fontSize: 12, marginTop: 5 }}>Same activity QR every day · timezone {day?.timezone || 'UTC'}</div>}
           </div>
-          <span style={{ padding: '6px 10px', borderRadius: 999, flexShrink: 0, background: checkinOpen ? '#EAF6EE' : '#F3F4F6', color: checkinOpen ? '#24633D' : '#687587', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>{checkinOpen ? 'Check-in open' : 'Closed'}</span>
+          <span style={{ padding: '6px 10px', borderRadius: 999, flexShrink: 0, background: checkinOpen ? '#EAF6EE' : '#F3F4F6', color: checkinOpen ? '#24633D' : '#687587', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>{checkinOpen ? 'Check-in open' : 'Closed'}</span>
         </div>
         {activityWide && <PublicNotice>LexAMS automatically records attendance for today only. A participant can check in once per calendar day.</PublicNotice>}
         {!checkinOpen && <PublicNotice tone="error">{message || 'Check-in is not currently open.'}</PublicNotice>}

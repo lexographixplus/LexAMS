@@ -41,7 +41,7 @@ export default function MyAccount() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>My account</h2>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>My account</h1>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>Manage your sign-in identity and personal details.</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, marginTop: 24 }}>

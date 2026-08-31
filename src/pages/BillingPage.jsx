@@ -16,7 +16,7 @@ export default function BillingPage() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Billing &amp; plan</h2>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Billing &amp; plan</h1>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, maxWidth: 640, lineHeight: 1.55 }}>
         Review your organisation’s current access, usage limits, payment history, and upgrade options.
       </p>

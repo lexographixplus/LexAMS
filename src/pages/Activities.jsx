@@ -79,7 +79,7 @@ export default function Activities() {
         .activities-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; background: var(--surface-card); }
         .activities-summary-item { padding: 18px 20px; border-right: 1px solid var(--border-default); }
         .activities-summary-item:last-child { border-right: 0; }
-        .activities-summary-label { color: var(--text-tertiary); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
+        .activities-summary-label { color: var(--text-tertiary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
         .activities-summary-value { margin-top: 7px; font-family: var(--font-display); color: var(--color-navy-900); font-size: 25px; font-weight: 700; }
         .activities-tools { display: grid; grid-template-columns: minmax(240px, 1fr) 180px 180px; gap: 10px; align-items: center; }
         .activities-search { position: relative; }
@@ -94,9 +94,9 @@ export default function Activities() {
         .activities-card:last-child { border-bottom: 0; }
         .activities-card:hover { background: var(--surface-muted); }
         .activities-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-        .activities-meta { margin-top: 7px; display: flex; gap: 13px; flex-wrap: wrap; color: var(--text-tertiary); font-size: 11px; }
+        .activities-meta { margin-top: 7px; display: flex; gap: 13px; flex-wrap: wrap; color: var(--text-tertiary); font-size: 12px; }
         .activities-meta span { display: inline-flex; align-items: center; gap: 5px; }
-        .activities-metric-label { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+        .activities-metric-label { color: var(--text-tertiary); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
         .activities-metric-value { margin-top: 6px; color: var(--text-primary); font-size: 13px; font-weight: 600; }
         .activities-empty { padding: 54px 24px; text-align: center; }
         .activities-empty-title { font-family: var(--font-display); font-size: 20px; color: var(--color-navy-900); font-weight: 700; }
@@ -142,13 +142,16 @@ export default function Activities() {
 
       <section className="activities-tools" aria-label="Activity filters">
         <div className="activities-search">
-          <Search size={16} />
-          <input style={inputStyle} placeholder="Search title, venue or facilitator" value={q} onChange={e => setQ(e.target.value)} />
+          <Search size={16} aria-hidden="true" />
+          <label className="lx-visually-hidden" htmlFor="activity-search">Search activities</label>
+          <input id="activity-search" type="search" style={inputStyle} placeholder="Search title, venue or facilitator" value={q} onChange={e => setQ(e.target.value)} />
         </div>
-        <select value={typeF} onChange={e => setTypeF(e.target.value)} style={inputStyle}>
+        <label className="lx-visually-hidden" htmlFor="activity-type-filter">Filter by type</label>
+        <select id="activity-type-filter" value={typeF} onChange={e => setTypeF(e.target.value)} style={inputStyle}>
           {types.map(t => <option key={t} value={t}>{t === 'all' ? 'All types' : t}</option>)}
         </select>
-        <select value={statusF} onChange={e => setStatusF(e.target.value)} style={inputStyle}>
+        <label className="lx-visually-hidden" htmlFor="activity-status-filter">Filter by status</label>
+        <select id="activity-status-filter" value={statusF} onChange={e => setStatusF(e.target.value)} style={inputStyle}>
           {statuses.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s}</option>)}
         </select>
       </section>

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import useDocumentTitle from '../lib/useDocumentTitle';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, fmtDate, statusChip } from '../lib/format';
@@ -44,14 +45,30 @@ export default function ActivityDetail() {
     showToastMsg(`${label} link copied`);
   }
 
+  const activity = loading ? null : getActivity(id);
+  // Kept above every early return so the hook order is identical on each render.
+  useDocumentTitle(activity?.title || 'Activity');
+
   if (loading) return (
     <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
       Loading...
     </div>
   );
 
-  const activity = getActivity(id);
-  if (!activity) return <div>Activity not found.</div>;
+  if (!activity) {
+    return (
+      <div className="lx-message-inline">
+        <section className="lx-message-card">
+          <p className="lx-message-code">Not found</p>
+          <h1>This activity is no longer available</h1>
+          <p>It may have been deleted, or it may belong to a different workspace.</p>
+          <div className="lx-message-actions">
+            <button type="button" className="lx-btn lx-btn-primary" onClick={() => navigate('/app/activities')}>Back to activities</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   const pids = getRegsForActivity(activity.id);
   const att = getAttForActivity(activity.id);
@@ -149,9 +166,9 @@ export default function ActivityDetail() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 14 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 25, fontWeight: 700, margin: 0 }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 25, fontWeight: 700, margin: 0 }}>
               {activity.title}
-            </h2>
+            </h1>
             <span style={statusChip(activity.status)}>{activity.status}</span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>
@@ -210,7 +227,7 @@ export default function ActivityDetail() {
                   borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '16px 18px',
                 }}>
                   <div style={{
-                    fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase',
+                    fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase',
                     color: 'var(--text-tertiary)', fontWeight: 600,
                   }}>{st.label}</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginTop: 6 }}>
@@ -240,11 +257,11 @@ export default function ActivityDetail() {
                       flex: 1, fontSize: 12, color: 'var(--text-secondary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{regLink}</div>
-                    <button onClick={() => copyToClipboard(regLink, 'Registration')} title="Copy" style={{
+                    <button onClick={() => copyToClipboard(regLink, 'Registration')} aria-label="Copy the registration link" title="Copy registration link" style={{
                       background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 2, flexShrink: 0,
                     }}><Copy size={14} /></button>
-                    <a href={regLink} target="_blank" rel="noopener" style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
-                      <ExternalLink size={14} />
+                    <a href={regLink} target="_blank" rel="noopener" aria-label={`Open the registration page in a new tab`} style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
+                      <ExternalLink size={14} aria-hidden="true" />
                     </a>
                   </div>
                 </div>
@@ -258,11 +275,11 @@ export default function ActivityDetail() {
                       flex: 1, fontSize: 12, color: 'var(--text-secondary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{attLink}</div>
-                    <button onClick={() => copyToClipboard(attLink, 'Attendance')} title="Copy" style={{
+                    <button onClick={() => copyToClipboard(attLink, 'Attendance')} aria-label="Copy the attendance check-in link" title="Copy check-in link" style={{
                       background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 2, flexShrink: 0,
                     }}><Copy size={14} /></button>
-                    <a href={attLink} target="_blank" rel="noopener" style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
-                      <ExternalLink size={14} />
+                    <a href={attLink} target="_blank" rel="noopener" aria-label={`Open the attendance check-in page in a new tab`} style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
+                      <ExternalLink size={14} aria-hidden="true" />
                     </a>
                   </div>
                 </div>
@@ -325,7 +342,7 @@ export default function ActivityDetail() {
           <div className="table-scroll"><div style={{minWidth: 700}}>
           <div style={{
             display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 1fr 1fr 1fr',
-            gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em',
+            gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
             textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
             background: 'var(--surface-muted)',
           }}>
@@ -378,7 +395,7 @@ export default function ActivityDetail() {
             <div className="table-scroll"><div style={{minWidth: 700}}>
             <div style={{
               display: 'grid', gridTemplateColumns: '1.6fr 2fr 1fr',
-              gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em',
+              gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
               textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
               background: 'var(--surface-muted)',
             }}>
@@ -433,7 +450,7 @@ export default function ActivityDetail() {
               </div>
               <div style={{
                 display: 'grid', gridTemplateColumns: '2fr 1fr 1fr',
-                gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em',
+                gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
                 textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
                 background: 'var(--surface-muted)',
               }}>
@@ -477,7 +494,7 @@ export default function ActivityDetail() {
               <div className="table-scroll"><div style={{minWidth: 700}}>
               <div style={{
                 display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                gap: 14, padding: '12px 22px', fontSize: 11, letterSpacing: '0.07em',
+                gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
                 textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
                 background: 'var(--surface-muted)',
               }}>
@@ -590,11 +607,11 @@ export default function ActivityDetail() {
                   }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{p?.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
                         {c.cert_no} &middot; {fmtDate(c.issued_date)}
                         <span style={{
                           marginLeft: 8, padding: '1px 6px', borderRadius: 4,
-                          fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-body)',
+                          fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
                           background: 'var(--surface-muted)', color: 'var(--text-secondary)',
                           textTransform: 'capitalize',
                         }}>{c.certificate_type || 'completion'}</span>

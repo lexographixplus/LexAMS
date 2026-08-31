@@ -203,3 +203,113 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Workspace breadcrumb -------------------------------------------------- */
+
+.lx-crumbs ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.lx-crumbs li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+
+.lx-crumbs li + li::before {
+  content: '/';
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.lx-crumbs a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.lx-crumbs a:hover {
+  color: var(--color-navy-700);
+  text-decoration: underline;
+}
+
+.lx-crumbs li[aria-current='page'] > span {
+  color: var(--text-primary);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* On a phone the trail is cut to the screen you are actually on, so the
+   separator that would precede it has nothing left to separate. */
+@media (max-width: 768px) {
+  .lx-crumbs li:not([aria-current='page']) {
+    display: none;
+  }
+
+  .lx-crumbs li[aria-current='page']::before {
+    content: none;
+  }
+}
+
+/* --- Page heading ---------------------------------------------------------- */
+
+.lx-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.lx-page-head h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lx-page-head p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+
+.lx-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .lx-page-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lx-page-head h1 {
+    font-size: 23px;
+  }
+
+  .lx-page-actions .lx-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

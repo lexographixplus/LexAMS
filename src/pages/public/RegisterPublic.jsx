@@ -23,7 +23,7 @@ function Progress({ step }) {
       {['Email', 'Details', 'Confirmed'].map((label, index) => (
         <div key={label}>
           <div style={{ height: 5, borderRadius: 99, background: index + 1 <= active ? '#FAB72D' : '#E7ECF1' }} />
-          <div style={{ marginTop: 5, fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: index + 1 <= active ? '#002B54' : '#8A96A5' }}>{label}</div>
+          <div style={{ marginTop: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: index + 1 <= active ? '#002B54' : '#8A96A5' }}>{label}</div>
         </div>
       ))}
     </div>
@@ -163,7 +163,7 @@ export default function RegisterPublic() {
               <div style={{ color: '#002B54', fontWeight: 800 }}>{activity.title}</div>
               <div style={{ marginTop: 4, color: '#687587', fontSize: 13, lineHeight: 1.55 }}>{fmtRange(activity)}{activity.venue ? ` · ${activity.venue}` : ''}</div>
             </div>
-            <span style={{ padding: '5px 9px', borderRadius: 999, flexShrink: 0, background: activity.registration_open ? '#EAF6EE' : '#FBEAEA', color: activity.registration_open ? '#24633D' : '#A42C27', fontSize: 11, fontWeight: 800 }}>{activity.registration_open ? 'Registration open' : 'Registration closed'}</span>
+            <span style={{ padding: '5px 9px', borderRadius: 999, flexShrink: 0, background: activity.registration_open ? '#EAF6EE' : '#FBEAEA', color: activity.registration_open ? '#24633D' : '#A42C27', fontSize: 12, fontWeight: 800 }}>{activity.registration_open ? 'Registration open' : 'Registration closed'}</span>
           </div>
           {activity.description && <p style={{ color: '#687587', lineHeight: 1.65, margin: '2px 0 0' }}>{activity.description}</p>}
           {capacityText && <div style={{ fontSize: 12, color: '#31516F', fontWeight: 700 }}>{capacityText}{activity.waitlist_enabled ? ' · Waitlist available when full' : ''}</div>}
@@ -244,7 +244,7 @@ export default function RegisterPublic() {
             <h3 style={{ marginBottom: 8 }}>Registration {result.status === 'confirmed' ? 'confirmed' : result.status === 'waitlisted' ? 'waitlisted' : 'submitted'}</h3>
             <p style={{ color: '#687587', marginTop: 0 }}>{result.name ? `${result.name}, your` : 'Your'} registration for {activity.title} is <strong>{result.status}</strong>.</p>
             <div style={{ margin: '18px auto', maxWidth: 330, border: '1px solid #DDE3EA', borderRadius: 12, padding: 16 }}>
-              <div style={{ color: '#687587', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 800 }}>Registration reference</div>
+              <div style={{ color: '#687587', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 800 }}>Registration reference</div>
               <div style={{ color: '#002B54', fontSize: 22, fontWeight: 900, marginTop: 5, letterSpacing: '.04em' }}>{result.reference}</div>
             </div>
             {result.status === 'confirmed' && result.pass_token && (
