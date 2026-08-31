@@ -4,6 +4,7 @@ import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../componen
 import CertificateSignatureGrid from '../../components/CertificateSignatureGrid';
 import { printCertificate } from '../../lib/printCertificate.js';
 import { isRecognitionCertificate } from '../../../shared/recognition.js';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -28,6 +29,7 @@ const labels = {
 };
 
 export default function CertificatePublic() {
+  useDocumentTitle('Verify certificate');
   const { token } = useParams();
   const [certificate, setCertificate] = useState(null);
   const [loading, setLoading] = useState(true);

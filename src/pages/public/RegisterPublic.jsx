@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import QrCode from '../../components/QrCode';
 import { fmtRange } from '../../lib/format';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 const CATEGORIES = ['Volunteer', 'Staff', 'Community member', 'Partner', 'Youth', 'Teacher', 'Parent', 'External'];
 
@@ -58,6 +59,7 @@ function CustomField({ field, value, onChange }) {
 }
 
 export default function RegisterPublic() {
+  useDocumentTitle('Register for this activity');
   const { token } = useParams();
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(true);

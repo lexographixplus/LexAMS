@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 export default function JoinTeam(){
+  useDocumentTitle('Join this workspace');
  const {token}=useParams(); const {user,loading:authLoading,signIn,refreshProfile}=useAuth(); const [invite,setInvite]=useState(null); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [sending,setSending]=useState(false); const [sent,setSent]=useState(false); const [accepting,setAccepting]=useState(false); const [accepted,setAccepted]=useState(false);
  useEffect(()=>{fetch(`/api/invite/${token}`).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error);setInvite(b.invite)}).catch(e=>setError(e.message||'Invalid or expired invitation.')).finally(()=>setLoading(false))},[token]);
  useEffect(()=>{if(invite&&user&&!authLoading&&!accepted&&!accepting&&invite.status==='pending')accept()},[invite,user,authLoading]);

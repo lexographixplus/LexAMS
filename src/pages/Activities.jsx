@@ -201,27 +201,44 @@ export default function Activities() {
       </section>
 
       {showNewDlg && (
-        <div onClick={() => setShowNewDlg(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,43,84,.34)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface-card)', borderRadius: 16, boxShadow: 'var(--shadow-raised)', padding: '28px 30px', width: 520, maxWidth: '100%' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--color-navy-900)' }}>Create activity</div>
-            <p style={{ margin: '7px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>Add the core delivery details now. Registration, attendance and outcomes can be managed from the activity workspace after creation.</p>
-            <form onSubmit={createActivity} style={{ marginTop: 20, display: 'grid', gap: 13 }}>
-              <input placeholder="Activity title" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
-                  {['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(t => <option key={t}>{t}</option>)}
-                </select>
-                <input placeholder="Venue" value={form.venue} onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} style={inputStyle} />
+        <div className="lx-dialog-backdrop" onClick={() => setShowNewDlg(false)}>
+          <div className="lx-dialog" role="dialog" aria-modal="true" aria-labelledby="create-activity-title" onClick={e => e.stopPropagation()}>
+            <h2 id="create-activity-title">Create activity</h2>
+            <p style={{ margin: '7px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              Add the core delivery details now. Registration, attendance and outcomes can be managed from the activity workspace after creation.
+            </p>
+            <form className="lx-form" onSubmit={createActivity}>
+              <label className="lx-visually-hidden" htmlFor="new-activity-title">Activity title</label>
+              <input id="new-activity-title" className="lx-field" placeholder="Activity title" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <div className="lx-field-pair">
+                <div>
+                  <label className="lx-visually-hidden" htmlFor="new-activity-type">Activity type</label>
+                  <select id="new-activity-type" className="lx-field" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                    {['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="lx-visually-hidden" htmlFor="new-activity-venue">Venue</label>
+                  <input id="new-activity-venue" className="lx-field" placeholder="Venue" value={form.venue} onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} />
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={inputStyle} />
-                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={inputStyle} />
+              <div className="lx-field-pair">
+                <div>
+                  <label className="lx-field-label" htmlFor="new-activity-start">Start date</label>
+                  <input id="new-activity-start" className="lx-field" type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="lx-field-label" htmlFor="new-activity-end">End date</label>
+                  <input id="new-activity-end" className="lx-field" type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                </div>
               </div>
-              <input placeholder="Lead facilitator" value={form.facilitator} onChange={e => setForm(f => ({ ...f, facilitator: e.target.value }))} style={inputStyle} />
-              <textarea placeholder="Description" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                <button type="button" onClick={() => setShowNewDlg(false)} style={{ padding: '10px 18px', borderRadius: 9, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ padding: '10px 18px', borderRadius: 9, border: 0, background: 'var(--color-navy-900)', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: submitting ? .65 : 1 }}>{submitting ? 'Creating...' : 'Create activity'}</button>
+              <label className="lx-visually-hidden" htmlFor="new-activity-facilitator">Lead facilitator</label>
+              <input id="new-activity-facilitator" className="lx-field" placeholder="Lead facilitator" value={form.facilitator} onChange={e => setForm(f => ({ ...f, facilitator: e.target.value }))} />
+              <label className="lx-visually-hidden" htmlFor="new-activity-description">Description</label>
+              <textarea id="new-activity-description" className="lx-field" placeholder="Description" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ resize: 'vertical' }} />
+              <div className="lx-dialog-actions">
+                <button type="button" className="lx-btn lx-btn-secondary" onClick={() => setShowNewDlg(false)}>Cancel</button>
+                <button type="submit" className="lx-btn lx-btn-primary" disabled={submitting}>{submitting ? 'Creating…' : 'Create activity'}</button>
               </div>
             </form>
           </div>

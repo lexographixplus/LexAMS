@@ -130,7 +130,7 @@ function escapeCsv(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
-export default function ReportsV2() {
+export default function ReportsWorkspace() {
   const {
     activities, participants, registrations, attendance, certificates, surveys, assessments,
     loading, getAttendancePct, getActivity, getParticipant,

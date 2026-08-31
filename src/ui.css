@@ -506,3 +506,279 @@
     justify-content: center;
   }
 }
+
+/* --- Shared data-screen primitives ----------------------------------------
+   Table, drawer, dialog, form field and toast styling used by the screens
+   that have been moved off inline styles. */
+.lx-field {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+
+.lx-field:focus {
+  border-color: var(--color-navy-700);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+/* --- Table ----------------------------------------------------------------- */
+
+.lx-table-card {
+  margin-top: 18px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.lx-table-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lx-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.lx-table th {
+  padding: 0;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+.lx-table th > span,
+.lx-sort {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 12px 22px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-sort {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lx-sort:hover {
+  color: var(--color-navy-700);
+}
+
+.lx-sort[aria-sort='ascending'],
+.lx-sort[aria-sort='descending'],
+.lx-table th[aria-sort] .lx-sort {
+  color: var(--color-navy-900);
+}
+
+.lx-sort-mark {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.lx-table td {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border-default);
+  font-size: 13px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.lx-table tbody tr:hover {
+  background: var(--surface-muted);
+}
+
+.lx-table td.lx-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* A phone number broken across two lines is harder to read than a slightly
+   wider column, and the table scrolls sideways when it has to. */
+.lx-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.lx-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--color-navy-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* --- Pagination ------------------------------------------------------------ */
+
+.lx-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 22px;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.lx-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  width: 420px;
+  max-width: 96vw;
+  overflow-y: auto;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-raised);
+}
+
+.lx-drawer-head .lx-avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 15px;
+}
+
+.lx-btn-award {
+  background: #FFF4D6;
+  border-color: var(--color-gold-500);
+  color: var(--color-navy-900);
+}
+
+.lx-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-dialog {
+  width: 460px;
+  max-width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.lx-dialog h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lx-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.lx-danger-box {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-default);
+  background: #FEF2F2;
+}
+
+.lx-danger-box strong {
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.lx-danger-box p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* --- Toast ----------------------------------------------------------------- */
+
+.lx-toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-raised);
+}
+
+/* --- Shared primitives on a phone ------------------------------------------ */
+
+@media (max-width: 768px) {
+  .lx-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .lx-dialog {
+    width: 100%;
+    padding: 22px 20px;
+  }
+
+  .lx-pagination {
+    justify-content: center;
+  }
+}
+
+/* --- Field pairs and labels ------------------------------------------------ */
+
+.lx-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.lx-field-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 640px) {
+  .lx-field-pair {
+    grid-template-columns: 1fr;
+  }
+}

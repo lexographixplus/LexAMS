@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 async function checkinApi(token, options = {}) {
   const response = await fetch(`/api/public-checkin/${encodeURIComponent(token)}`, {
@@ -24,6 +25,7 @@ function fmtTime(value) {
 }
 
 export default function AttendancePublic() {
+  useDocumentTitle('Attendance check-in');
   const { token } = useParams();
   const isKiosk = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'kiosk';
   const [data, setData] = useState(null);

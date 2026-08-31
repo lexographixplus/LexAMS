@@ -3,8 +3,10 @@ import { useParams } from 'react-router-dom';
 import PublicExperienceLayout, { PublicCard, PublicNotice } from '../../components/PublicExperienceLayout';
 import QrCode from '../../components/QrCode';
 import { fmtRange } from '../../lib/format';
+import useDocumentTitle from '../../lib/useDocumentTitle';
 
 export default function ParticipantPassPublic() {
+  useDocumentTitle('Your participant pass');
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
