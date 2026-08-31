@@ -5,6 +5,7 @@ import { initials as getInitials, fmtRange } from '../lib/format';
 import CertificatePreview from '../components/CertificatePreview';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Participants() {
   const { activities, participants, registrations, certificates, loading, addParticipant, updateParticipant, deleteParticipant, addRegistration, getAttendancePct, isAdmin } = useData();
@@ -106,7 +107,7 @@ export default function Participants() {
 
   const inputStyle = { width: '100%', padding: '10px 14px', fontSize: 14, border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none' };
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Loading participants...</p></div>;
+  if (loading) return <SkeletonScreen cards={3} label="Loading participants" />;
 
   return <div>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>

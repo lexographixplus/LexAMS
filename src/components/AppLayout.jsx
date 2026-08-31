@@ -69,19 +69,12 @@ export default function AppLayout() {
   // their own title; this is the fallback so no tab is left with a generic one.
   useDocumentTitle(knownTitle);
 
-  // The top bar carries location, not a second copy of the page heading: the
-  // sidebar already says which section you are in and the page states its own
-  // title. Only a nested screen adds a trail worth showing.
-  const openActivity = isActivityDetail
-    ? activities.find(a => String(a.id) === location.pathname.split('/')[3])
-    : null;
-  const crumbs = [{ label: orgName }];
-  if (isActivityDetail) {
-    crumbs.push({ label: 'Activities', to: '/app/activities' });
-    crumbs.push({ label: openActivity?.title || 'Activity' });
-  } else if (knownTitle) {
-    crumbs.push({ label: knownTitle });
-  }
+  // The trail lists a page's ancestors and stops there. The page states its own
+  // name in its heading, so repeating it here is the duplication this replaced.
+  // The dashboard is the workspace root and therefore has no trail at all.
+  const isDashboard = location.pathname === '/app';
+  const crumbs = isDashboard ? [] : [{ label: orgName, to: '/app' }];
+  if (isActivityDetail) crumbs.push({ label: 'Activities', to: '/app/activities' });
 
   const counts = {
     Activities: activities.length,
@@ -164,7 +157,7 @@ export default function AppLayout() {
               <nav aria-label="Breadcrumb" className="lx-crumbs">
                 <ol>
                   {crumbs.map((crumb, index) => (
-                    <li key={`${crumb.label}-${index}`} aria-current={index === crumbs.length - 1 ? 'page' : undefined}>
+                    <li key={`${crumb.label}-${index}`} className={index === crumbs.length - 1 ? 'lx-crumb-parent' : undefined}>
                       {crumb.to ? <NavLink to={crumb.to}>{crumb.label}</NavLink> : <span>{crumb.label}</span>}
                     </li>
                   ))}

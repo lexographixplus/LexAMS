@@ -1,14 +1,15 @@
 import { lazy, Suspense, useState } from 'react';
 import useDocumentTitle from '../lib/useDocumentTitle';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, fmtDate, statusChip } from '../lib/format';
-import { Copy, Pencil, Trash2, ExternalLink, Eye } from 'lucide-react';
+import { Copy, Pencil, Trash2, ExternalLink, Eye, Award } from 'lucide-react';
 import CertificatePreview from '../components/CertificatePreview';
 import { useAuth } from '../contexts/AuthContext';
 import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
 import ActivityOperationalPulse from '../components/planning/ActivityOperationalPulse';
 import ActivityReportPulse from '../components/reporting/ActivityReportPulse';
+import SkeletonScreen from '../components/Skeleton';
 
 const ActivityReportWorkspace = lazy(() => import('../components/reporting/ActivityReportWorkspace'));
 
@@ -49,11 +50,7 @@ export default function ActivityDetail() {
   // Kept above every early return so the hook order is identical on each render.
   useDocumentTitle(activity?.title || 'Activity');
 
-  if (loading) return (
-    <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
-      Loading...
-    </div>
-  );
+  if (loading) return <SkeletonScreen cards={3} label="Loading this activity" />;
 
   if (!activity) {
     return (
@@ -158,39 +155,37 @@ export default function ActivityDetail() {
 
   return (
     <div>
-      <button onClick={() => navigate('/app/activities')} style={{
-        background: 'none', border: 'none', fontSize: 13, fontWeight: 600,
-        color: 'var(--color-navy-700)', padding: 0, cursor: 'pointer',
-      }}>&larr; All activities</button>
+      <button type="button" className="lx-back-link" onClick={() => navigate('/app/activities')}>
+        &larr; All activities
+      </button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 14 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 25, fontWeight: 700, margin: 0 }}>
-              {activity.title}
-            </h1>
-            <span style={statusChip(activity.status)}>{activity.status}</span>
+      <header className="lx-activity-head">
+        <div className="lx-activity-head-top">
+          <div style={{ minWidth: 0 }}>
+            <div className="lx-activity-title">
+              <h1>{activity.title}</h1>
+              <span style={statusChip(activity.status)}>{activity.status}</span>
+            </div>
+            <p className="lx-activity-meta">
+              {activity.type} &middot; {fmtRange({ start: activity.start_date, end: activity.end_date })} &middot; {activity.venue} &middot;
+              Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
+            </p>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>
-            {activity.type} &middot; {fmtRange({ start: activity.start_date, end: activity.end_date })} &middot; {activity.venue} &middot;
-            Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
-          </p>
+          <div className="lx-activity-actions">
+            <Link className="lx-btn lx-btn-secondary" to={`/app/certificates?awardActivity=${encodeURIComponent(activity.id)}#awards-recognition`}>
+              <Award size={15} aria-hidden="true" /> Give award
+            </Link>
+            {!isDemo && <>
+              <button type="button" className="lx-btn lx-btn-secondary" onClick={openEdit}>
+                <Pencil size={14} aria-hidden="true" /> Edit
+              </button>
+              <button type="button" className="lx-btn lx-btn-danger" onClick={() => setShowDelete(true)}>
+                <Trash2 size={14} aria-hidden="true" /> Delete
+              </button>
+            </>}
+          </div>
         </div>
-        {!isDemo && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={openEdit} title="Edit activity" style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', fontSize: 13, fontWeight: 600,
-            background: 'transparent', border: '1.5px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)', color: 'var(--color-navy-700)', cursor: 'pointer',
-          }}><Pencil size={14} /> Edit</button>
-          <button onClick={() => setShowDelete(true)} title="Delete activity" style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', fontSize: 13, fontWeight: 600,
-            background: 'transparent', border: '1.5px solid var(--color-danger)',
-            borderRadius: 'var(--radius-md)', color: 'var(--color-danger)', cursor: 'pointer',
-          }}><Trash2 size={14} /> Delete</button>
-        </div>}
-      </div>
+      </header>
 
       {/* Tabs */}
       <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4, overflowX: 'auto' }}>

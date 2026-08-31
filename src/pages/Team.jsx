@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { fmtDate } from '../lib/format';
-import { UserPlus, Check, X, Trash2, Shield, User } from 'lucide-react';
+import { UserPlus, Check, X, Trash2, Shield, User, AlertCircle } from 'lucide-react';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Team() {
   const { user, profile, isAdmin } = useAuth();
@@ -10,6 +11,7 @@ export default function Team() {
   const [invites, setInvites] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -24,20 +26,25 @@ export default function Team() {
   const teamId = profile?.team_id;
 
   useEffect(() => {
-    if (!teamId) return;
+    // Without a team there is nothing to fetch, but the screen still has to
+    // stop loading — it previously sat on its loading state indefinitely.
+    if (!teamId) { setLoading(false); return; }
     loadTeamData();
   }, [teamId]);
 
   async function loadTeamData() {
     setLoading(true);
-    const [{ data: m }, { data: inv }, { data: pa }] = await Promise.all([
+    setLoadError('');
+    const [membersResult, invitesResult, approvalsResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('team_id', teamId),
       supabase.from('team_invites').select('*').eq('invited_by', teamId).order('created_at', { ascending: false }),
       supabase.from('pending_approvals').select('*').eq('team_id', teamId).order('created_at', { ascending: false }),
     ]);
-    setMembers(m || []);
-    setInvites(inv || []);
-    setPendingApprovals(pa || []);
+    const failure = [membersResult, invitesResult, approvalsResult].find(result => result.error);
+    if (failure) setLoadError(failure.error.message || 'Your team could not be loaded.');
+    setMembers(membersResult.data || []);
+    setInvites(invitesResult.data || []);
+    setPendingApprovals(approvalsResult.data || []);
     setLoading(false);
   }
 
@@ -110,7 +117,22 @@ export default function Team() {
     background: 'var(--surface-card)', outline: 'none', color: 'var(--text-primary)',
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>Loading team...</div>;
+  if (loading) return <SkeletonScreen cards={2} label="Loading your team" />;
+
+  if (loadError) {
+    return (
+      <div className="lx-state lx-state-error" role="alert">
+        <AlertCircle className="lx-state-icon" size={20} color="var(--color-danger)" aria-hidden="true" />
+        <div>
+          <strong>Your team could not be loaded</strong>
+          <p>{loadError}</p>
+          <div className="lx-state-actions">
+            <button type="button" className="lx-btn lx-btn-secondary lx-btn-small" onClick={loadTeamData}>Try again</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -7,6 +7,7 @@ import AwardsRecognitionPanel from '../components/AwardsRecognitionPanel';
 import { Eye, Mail, Send } from 'lucide-react';
 import { isReportingPreviewDemo } from '../lib/reportPreviewDemo';
 import { isRecognitionCertificate } from '../../shared/recognition.js';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Certificates() {
   const { certificates, loading, getActivity, getParticipant } = useData();
@@ -17,7 +18,7 @@ export default function Certificates() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState('');
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading certificates...</div>;
+  if (loading) return <SkeletonScreen cards={3} label="Loading certificates" />;
 
   const completionCertificates = certificates.filter(c => !isRecognitionCertificate(c));
   const uniqueActs = new Set(completionCertificates.map(c => c.activity_id).filter(Boolean)).size;

@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import SkeletonScreen from '../components/Skeleton';
 import { fmtRange, statusChip } from '../lib/format';
 import {
   ArrowRight,
   Award,
   CalendarPlus,
   CheckCircle2,
-  ClipboardCheck,
   Clock3,
-  QrCode,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -40,14 +40,9 @@ export default function Dashboard() {
     getAttendancePct,
   } = useData();
   const navigate = useNavigate();
+  const { profile } = useAuth();
 
-  if (loading) {
-    return (
-      <div style={{ display: 'grid', placeItems: 'center', height: '60vh', color: 'var(--text-secondary)', fontSize: 14 }}>
-        Loading workspace...
-      </div>
-    );
-  }
+  if (loading) return <SkeletonScreen cards={4} label="Loading your workspace" />;
 
   const ongoing = activities.filter(a => normalizeStatus(a.status) === 'ongoing');
   const upcoming = activities
@@ -112,87 +107,63 @@ export default function Dashboard() {
       path: '/app/assessments',
     }));
 
+  const activeSurveys = surveys.filter(x => ['active', 'open'].includes(normalizeStatus(x.status))).length;
+  const activeAssessments = assessments.filter(x => ['active', 'open'].includes(normalizeStatus(x.status))).length;
+  const nothingRunning = !ongoing.length && !upcoming.length && !activeSurveys && !activeAssessments;
+
+  const workspaceName = profile?.org_name || 'Your workspace';
+  // The header says what is true of this workspace right now, rather than
+  // describing what the page is for.
+  const stateSummary = !activities.length
+    ? 'No activities yet. Create your first one to start tracking registration, attendance and results.'
+    : nothingRunning
+      ? `Nothing is running right now. ${completed.length} completed ${completed.length === 1 ? 'activity' : 'activities'} on record.`
+      : [
+          ongoing.length ? `${ongoing.length} ongoing` : null,
+          upcoming.length ? `${upcoming.length} upcoming` : null,
+          activeSurveys ? `${activeSurveys} open ${activeSurveys === 1 ? 'survey' : 'surveys'}` : null,
+          activeAssessments ? `${activeAssessments} open ${activeAssessments === 1 ? 'assessment' : 'assessments'}` : null,
+        ].filter(Boolean).join(' · ');
+
   const recent = [...activities]
     .sort((a, b) => String(b.start_date || '').localeCompare(String(a.start_date || '')))
     .slice(0, 5);
 
-  const quickActions = [
-    { label: 'New activity', icon: CalendarPlus, path: '/app/activities' },
-    { label: 'Add participant', icon: UserPlus, path: '/app/participants' },
-    { label: 'Registration links', icon: QrCode, path: '/app/activities' },
-    { label: 'Surveys and assessments', icon: ClipboardCheck, path: '/app/surveys' },
-  ];
-
   return (
     <div>
       <style>{`
-        .lexdash-top { display:grid; grid-template-columns: 1.35fr .65fr; gap:20px; }
-        .lexdash-summary { display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-top:20px; }
+        .lexdash-summary { display:grid; grid-template-columns: repeat(4,1fr); gap:12px; }
         .lexdash-main { display:grid; grid-template-columns: 1.15fr .85fr; gap:20px; margin-top:20px; }
-        .lexdash-actions { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
         .lexdash-activity-row { display:grid; grid-template-columns: 1.8fr .8fr 1fr .7fr; gap:14px; align-items:center; }
         @media (max-width: 1100px) {
           .lexdash-summary { grid-template-columns: repeat(2,1fr); }
           .lexdash-main { grid-template-columns: 1fr; }
         }
         @media (max-width: 760px) {
-          .lexdash-top { grid-template-columns: 1fr; }
           .lexdash-summary { grid-template-columns: 1fr 1fr; }
           .lexdash-activity-row { grid-template-columns: 1fr; gap:5px; }
         }
+        /* Kept two-up on a phone: one card per row pushed the workspace's own
+           figures below the fold, which is what this screen exists to show. */
         @media (max-width: 480px) {
-          .lexdash-summary, .lexdash-actions { grid-template-columns: 1fr; }
+          .lexdash-summary { grid-template-columns: 1fr 1fr; gap:10px; }
         }
       `}</style>
 
-      <div className="lexdash-top">
-        <section style={{
-          borderRadius: 18,
-          background: 'linear-gradient(135deg, var(--color-navy-900), #0E4C8F)',
-          color: '#FFFFFF',
-          padding: '30px 32px',
-          position: 'relative',
-          overflow: 'hidden',
-          minHeight: 240,
-        }}>
-          <div style={{ position: 'absolute', width: 260, height: 260, borderRadius: '50%', background: 'rgba(250,183,45,.10)', right: -80, top: -100 }} />
-          <div style={{ position: 'relative' }}>
-            <div style={{ fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.62)', fontWeight: 700 }}>
-              Operations overview
-            </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.15, margin: '12px 0 0', maxWidth: 540, color: '#FFFFFF' }}>
-              See what is active, what needs attention and what comes next.
-            </h2>
-            <p style={{ maxWidth: 590, fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.7, marginTop: 14 }}>
-              LexAMS keeps delivery signals close to the work so your team can act before records become reporting problems.
-            </p>
-            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', marginTop: 24 }}>
-              <button onClick={() => navigate('/app/activities')} style={primaryButtonStyle}>
-                Open activities <ArrowRight size={15} />
-              </button>
-              <button onClick={() => navigate('/app/participants')} style={secondaryButtonStyle}>
-                Participants
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section style={panelStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={eyebrowStyle}>Now</div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 5 }}>Current operations</div>
-            </div>
-            <Clock3 size={19} color="var(--color-gold-500)" />
-          </div>
-          <div style={{ display: 'grid', gap: 14, marginTop: 22 }}>
-            <Signal label="Ongoing activities" value={ongoing.length} />
-            <Signal label="Upcoming activities" value={upcoming.length} />
-            <Signal label="Active surveys" value={surveys.filter(s => ['active', 'open'].includes(normalizeStatus(s.status))).length} />
-            <Signal label="Active assessments" value={assessments.filter(a => ['active', 'open'].includes(normalizeStatus(a.status))).length} />
-          </div>
-        </section>
-      </div>
+      <header className="lx-page-head">
+        <div>
+          <h1>{workspaceName}</h1>
+          <p>{stateSummary}</p>
+        </div>
+        <div className="lx-page-actions">
+          <button type="button" className="lx-btn lx-btn-secondary" onClick={() => navigate('/app/participants')}>
+            <UserPlus size={16} aria-hidden="true" /> Add participant
+          </button>
+          <button type="button" className="lx-btn lx-btn-primary" onClick={() => navigate('/app/activities')}>
+            <CalendarPlus size={16} aria-hidden="true" /> New activity
+          </button>
+        </div>
+      </header>
 
       <div className="lexdash-summary">
         <Metric label="Activities" value={activities.length} sub={`${ongoing.length} ongoing`} icon={CalendarPlus} />
@@ -235,19 +206,40 @@ export default function Dashboard() {
         </section>
 
         <section style={panelStyle}>
-          <div style={eyebrowStyle}>Quick actions</div>
-          <h3 style={sectionTitleStyle}>Move the work forward</h3>
-          <p style={sectionCopyStyle}>Common tasks without hunting through the workspace.</p>
-          <div className="lexdash-actions" style={{ marginTop: 20 }}>
-            {quickActions.map(({ label, icon: Icon, path }) => (
-              <button key={label} onClick={() => navigate(path)} style={quickActionStyle}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'var(--surface-muted)', color: 'var(--color-navy-700)' }}>
-                  <Icon size={17} />
-                </div>
-                <span>{label}</span>
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={eyebrowStyle}>Now</div>
+              <h3 style={sectionTitleStyle}>Current operations</h3>
+            </div>
+            <Clock3 size={19} color="var(--color-gold-500)" aria-hidden="true" />
           </div>
+          {nothingRunning ? (
+            // Four zeros beside a summary row reporting real totals reads as a
+            // broken panel. When nothing is running, say so once.
+            <div className="lx-state" style={{ marginTop: 20 }}>
+              <CheckCircle2 className="lx-state-icon" size={20} color="var(--color-success)" aria-hidden="true" />
+              <div>
+                <strong>Nothing is running right now</strong>
+                <p>
+                  {activities.length
+                    ? 'No activity, survey or assessment is currently open. Scheduling the next one will show it here.'
+                    : 'Your first activity will appear here once you create it.'}
+                </p>
+                <div className="lx-state-actions">
+                  <button type="button" className="lx-btn lx-btn-secondary lx-btn-small" onClick={() => navigate('/app/activities')}>
+                    Go to activities
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 14, marginTop: 22 }}>
+              <Signal label="Ongoing activities" value={ongoing.length} />
+              <Signal label="Upcoming activities" value={upcoming.length} />
+              <Signal label="Active surveys" value={activeSurveys} />
+              <Signal label="Active assessments" value={activeAssessments} />
+            </div>
+          )}
         </section>
       </div>
 
@@ -366,26 +358,7 @@ const sectionCopyStyle = {
   margin: '7px 0 0',
 };
 
-const primaryButtonStyle = {
-  border: 'none',
-  borderRadius: 9,
-  background: '#FAB72D',
-  color: '#002B54',
-  padding: '11px 16px',
-  fontSize: 12,
-  fontWeight: 700,
-  display: 'inline-flex',
-  gap: 8,
-  alignItems: 'center',
-  cursor: 'pointer',
-};
 
-const secondaryButtonStyle = {
-  ...primaryButtonStyle,
-  background: 'rgba(255,255,255,.10)',
-  color: '#FFFFFF',
-  border: '1px solid rgba(255,255,255,.18)',
-};
 
 const emptyStateStyle = {
   display: 'flex',
@@ -409,20 +382,6 @@ const attentionItemStyle = {
   cursor: 'pointer',
 };
 
-const quickActionStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  border: '1px solid var(--border-default)',
-  borderRadius: 11,
-  padding: '13px',
-  background: '#FFFFFF',
-  color: 'var(--text-primary)',
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: 'pointer',
-  textAlign: 'left',
-};
 
 const activityRowStyle = {
   width: '100%',

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Filter, MapPin, Plus, Search, Users } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { fmtRange, statusChip } from '../lib/format';
+import SkeletonScreen from '../components/Skeleton';
 
 export default function Activities() {
   const { activities, loading, addActivity, getRegsForActivity, getAttendancePct } = useData();
@@ -65,7 +66,7 @@ export default function Activities() {
   };
 
   if (loading) {
-    return <div style={{ minHeight: 360, display: 'grid', placeItems: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Loading activities...</div>;
+    return <SkeletonScreen cards={3} label="Loading activities" />;
   }
 
   return (
