@@ -1,0 +1,205 @@
+/* ---------------------------------------------------------------------------
+   LexAMS shared interface layer.
+
+   Styling written here rather than inline in components, so that the mobile
+   rules in responsive.css can target real class names instead of matching
+   fragments of inline style attributes. Pages are being moved onto this layer
+   one at a time; see docs/phase-3-interface.md.
+   --------------------------------------------------------------------------- */
+
+/* --- Accessibility primitives --------------------------------------------- */
+
+.lx-skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-navy-900);
+  color: var(--color-white);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.lx-skip-link:focus {
+  top: 12px;
+}
+
+.lx-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A single, consistent focus ring for every interactive element. Individual
+   components may restyle :focus, but must never remove this. */
+.lx-app a:focus-visible,
+.lx-app button:focus-visible,
+.lx-app input:focus-visible,
+.lx-app select:focus-visible,
+.lx-app textarea:focus-visible,
+.lx-app [tabindex]:focus-visible {
+  outline: 2px solid var(--color-navy-700);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Splash ---------------------------------------------------------------- */
+
+.lx-splash {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--surface-page);
+}
+
+.lx-splash-mark {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-navy-900);
+}
+
+/* --- Full-page message states (not found, auth failure) ------------------- */
+
+.lx-message-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: var(--surface-page);
+}
+
+/* The same card, placed inside the workspace content column. */
+.lx-message-inline {
+  display: grid;
+  place-items: center;
+  padding: 40px 0;
+}
+
+.lx-message-card {
+  width: min(560px, 100%);
+  padding: 40px 36px;
+  text-align: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.lx-message-brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-navy-900);
+  text-decoration: none;
+}
+
+.lx-message-code {
+  margin-top: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lx-message-card h1 {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.lx-message-card p {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.lx-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+
+.lx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+
+.lx-btn-primary {
+  background: var(--color-navy-900);
+  color: var(--color-white);
+}
+
+.lx-btn-primary:hover {
+  background: var(--color-navy-700);
+}
+
+.lx-btn-secondary {
+  background: var(--surface-card);
+  border-color: var(--border-default);
+  color: var(--color-navy-900);
+}
+
+.lx-btn-secondary:hover {
+  border-color: var(--color-navy-700);
+}
+
+.lx-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .lx-message-card {
+    padding: 32px 22px;
+  }
+
+  .lx-message-actions .lx-btn {
+    width: 100%;
+  }
+}
+
+/* --- Motion --------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

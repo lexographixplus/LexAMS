@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { isTrialingSubscription, trialDaysLabel, trialDaysRemaining } from '../../shared/trial.js';
+import useDocumentTitle from '../lib/useDocumentTitle';
 import {
   LayoutDashboard, CalendarRange, Users, Award, FileBarChart,
   ClipboardCheck, GraduationCap, Settings, UsersRound, Mail,
@@ -60,8 +61,14 @@ export default function AppLayout() {
     ?? trialDaysRemaining(billing?.subscription?.trial_ends_at || billing?.subscription?.current_period_end);
   const planLabel = isTrialing ? `Pro trial · ${trialDaysLabel(trialDays)}` : (isPro ? 'Pro plan' : 'Free plan');
 
-  const pageTitle = pageTitles[location.pathname] ||
-    (location.pathname.startsWith('/app/activities/') ? 'Activity Detail' : 'LexAMS');
+  const isActivityDetail = location.pathname.startsWith('/app/activities/');
+  // Null for any address the shell does not recognise, so the not-found screen
+  // rendered inside it keeps the title it set for itself.
+  const knownTitle = pageTitles[location.pathname] || (isActivityDetail ? 'Activity' : null);
+  const pageTitle = knownTitle || 'Not found';
+  // Screens that know something more specific (an activity's own name, say) set
+  // their own title; this is the fallback so no tab is left with a generic one.
+  useDocumentTitle(knownTitle);
 
   const counts = {
     Activities: activities.length,
