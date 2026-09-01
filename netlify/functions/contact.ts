@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { Resend } from 'resend';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
+import { consumePublicRateLimit } from './_shared/rate-limit';
 
 const CONTACT_RECIPIENT = 'lexographixplus@gmail.com';
 
@@ -22,6 +23,18 @@ export default async (request: Request) => {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return Response.json({ error: 'A valid contact message is required' }, { status: 400 });
   if (clean(body['bot-field'], 100)) return Response.json({ ok: true });
+
+  const throttle = await consumePublicRateLimit(request, {
+    scope: 'contact',
+    limit: 5,
+    windowSeconds: 600,
+  });
+  if (!throttle.allowed) {
+    return Response.json(
+      { error: 'Too many contact requests. Please try again later.' },
+      { status: 429, headers: { 'retry-after': String(throttle.retryAfterSeconds) } }
+    );
+  }
 
   const name = clean(body.name, 120);
   const email = clean(body.email, 254).toLowerCase();

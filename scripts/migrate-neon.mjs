@@ -7,6 +7,7 @@ import { normalizeMigrationSql } from './migration-utils.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const migrationsDirectory = path.join(root, 'db', 'migrations');
+const LEGACY_BASELINE_LAST = '013_phase_2c_2e_narrative_reporting.sql';
 
 async function migrationFiles() {
   const names = (await readdir(migrationsDirectory)).filter(name => /^\d{3}_[a-z0-9_]+\.sql$/.test(name)).sort();
@@ -25,6 +26,9 @@ async function migrationFiles() {
 }
 
 const migrations = await migrationFiles();
+if (!migrations.some(migration => migration.name === LEGACY_BASELINE_LAST)) {
+  throw new Error(`Legacy migration baseline ${LEGACY_BASELINE_LAST} is missing.`);
+}
 if (process.argv.includes('--check')) {
   console.log(`Validated ${migrations.length} ordered migrations (${migrations[0].name} through ${migrations.at(-1).name}).`);
   process.exit(0);
@@ -43,16 +47,18 @@ try {
   const appliedResult = await pool.query('select filename,checksum from lexams_schema_migrations order by filename');
   const applied = new Map(appliedResult.rows.map(row => [row.filename, row.checksum]));
 
-  // The production database predates the migration ledger. If its foundation
-  // exists, record historical migrations as a baseline and apply only new ones.
+  // The production database predates the migration ledger. Only the explicitly
+  // reviewed historical baseline may be recorded automatically. New migrations
+  // are never inferred from their position in the directory and must run normally.
   if (!applied.size) {
     const existing = await pool.query(`select to_regclass('public.organizations') as organizations`);
     if (existing.rows[0]?.organizations) {
-      for (const migration of migrations.slice(0, -1)) {
+      const legacyBaseline = migrations.filter(migration => migration.name <= LEGACY_BASELINE_LAST);
+      for (const migration of legacyBaseline) {
         await pool.query('insert into lexams_schema_migrations (filename,checksum) values ($1,$2) on conflict do nothing', [migration.name, migration.checksum]);
         applied.set(migration.name, migration.checksum);
       }
-      console.log(`Baselined ${Math.max(0, migrations.length - 1)} historical migrations.`);
+      console.log(`Baselined ${legacyBaseline.length} historical migrations through ${LEGACY_BASELINE_LAST}.`);
     }
   }
 

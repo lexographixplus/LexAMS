@@ -22,6 +22,12 @@ export default async (request: Request) => {
 
   const tenant = await requireTenant(request);
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!['owner', 'admin'].includes(String(tenant.role || ''))) {
+    return Response.json(
+      { error: 'Only workspace owners and admins can manage billing.', code: 'BILLING_ROLE_REQUIRED' },
+      { status: 403 }
+    );
+  }
 
   const { billingCycle } = await request.json().catch(() => ({}));
   if (billingCycle !== 'monthly' && billingCycle !== 'annual') {
