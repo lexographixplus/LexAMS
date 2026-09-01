@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/api';
 
 export default function MyAccount() {
   const { user, profile, refreshProfile, signOut } = useAuth();
@@ -20,7 +20,7 @@ export default function MyAccount() {
     if (!profile?.id) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('profiles').update({ full_name: fullName.trim() }).eq('id', profile.id);
+      const { error } = await apiClient.from('profiles').update({ full_name: fullName.trim() }).eq('id', profile.id);
       if (error) {
         showToast(`Could not save account details: ${error.message}`);
         return;

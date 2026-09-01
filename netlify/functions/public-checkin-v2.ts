@@ -14,7 +14,7 @@ function json(data: unknown, status = 200) {
 }
 
 function cleanIdentity(value: unknown) {
-  return String(value || '').trim();
+  return String(value || '').trim().slice(0, 254);
 }
 
 function dateKey(value: unknown) {
@@ -81,10 +81,8 @@ function sessionWindowState(session: any) {
 }
 
 function attendanceStatus(session: any) {
-  if (!session.starts_at) return 'present';
-  const date = dateKey(session.session_date);
-  const time = timeKey(session.starts_at);
-  const starts = new Date(`${date}T${time}`);
+  if (!session.session_starts_at) return 'present';
+  const starts = new Date(session.session_starts_at);
   if (Number.isNaN(starts.getTime())) return 'present';
   const grace = Math.max(0, Number(session.grace_minutes || 0));
   return new Date() > new Date(starts.getTime() + grace * 60000) ? 'late' : 'present';
@@ -92,7 +90,8 @@ function attendanceStatus(session: any) {
 
 const SESSION_SELECT = `select s.id, s.organization_id, s.activity_id, s.title, s.session_date, s.starts_at, s.ends_at,
             s.checkin_open_at, s.checkin_close_at, s.status, s.checkin_pin, s.grace_minutes,
-            a.title as activity_title, a.type as activity_type, a.venue,
+            ((s.session_date + s.starts_at) at time zone coalesce(a.daily_checkin_timezone, 'UTC')) as session_starts_at,
+            a.title as activity_title, a.type as activity_type, a.venue, a.daily_checkin_timezone as activity_timezone,
             o.name as organization_name, o.logo_url as organization_logo
      from activity_sessions s
      join activities a on a.id=s.activity_id and a.organization_id=s.organization_id
@@ -475,6 +474,8 @@ async function handleSessionCheckin(request: Request, db: ReturnType<typeof getP
 export default async (request: Request, context: Context) => {
   try {
     if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
+    const contentLength = Number(request.headers.get('content-length') || 0);
+    if (request.method === 'POST' && contentLength > 20_000) return json({ error: 'Request body is too large.' }, 413);
     const token = context.params.token;
     if (!token) return json({ error: 'Invalid check-in link.' }, 400);
 

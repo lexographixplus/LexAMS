@@ -4,6 +4,7 @@ import { getPool } from './_shared/db';
 import { assertCreationEntitlement, getBillingSnapshot, PlanLimitError, requireAllowance, requirePro } from './_shared/billing';
 import { requireTenant } from './_shared/tenant';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
+import { escapeHtml } from './_shared/communications';
 
 const directTables: Record<string, Set<string>> = {
   activities: new Set(['id','organization_id','title','type','status','venue','organizer','facilitator','start_date','end_date','sessions','reg_open','reg_token','att_token','description','created_by','created_at','updated_at']),
@@ -37,6 +38,17 @@ function validateColumns(table: string, values: string[]) {
 }
 
 function normalizePayload(payload: any) { return Array.isArray(payload) ? payload : [payload]; }
+
+function runtimeEnv(name: string) {
+  try {
+    const netlifyEnv = (globalThis as any).Netlify?.env;
+    const value = netlifyEnv?.get?.(name);
+    if (value) return value;
+  } catch {
+    // Fall through to process.env for local and test environments.
+  }
+  return process.env[name];
+}
 
 async function ownedRecord(db: ReturnType<typeof getPool>, table: 'activities' | 'participants', id: unknown, organizationId: string) {
   if (id === undefined || id === null || id === '') return false;
@@ -133,17 +145,18 @@ async function handleProfiles(request: Request, body: any, tenant: any, db: Retu
 }
 
 async function sendTeamInvite(request: Request, tenant: any, invite: any) {
-  const apiKey = Netlify.env.get('RESEND_API_KEY') || process.env.RESEND_API_KEY;
+  const apiKey = runtimeEnv('RESEND_API_KEY');
   if (!apiKey) return;
-  const from = Netlify.env.get('AUTH_EMAIL_FROM') || process.env.AUTH_EMAIL_FROM || 'LexAMS <onboarding@resend.dev>';
-  const appUrl = Netlify.env.get('APP_URL') || process.env.APP_URL || new URL(request.url).origin;
+  const from = runtimeEnv('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
+  const appUrl = runtimeEnv('APP_URL') || new URL(request.url).origin;
   const resend = new Resend(apiKey);
   const inviteUrl = `${appUrl}/join/${invite.token}`;
+  const organizationName = escapeHtml(tenant.organization_name);
   await resend.emails.send({
     from,
     to: invite.email,
     subject: `You're invited to ${tenant.organization_name} on LexAMS`,
-    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#0F1B2B"><h2 style="color:#002B54">Join ${tenant.organization_name} on LexAMS</h2><p>You've been invited to collaborate in the ${tenant.organization_name} workspace.</p><p><a href="${inviteUrl}" style="display:inline-block;padding:12px 18px;background:#FAB72D;color:#002B54;text-decoration:none;border-radius:8px;font-weight:600">Accept invitation</a></p><p style="font-size:12px;color:#7A8699">If you weren't expecting this invitation, you can ignore this email.</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#0F1B2B"><h2 style="color:#002B54">Join ${organizationName} on LexAMS</h2><p>You've been invited to collaborate in the ${organizationName} workspace.</p><p><a href="${escapeHtml(inviteUrl)}" style="display:inline-block;padding:12px 18px;background:#FAB72D;color:#002B54;text-decoration:none;border-radius:8px;font-weight:600">Accept invitation</a></p><p style="font-size:12px;color:#7A8699">If you weren't expecting this invitation, you can ignore this email.</p></div>`,
   });
 }
 
@@ -152,6 +165,8 @@ export default async (request: Request) => {
   const tenant = await requireTenant(request);
   if (!tenant) return json({ error: 'Unauthorized' }, 401);
 
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > 1_000_000) return json({ error: 'Request body is too large' }, 413);
   const body = await request.json().catch(() => null) as any;
   if (!body?.table || !body?.operation) return json({ error: 'Invalid request' }, 400);
   if (body.operation !== 'select' && isPreviewDeployment(request)) return previewReadOnlyResponse();
@@ -164,13 +179,23 @@ export default async (request: Request) => {
   const isChild = Boolean(childTables[table]);
   if (!isDirect && !isChild) return json({ error: 'Unsupported table' }, 400);
 
+  const isAdmin = ['owner', 'admin'].includes(tenant.role);
   const canMutate = ['owner', 'admin', 'programme_manager', 'facilitator', 'me_officer'].includes(tenant.role);
   if (body.operation !== 'select' && !canMutate) return json({ error: 'Read-only role' }, 403);
   if (body.operation !== 'select' && table === 'certificates' && !['owner', 'admin'].includes(tenant.role)) {
     return json({ error: 'Certificate changes require admin approval' }, 403);
   }
+  if (body.operation !== 'select' && table === 'pending_approvals' && !isAdmin) {
+    return json({ error: 'Admin permission required' }, 403);
+  }
+  if (body.operation === 'delete' && ['activities', 'participants'].includes(table) && !isAdmin) {
+    return json({ error: 'Admin permission required' }, 403);
+  }
 
   const rawFilters = Array.isArray(body.filters) ? body.filters : [];
+  if (['update', 'delete'].includes(body.operation) && !rawFilters.some((filter: any) => filter?.column === 'id')) {
+    return json({ error: 'A record id filter is required' }, 400);
+  }
   const filters = rawFilters.map((f: any) => {
     if (table === 'pending_approvals' && f.column === 'team_id') return { ...f, column: 'organization_id', value: tenant.organization_id };
     if (table === 'team_invites' && f.column === 'invited_by' && f.value === tenant.organization_id) return { ...f, column: 'organization_id', value: tenant.organization_id };
@@ -197,7 +222,16 @@ export default async (request: Request) => {
 
   try {
     if (body.operation === 'select') {
-      let sql = `select * from ${quoteIdent(table)} where ${where.join(' and ')}`;
+      const requestedColumns = body.columns && body.columns !== '*'
+        ? String(body.columns).split(',').map(column => column.trim()).filter(Boolean)
+        : [];
+      try { validateColumns(table, requestedColumns); }
+      catch (error: any) { return json({ error: error.message }, 400); }
+      if (table === 'pending_approvals' && !isAdmin) return json({ error: 'Admin permission required' }, 403);
+      const columns = table === 'team_invites' && !isAdmin
+        ? ['id', 'organization_id', 'invited_by', 'email', 'role', 'status', 'created_at']
+        : (requestedColumns.length ? requestedColumns : ['*']);
+      let sql = `select ${columns.map(column => column === '*' ? '*' : quoteIdent(column)).join(',')} from ${quoteIdent(table)} where ${where.join(' and ')}`;
       if (body.orderBy?.column) {
         validateColumns(table, [String(body.orderBy.column)]);
         sql += ` order by ${quoteIdent(String(body.orderBy.column))} ${body.orderBy.ascending === false ? 'desc' : 'asc'}`;
@@ -210,6 +244,7 @@ export default async (request: Request) => {
     if (body.operation === 'insert') {
       const rows = normalizePayload(body.payload);
       if (!rows.length) return json({ error: 'Missing payload' }, 400);
+      if (rows.length > 100) return json({ error: 'Too many records in one request' }, 413);
       const inserted = [];
       for (const original of rows) {
         const row = { ...original };

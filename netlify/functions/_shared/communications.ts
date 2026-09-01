@@ -22,7 +22,7 @@ export function communicationsFrom() {
 }
 
 export function appBaseUrl(request?: Request) {
-  const configured = envValue('LEXAMS_APP_URL') || envValue('URL');
+  const configured = envValue('APP_URL') || envValue('LEXAMS_APP_URL') || envValue('URL');
   if (configured) return configured.replace(/\/$/, '');
   if (request) return new URL(request.url).origin;
   return '';

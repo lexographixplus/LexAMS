@@ -74,7 +74,7 @@ function worksheetXml(rows) {
 }
 
 function safeSheetName(name, used) {
-  const base = String(name || 'Sheet').replace(/[\\/*?:\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sheet';
+  const base = String(name || 'Sheet').replace(/[\\/*?:[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sheet';
   let candidate = base;
   let counter = 2;
   while (used.has(candidate)) {

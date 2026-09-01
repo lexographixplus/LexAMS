@@ -5,6 +5,10 @@ import { consumePublicRateLimit } from './_shared/rate-limit';
 
 const CONTACT_RECIPIENT = 'lexographixplus@gmail.com';
 
+function env(name: string) {
+  return (globalThis as any).Netlify?.env?.get?.(name) || process.env[name];
+}
+
 function clean(value: unknown, maxLength: number) {
   return String(value || '').trim().slice(0, maxLength);
 }
@@ -42,12 +46,12 @@ export default async (request: Request) => {
   const message = clean(body.message, 4000);
   if (!name || !validEmail(email) || message.length < 3) return Response.json({ error: 'Please provide your name, a valid email address and a message.' }, { status: 400 });
 
-  const apiKey = Netlify.env.get('RESEND_API_KEY');
+  const apiKey = env('RESEND_API_KEY');
   if (!apiKey) {
     console.error('Contact form email is not configured');
     return Response.json({ error: 'Contact email is temporarily unavailable.' }, { status: 503 });
   }
-  const from = Netlify.env.get('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
+  const from = env('AUTH_EMAIL_FROM') || 'LexAMS <onboarding@resend.dev>';
   const resend = new Resend(apiKey);
   const sent = await resend.emails.send({
     from,

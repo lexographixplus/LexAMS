@@ -5,7 +5,7 @@ import { getPool } from './_shared/db';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
 
 function env(name: string) {
-  return Netlify.env.get(name);
+  return (globalThis as any).Netlify?.env?.get?.(name) || process.env[name];
 }
 
 function signatureIsValid(payload: string, signature: string, secret: string) {

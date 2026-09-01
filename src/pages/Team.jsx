@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/api';
 import { fmtDate } from '../lib/format';
 import { UserPlus, Check, X, Trash2, Shield, User, AlertCircle } from 'lucide-react';
 import SkeletonScreen from '../components/Skeleton';
@@ -25,20 +25,15 @@ export default function Team() {
 
   const teamId = profile?.team_id;
 
-  useEffect(() => {
-    // Without a team there is nothing to fetch, but the screen still has to
-    // stop loading — it previously sat on its loading state indefinitely.
-    if (!teamId) { setLoading(false); return; }
-    loadTeamData();
-  }, [teamId]);
-
-  async function loadTeamData() {
+  const loadTeamData = useCallback(async () => {
     setLoading(true);
     setLoadError('');
     const [membersResult, invitesResult, approvalsResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('team_id', teamId),
-      supabase.from('team_invites').select('*').eq('invited_by', teamId).order('created_at', { ascending: false }),
-      supabase.from('pending_approvals').select('*').eq('team_id', teamId).order('created_at', { ascending: false }),
+      apiClient.from('profiles').select('*').eq('team_id', teamId),
+      apiClient.from('team_invites').select('*').eq('invited_by', teamId).order('created_at', { ascending: false }),
+      isAdmin
+        ? apiClient.from('pending_approvals').select('*').eq('team_id', teamId).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
     ]);
     const failure = [membersResult, invitesResult, approvalsResult].find(result => result.error);
     if (failure) setLoadError(failure.error.message || 'Your team could not be loaded.');
@@ -46,13 +41,18 @@ export default function Team() {
     setInvites(invitesResult.data || []);
     setPendingApprovals(approvalsResult.data || []);
     setLoading(false);
-  }
+  }, [teamId, isAdmin]);
+
+  useEffect(() => {
+    // Without a team there is nothing to fetch, so render the empty state.
+    if (teamId) void loadTeamData();
+  }, [teamId, loadTeamData]);
 
   async function sendInvite(e) {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
     setSending(true);
-    const { data, error } = await supabase.from('team_invites').insert({
+    const { data, error } = await apiClient.from('team_invites').insert({
       invited_by: teamId,
       email: inviteEmail.trim().toLowerCase(),
       role: 'member',
@@ -72,14 +72,14 @@ export default function Team() {
   }
 
   async function revokeInvite(id) {
-    const { error } = await supabase.from('team_invites').update({ status: 'revoked' }).eq('id', id);
+    const { error } = await apiClient.from('team_invites').update({ status: 'revoked' }).eq('id', id);
     if (error) return showToast('Error: ' + error.message);
     setInvites(prev => prev.map(i => i.id === id ? { ...i, status: 'revoked' } : i));
     showToast('Invite revoked');
   }
 
   async function removeMember(memberId) {
-    const { error } = await supabase.from('profiles').update({ team_id: memberId, team_role: 'admin' }).eq('id', memberId);
+    const { error } = await apiClient.from('profiles').update({ team_id: memberId, team_role: 'admin' }).eq('id', memberId);
     if (error) return showToast('Error: ' + error.message);
     setMembers(prev => prev.filter(m => m.id !== memberId));
     showToast('Member removed from team');
@@ -117,7 +117,7 @@ export default function Team() {
     background: 'var(--surface-card)', outline: 'none', color: 'var(--text-primary)',
   };
 
-  if (loading) return <SkeletonScreen cards={2} label="Loading your team" />;
+  if (loading && teamId) return <SkeletonScreen cards={2} label="Loading your team" />;
 
   if (loadError) {
     return (

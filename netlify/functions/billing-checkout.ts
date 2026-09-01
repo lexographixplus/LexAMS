@@ -8,7 +8,7 @@ import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview'
 const PRICES = { monthly: 1000, annual: 10000 } as const;
 
 function env(name: string) {
-  return Netlify.env.get(name);
+  return (globalThis as any).Netlify?.env?.get?.(name) || process.env[name];
 }
 
 function safeProviderMessage(error: unknown) {
