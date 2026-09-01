@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import ActivityPlanningWorkspace from '../components/planning/ActivityPlanningWorkspace';
 import ActivityOperationalPulse from '../components/planning/ActivityOperationalPulse';
 import ActivityReportPulse from '../components/reporting/ActivityReportPulse';
+import ActivityOperationsPanel from '../components/ActivityOperationsPanel';
+import ActivityWideCheckinPanel from '../components/ActivityWideCheckinPanel';
 import SkeletonScreen from '../components/Skeleton';
 
 const ActivityReportWorkspace = lazy(() => import('../components/reporting/ActivityReportWorkspace'));
@@ -16,7 +18,20 @@ const ActivityReportWorkspace = lazy(() => import('../components/reporting/Activ
 const TABS = ['Overview', 'Planning', 'Participants', 'Attendance', 'Surveys', 'Assessments', 'Certificates', 'Report'];
 
 function initialActivityTab() {
-  return new URLSearchParams(window.location.search).get('view') === 'report' ? 'Report' : 'Overview';
+  const requested = new URLSearchParams(window.location.search).get('view');
+  if (!requested) return 'Overview';
+  return TABS.find(tab => tab.toLowerCase() === requested.toLowerCase()) || 'Overview';
+}
+
+function ActivityTable({ headers, children }) {
+  return (
+    <div className="lx-activity-table-wrap">
+      <table className="lx-table">
+        <thead><tr>{headers.map(header => <th key={header}><span>{header}</span></th>)}</tr></thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
 }
 
 export default function ActivityDetail() {
@@ -47,7 +62,6 @@ export default function ActivityDetail() {
   }
 
   const activity = loading ? null : getActivity(id);
-  // Kept above every early return so the hook order is identical on each render.
   useDocumentTitle(activity?.title || 'Activity');
 
   if (loading) return <SkeletonScreen cards={3} label="Loading this activity" />;
@@ -70,42 +84,31 @@ export default function ActivityDetail() {
   const pids = getRegsForActivity(activity.id);
   const att = getAttForActivity(activity.id);
   const doneSess = getDoneSessions(activity.id);
-  const allSessions = Array.from({ length: activity.sessions }, (_, i) => 'Day ' + (i + 1));
+  const allSessions = Array.from({ length: Number(activity.sessions || 0) }, (_, i) => 'Day ' + (i + 1));
   const threshold = 75;
 
-  // Attendance for selected session
   const sessionAtt = att.filter(a => a.session_label === session);
   const presentCount = sessionAtt.filter(a => a.status === 'present').length;
   const lateCount = sessionAtt.filter(a => a.status === 'late').length;
   const absentCount = sessionAtt.filter(a => a.status === 'absent').length;
-
-  // Certificates for this activity
   const activityCerts = certificates.filter(c => c.activity_id === activity.id);
-
-  // Surveys for this activity
   const activitySurveys = surveys.filter(s => s.activity_id === activity.id);
-
-  // Assessments for this activity
   const activityAssessments = assessments.filter(a => a.activity_id === activity.id);
+
+  const averageAttendance = doneSess.length ? (() => {
+    const pcts = pids.map(pid => getAttendancePct(activity.id, pid)).filter(value => value !== null);
+    return pcts.length ? `${Math.round(pcts.reduce((sum, value) => sum + value, 0) / pcts.length)}%` : '—';
+  })() : '—';
 
   async function cycleAttendance(pid) {
     const rec = sessionAtt.find(a => a.participant_id === pid);
-    let nextStatus;
-    if (!rec) {
-      nextStatus = 'present';
-    } else {
-      nextStatus = rec.status === 'present' ? 'late' : rec.status === 'late' ? 'absent' : 'present';
-    }
+    const nextStatus = !rec ? 'present' : rec.status === 'present' ? 'late' : rec.status === 'late' ? 'absent' : 'present';
     await upsertAttendance(activity.id, pid, session, nextStatus);
   }
 
   async function issueCert(pid) {
     const result = await issueCertificate(activity.id, pid, certType);
-    if (result?.pending) {
-      showToastMsg('Certificate request submitted for admin approval');
-    } else {
-      showToastMsg('Certificate issued');
-    }
+    showToastMsg(result?.pending ? 'Certificate request submitted for admin approval' : 'Certificate issued');
   }
 
   function openEdit() {
@@ -128,8 +131,9 @@ export default function ActivityDetail() {
       showToastMsg('Activity updated');
     } catch (err) {
       showToastMsg('Error: ' + err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function confirmDelete() {
@@ -145,611 +149,238 @@ export default function ActivityDetail() {
   const regLink = `${window.location.origin}/register/${activity.reg_token}`;
   const attLink = `${window.location.origin}/checkin/${activity.att_token}`;
 
-  const tabStyle = (t) => ({
-    padding: '8px 16px', fontSize: 14, fontWeight: 600,
-    background: 'none', border: 'none',
-    color: t === tab ? 'var(--color-navy-900)' : 'var(--text-tertiary)',
-    borderBottom: t === tab ? '2px solid var(--color-navy-900)' : '2px solid transparent',
-    cursor: 'pointer', transition: 'color 120ms',
-  });
-
   return (
     <div>
-      <button type="button" className="lx-back-link" onClick={() => navigate('/app/activities')}>
-        &larr; All activities
-      </button>
+      <button type="button" className="lx-back-link" onClick={() => navigate('/app/activities')}>&larr; All activities</button>
 
       <header className="lx-activity-head">
         <div className="lx-activity-head-top">
-          <div style={{ minWidth: 0 }}>
+          <div>
             <div className="lx-activity-title">
               <h1>{activity.title}</h1>
               <span style={statusChip(activity.status)}>{activity.status}</span>
             </div>
             <p className="lx-activity-meta">
-              {activity.type} &middot; {fmtRange({ start: activity.start_date, end: activity.end_date })} &middot; {activity.venue} &middot;
-              Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
+              {activity.type} &middot; {fmtRange({ start: activity.start_date, end: activity.end_date })} &middot; {activity.venue} &middot; Organized by {activity.organizer} &middot; Facilitator: {activity.facilitator}
             </p>
           </div>
           <div className="lx-activity-actions">
-            <Link className="lx-btn lx-btn-secondary" to={`/app/certificates?awardActivity=${encodeURIComponent(activity.id)}#awards-recognition`}>
-              <Award size={15} aria-hidden="true" /> Give award
-            </Link>
+            <Link className="lx-btn lx-btn-secondary" to={`/app/certificates?awardActivity=${encodeURIComponent(activity.id)}#awards-recognition`}><Award size={15} aria-hidden="true" /> Give award</Link>
             {!isDemo && <>
-              <button type="button" className="lx-btn lx-btn-secondary" onClick={openEdit}>
-                <Pencil size={14} aria-hidden="true" /> Edit
-              </button>
-              <button type="button" className="lx-btn lx-btn-danger" onClick={() => setShowDelete(true)}>
-                <Trash2 size={14} aria-hidden="true" /> Delete
-              </button>
+              <button type="button" className="lx-btn lx-btn-secondary" onClick={openEdit}><Pencil size={14} aria-hidden="true" /> Edit</button>
+              <button type="button" className="lx-btn lx-btn-danger" onClick={() => setShowDelete(true)}><Trash2 size={14} aria-hidden="true" /> Delete</button>
             </>}
           </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div style={{ marginTop: 22, borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 4, overflowX: 'auto' }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>{t}</button>
+      <nav className="lx-activity-tabs" aria-label="Activity workspace">
+        {TABS.map(item => (
+          <button
+            key={item}
+            type="button"
+            className="lx-activity-tab"
+            aria-selected={item === tab}
+            onClick={() => setTab(item)}
+          >{item}</button>
         ))}
-      </div>
+      </nav>
 
-      {/* Overview Tab */}
       {tab === 'Overview' && (
-        <div className="activity-overview-layout">
-          <div className="activity-overview-main">
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '22px 24px',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>About this activity</div>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, marginTop: 10 }}>
-                {activity.description}
-              </p>
-            </div>
-            <div className="activity-overview-stats">
+        <div className="lx-activity-overview-layout">
+          <div className="lx-activity-overview-main">
+            <section className="lx-activity-card lx-activity-card-pad">
+              <h2 className="lx-activity-section-title">About this activity</h2>
+              <p className="lx-activity-section-copy">{activity.description || 'No description has been added yet.'}</p>
+            </section>
+            <div className="lx-activity-overview-stats">
               {[
-                { label: 'Sessions', value: activity.sessions },
-                { label: 'Registered', value: pids.length },
-                { label: 'Attendance', value: doneSess.length ? (() => {
-                  const pcts = pids.map(p => getAttendancePct(activity.id, p)).filter(v => v !== null);
-                  return pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) + '%' : '\u2014';
-                })() : '\u2014' },
-                { label: 'Certificates', value: activityCerts.length },
-              ].map(st => (
-                <div key={st.label} style={{
-                  background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '16px 18px',
-                }}>
-                  <div style={{
-                    fontSize: 12, letterSpacing: '0.07em', textTransform: 'uppercase',
-                    color: 'var(--text-tertiary)', fontWeight: 600,
-                  }}>{st.label}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginTop: 6 }}>
-                    {st.value}
-                  </div>
-                </div>
-              ))}
+                ['Sessions', activity.sessions],
+                ['Registered', pids.length],
+                ['Attendance', averageAttendance],
+                ['Certificates', activityCerts.length],
+              ].map(([label, value]) => <div className="lx-activity-stat" key={label}><span>{label}</span><strong>{value}</strong></div>)}
             </div>
             <ActivityOperationalPulse activity={activity} onOpenPlanning={() => setTab('Planning')} />
             <ActivityReportPulse activity={activity} onOpenReport={() => setTab('Report')} />
           </div>
-          <div className="activity-overview-side">
-            {/* Share links */}
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '22px 24px',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Share links</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Registration link</div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', padding: '8px 12px',
-                  }}>
-                    <div style={{
-                      flex: 1, fontSize: 12, color: 'var(--text-secondary)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{regLink}</div>
-                    <button onClick={() => copyToClipboard(regLink, 'Registration')} aria-label="Copy the registration link" title="Copy registration link" style={{
-                      background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 2, flexShrink: 0,
-                    }}><Copy size={14} /></button>
-                    <a href={regLink} target="_blank" rel="noopener" aria-label={`Open the registration page in a new tab`} style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
-                      <ExternalLink size={14} aria-hidden="true" />
-                    </a>
-                  </div>
+          <aside className="lx-activity-overview-side">
+            <section className="lx-activity-card lx-activity-card-pad">
+              <h2 className="lx-activity-section-title">Share links</h2>
+              <div className="lx-activity-share-list">
+                <div className="lx-activity-share-item">
+                  <span>Registration link</span>
+                  <div className="lx-activity-linkbox"><code>{regLink}</code><button className="lx-activity-icon-btn" onClick={() => copyToClipboard(regLink, 'Registration')} aria-label="Copy the registration link"><Copy size={14} /></button><a className="lx-activity-icon-btn" href={regLink} target="_blank" rel="noopener noreferrer" aria-label="Open the registration page in a new tab"><ExternalLink size={14} /></a></div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Attendance check-in link</div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', padding: '8px 12px',
-                  }}>
-                    <div style={{
-                      flex: 1, fontSize: 12, color: 'var(--text-secondary)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{attLink}</div>
-                    <button onClick={() => copyToClipboard(attLink, 'Attendance')} aria-label="Copy the attendance check-in link" title="Copy check-in link" style={{
-                      background: 'none', border: 'none', color: 'var(--color-navy-700)', cursor: 'pointer', padding: 2, flexShrink: 0,
-                    }}><Copy size={14} /></button>
-                    <a href={attLink} target="_blank" rel="noopener" aria-label={`Open the attendance check-in page in a new tab`} style={{ color: 'var(--color-navy-700)', flexShrink: 0 }}>
-                      <ExternalLink size={14} aria-hidden="true" />
-                    </a>
-                  </div>
+                <div className="lx-activity-share-item">
+                  <span>Attendance check-in link</span>
+                  <div className="lx-activity-linkbox"><code>{attLink}</code><button className="lx-activity-icon-btn" onClick={() => copyToClipboard(attLink, 'Attendance')} aria-label="Copy the attendance check-in link"><Copy size={14} /></button><a className="lx-activity-icon-btn" href={attLink} target="_blank" rel="noopener noreferrer" aria-label="Open the attendance check-in page in a new tab"><ExternalLink size={14} /></a></div>
                 </div>
               </div>
-            </div>
-
-            {/* Settings */}
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '22px 24px',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Settings</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Registration</span>
-                  <span style={{ fontWeight: 600, color: activity.reg_open ? 'var(--color-success)' : 'var(--text-tertiary)' }}>
-                    {activity.reg_open ? 'Open' : 'Closed'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Attendance mode</span>
-                  <span style={{ fontWeight: 600 }}>Link check-in</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Certificate threshold</span>
-                  <span style={{ fontWeight: 600 }}>{threshold}% attendance</span>
-                </div>
+            </section>
+            <section className="lx-activity-card lx-activity-card-pad">
+              <h2 className="lx-activity-section-title">Activity settings</h2>
+              <div className="lx-activity-settings-list">
+                <div className="lx-activity-setting"><span>Registration</span><strong>{activity.reg_open ? 'Open' : 'Closed'}</strong></div>
+                <div className="lx-activity-setting"><span>Attendance mode</span><strong>Link check-in</strong></div>
+                <div className="lx-activity-setting"><span>Certificate threshold</span><strong>{threshold}% attendance</strong></div>
               </div>
-            </div>
-          </div>
+            </section>
+          </aside>
         </div>
       )}
 
-      {/* Planning Tab */}
-      {tab === 'Planning' && (
-        <div style={{ marginTop: 22 }}>
-          <ActivityPlanningWorkspace activity={activity} />
-        </div>
-      )}
+      {tab === 'Planning' && <div className="lx-activity-tab-panel"><ActivityPlanningWorkspace activity={activity} /></div>}
 
-      {/* Living Report Tab */}
-      {tab === 'Report' && (
-        <div style={{ marginTop: 22 }}>
-          <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Opening living report…</div>}>
-            <ActivityReportWorkspace activity={activity} />
-          </Suspense>
-        </div>
-      )}
-
-      {/* Participants Tab */}
       {tab === 'Participants' && (
-        <div style={{
-          background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
-          overflow: 'hidden', marginTop: 22,
-        }}>
-          <div style={{ padding: '16px 22px', fontSize: 14, fontWeight: 600 }}>
-            {pids.length} registered participants
-          </div>
-          <div className="table-scroll"><div style={{minWidth: 700}}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 1fr 1fr 1fr',
-            gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
-            background: 'var(--surface-muted)',
-          }}>
-            <div>Name</div><div>Email</div><div>Category</div><div>Attendance</div><div>Certificate</div>
-          </div>
-          {pids.map(pid => {
-            const p = getParticipant(pid);
-            if (!p) return null;
-            const pct = getAttendancePct(activity.id, pid);
-            const cert = activityCerts.find(c => c.participant_id === pid);
-            return (
-              <div key={pid} style={{
-                display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 1fr 1fr 1fr',
-                gap: 14, alignItems: 'center', padding: '13px 22px',
-                borderTop: '1px solid var(--border-default)',
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.email}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.category}</div>
-                <div style={{ fontSize: 13 }}>{pct !== null ? pct + '%' : '\u2014'}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {cert ? cert.cert_no : '\u2014'}
-                </div>
-              </div>
-            );
-          })}
-          </div></div>
+        <div className="lx-activity-tab-panel">
+          {!isDemo && <ActivityOperationsPanel mode="registration" />}
+          <details className="lx-activity-disclosure" open={isDemo}>
+            <summary>Participant outcomes · attendance and certificate status</summary>
+            <div className="lx-activity-disclosure-body">
+              <ActivityTable headers={['Name', 'Email', 'Category', 'Attendance', 'Certificate']}>
+                {pids.map(pid => {
+                  const participant = getParticipant(pid);
+                  if (!participant) return null;
+                  const pct = getAttendancePct(activity.id, pid);
+                  const cert = activityCerts.find(item => item.participant_id === pid);
+                  return <tr key={pid}><td><strong>{participant.name}</strong></td><td>{participant.email}</td><td>{participant.category || '—'}</td><td className="lx-num">{pct !== null ? `${pct}%` : '—'}</td><td>{cert?.cert_no || '—'}</td></tr>;
+                })}
+              </ActivityTable>
+              {!pids.length && <div className="lx-activity-empty">No registered participants yet.</div>}
+            </div>
+          </details>
         </div>
       )}
 
-      {/* Attendance Tab */}
       {tab === 'Attendance' && (
-        <div style={{ marginTop: 22 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <select value={session} onChange={e => setSession(e.target.value)} style={{
-              padding: '8px 14px', fontSize: 14, border: '1.5px solid var(--border-default)',
-              borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', outline: 'none',
-            }}>
-              {allSessions.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <span style={statusChip('present')}>Present {presentCount}</span>
-            <span style={statusChip('late')}>Late {lateCount}</span>
-            <span style={statusChip('absent')}>Absent {absentCount}</span>
-          </div>
-          <div style={{
-            background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
-            overflow: 'hidden', marginTop: 16,
-          }}>
-            <div className="table-scroll"><div style={{minWidth: 700}}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1.6fr 2fr 1fr',
-              gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
-              textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
-              background: 'var(--surface-muted)',
-            }}>
-              <div>Name</div><div>Email</div><div>Status</div>
+        <div className="lx-activity-tab-panel">
+          {!isDemo && <>
+            <ActivityWideCheckinPanel />
+            <ActivityOperationsPanel mode="attendance" />
+          </>}
+          <details className="lx-activity-disclosure" open={isDemo}>
+            <summary>Attendance ledger · manual session view</summary>
+            <div className="lx-activity-disclosure-body">
+              <div className="lx-activity-attendance-toolbar">
+                <select className="lx-field" value={session} onChange={e => setSession(e.target.value)}>
+                  {allSessions.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <span style={statusChip('present')}>Present {presentCount}</span>
+                <span style={statusChip('late')}>Late {lateCount}</span>
+                <span style={statusChip('absent')}>Absent {absentCount}</span>
+              </div>
+              <ActivityTable headers={['Name', 'Email', 'Status']}>
+                {pids.map(pid => {
+                  const participant = getParticipant(pid);
+                  if (!participant) return null;
+                  const rec = sessionAtt.find(item => item.participant_id === pid);
+                  const state = rec ? rec.status : 'unmarked';
+                  return <tr key={pid}><td><strong>{participant.name}</strong></td><td>{participant.email}</td><td><button type="button" onClick={() => cycleAttendance(pid)} title="Click to change status" className="lx-activity-pill">{state === 'unmarked' ? 'Unmarked' : state}</button></td></tr>;
+                })}
+              </ActivityTable>
+              <p className="lx-activity-legacy-note">Click a status to cycle Present → Late → Absent. The V2 check-in workspace above remains the primary operational attendance tool.</p>
             </div>
-            {pids.map(pid => {
-              const p = getParticipant(pid);
-              if (!p) return null;
-              const rec = sessionAtt.find(a => a.participant_id === pid);
-              const status = rec ? rec.status : 'unmarked';
-              return (
-                <div key={pid} style={{
-                  display: 'grid', gridTemplateColumns: '1.6fr 2fr 1fr',
-                  gap: 14, alignItems: 'center', padding: '11px 22px',
-                  borderTop: '1px solid var(--border-default)',
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.email}</div>
-                  <div>
-                    <button
-                      onClick={() => cycleAttendance(pid)}
-                      title="Click to change status"
-                      style={{
-                        ...statusChip(status === 'unmarked' ? 'Upcoming' : status),
-                        border: 'none', cursor: 'pointer',
-                      }}
-                    >
-                      {status === 'unmarked' ? 'Unmarked' : status.charAt(0).toUpperCase() + status.slice(1)}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            </div></div>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10 }}>
-            Click a status to cycle Present &rarr; Late &rarr; Absent.
-          </div>
+          </details>
         </div>
       )}
 
-      {/* Surveys Tab */}
       {tab === 'Surveys' && (
-        <div style={{ marginTop: 22 }}>
-          {activitySurveys.length > 0 ? (
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-            }}>
-              <div style={{ padding: '16px 22px', fontSize: 14, fontWeight: 600 }}>
-                {activitySurveys.length} survey{activitySurveys.length !== 1 ? 's' : ''}
-              </div>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr',
-                gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
-                textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
-                background: 'var(--surface-muted)',
-              }}>
-                <div>Title</div><div>Status</div><div>Share token</div>
-              </div>
-              {activitySurveys.map(s => (
-                <div key={s.id} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr',
-                  gap: 14, alignItems: 'center', padding: '13px 22px',
-                  borderTop: '1px solid var(--border-default)',
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{s.title}</div>
-                  <div><span style={statusChip(s.status)}>{s.status}</span></div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    {s.share_token || '\u2014'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', padding: 40, textAlign: 'center',
-              fontSize: 13, color: 'var(--text-tertiary)',
-            }}>No surveys yet.</div>
-          )}
+        <div className="lx-activity-tab-panel lx-activity-card">
+          <div className="lx-activity-list-head"><strong>{activitySurveys.length} survey{activitySurveys.length === 1 ? '' : 's'}</strong><span>Surveys linked to this activity.</span></div>
+          {activitySurveys.length ? <ActivityTable headers={['Title', 'Status', 'Share token']}>
+            {activitySurveys.map(item => <tr key={item.id}><td><strong>{item.title}</strong></td><td><span style={statusChip(item.status)}>{item.status}</span></td><td>{item.share_token || '—'}</td></tr>)}
+          </ActivityTable> : <div className="lx-activity-empty">No surveys yet.</div>}
         </div>
       )}
 
-      {/* Assessments Tab */}
       {tab === 'Assessments' && (
-        <div style={{ marginTop: 22 }}>
-          {activityAssessments.length > 0 ? (
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-            }}>
-              <div style={{ padding: '16px 22px', fontSize: 14, fontWeight: 600 }}>
-                {activityAssessments.length} assessment{activityAssessments.length !== 1 ? 's' : ''}
-              </div>
-              <div className="table-scroll"><div style={{minWidth: 700}}>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                gap: 14, padding: '12px 22px', fontSize: 12, letterSpacing: '0.07em',
-                textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600,
-                background: 'var(--surface-muted)',
-              }}>
-                <div>Title</div><div>Type</div><div>Passing score</div><div>Status</div>
-              </div>
-              {activityAssessments.map(a => (
-                <div key={a.id} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                  gap: 14, alignItems: 'center', padding: '13px 22px',
-                  borderTop: '1px solid var(--border-default)',
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{a.assessment_type || '\u2014'}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {a.passing_score != null ? a.passing_score + '%' : '\u2014'}
-                  </div>
-                  <div><span style={statusChip(a.status)}>{a.status}</span></div>
-                </div>
-              ))}
-              </div></div>
-            </div>
-          ) : (
-            <div style={{
-              background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)', padding: 40, textAlign: 'center',
-              fontSize: 13, color: 'var(--text-tertiary)',
-            }}>No assessments yet.</div>
-          )}
+        <div className="lx-activity-tab-panel lx-activity-card">
+          <div className="lx-activity-list-head"><strong>{activityAssessments.length} assessment{activityAssessments.length === 1 ? '' : 's'}</strong><span>Knowledge checks and assessments linked to this activity.</span></div>
+          {activityAssessments.length ? <ActivityTable headers={['Title', 'Type', 'Passing score', 'Status']}>
+            {activityAssessments.map(item => <tr key={item.id}><td><strong>{item.title}</strong></td><td>{item.assessment_type || '—'}</td><td>{item.passing_score != null ? `${item.passing_score}%` : '—'}</td><td><span style={statusChip(item.status)}>{item.status}</span></td></tr>)}
+          </ActivityTable> : <div className="lx-activity-empty">No assessments yet.</div>}
         </div>
       )}
 
-      {/* Certificates Tab */}
       {tab === 'Certificates' && (
-        <div style={{ marginTop: 22 }}>
-          {/* Certificate type selector */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
-          }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Certificate type:</span>
-            {['completion', 'attendance', 'appreciation'].map(t => (
-              <button key={t} onClick={() => setCertType(t)} style={{
-                padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                border: certType === t ? '1.5px solid var(--color-navy-900)' : '1.5px solid var(--border-default)',
-                background: certType === t ? 'var(--color-navy-900)' : 'var(--surface-card)',
-                color: certType === t ? '#FFFFFF' : 'var(--text-secondary)',
-                cursor: 'pointer', textTransform: 'capitalize',
-              }}>{t}</button>
-            ))}
+        <div className="lx-activity-tab-panel">
+          <div className="lx-activity-toolbar">
+            <span className="lx-activity-toolbar-label">Certificate type</span>
+            {['completion', 'attendance', 'appreciation'].map(type => <button key={type} type="button" className={`lx-activity-pill ${certType === type ? 'active' : ''}`} onClick={() => setCertType(type)}>{type}</button>)}
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {/* Eligible */}
-          <div style={{
-            background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-          }}>
-            <div style={{ padding: '16px 22px' }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Eligible for certificate</div>
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                Requires {threshold}% attendance
-              </div>
-            </div>
-            {(() => {
-              const eligible = pids.filter(pid => {
-                const pct = getAttendancePct(activity.id, pid);
-                const hasCert = activityCerts.some(c => c.participant_id === pid);
-                return pct !== null && pct >= threshold && !hasCert;
-              });
-              return eligible.length > 0 ? eligible.map(pid => {
-                const p = getParticipant(pid);
-                const pct = getAttendancePct(activity.id, pid);
-                return (
-                  <div key={pid} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    gap: 14, padding: '11px 22px', borderTop: '1px solid var(--border-default)',
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p?.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{pct}% attendance</div>
-                    </div>
-                    <button onClick={() => issueCert(pid)} style={{
-                      padding: '6px 14px', fontSize: 13, fontWeight: 600,
-                      background: 'transparent', border: '1.5px solid var(--border-default)',
-                      borderRadius: 'var(--radius-sm)', color: 'var(--color-navy-700)', cursor: 'pointer',
-                    }}>Issue</button>
-                  </div>
-                );
-              }) : (
-                <div style={{
-                  padding: '26px 22px', textAlign: 'center', fontSize: 13,
-                  color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)',
-                }}>No participants currently meet the requirement.</div>
-              );
-            })()}
-          </div>
-
-          {/* Issued */}
-          <div style={{
-            background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-          }}>
-            <div style={{ padding: '16px 22px', fontSize: 14, fontWeight: 600 }}>Issued</div>
-            {(() => {
-              return activityCerts.length > 0 ? activityCerts.map(c => {
-                const p = getParticipant(c.participant_id);
-                return (
-                  <div key={c.cert_no} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    gap: 14, padding: '11px 22px', borderTop: '1px solid var(--border-default)',
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p?.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        {c.cert_no} &middot; {fmtDate(c.issued_date)}
-                        <span style={{
-                          marginLeft: 8, padding: '1px 6px', borderRadius: 4,
-                          fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)',
-                          background: 'var(--surface-muted)', color: 'var(--text-secondary)',
-                          textTransform: 'capitalize',
-                        }}>{c.certificate_type || 'completion'}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => setPreviewCert(c)} title="View & download" style={{
-                      background: 'none', border: 'none', color: 'var(--color-navy-700)',
-                      cursor: 'pointer', padding: 4,
-                    }}><Eye size={16} /></button>
-                  </div>
-                );
-              }) : (
-                <div style={{
-                  padding: '26px 22px', textAlign: 'center', fontSize: 13,
-                  color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)',
-                }}>No certificates issued yet.</div>
-              );
-            })()}
-          </div>
+          <div className="lx-activity-cert-grid">
+            <section className="lx-activity-card">
+              <div className="lx-activity-list-head"><strong>Eligible for certificate</strong><span>Requires {threshold}% attendance.</span></div>
+              {(() => {
+                const eligible = pids.filter(pid => {
+                  const pct = getAttendancePct(activity.id, pid);
+                  const hasCert = activityCerts.some(cert => cert.participant_id === pid);
+                  return pct !== null && pct >= threshold && !hasCert;
+                });
+                return eligible.length ? eligible.map(pid => {
+                  const participant = getParticipant(pid);
+                  const pct = getAttendancePct(activity.id, pid);
+                  return <div className="lx-activity-cert-row" key={pid}><div><div className="lx-activity-cert-name">{participant?.name}</div><div className="lx-activity-cert-meta">{pct}% attendance</div></div><button className="lx-btn lx-btn-secondary lx-btn-small" onClick={() => issueCert(pid)}>Issue</button></div>;
+                }) : <div className="lx-activity-empty">No participants currently meet the requirement.</div>;
+              })()}
+            </section>
+            <section className="lx-activity-card">
+              <div className="lx-activity-list-head"><strong>Issued</strong><span>{activityCerts.length} certificate{activityCerts.length === 1 ? '' : 's'} issued for this activity.</span></div>
+              {activityCerts.length ? activityCerts.map(cert => {
+                const participant = getParticipant(cert.participant_id);
+                return <div className="lx-activity-cert-row" key={cert.cert_no}><div><div className="lx-activity-cert-name">{participant?.name}</div><div className="lx-activity-cert-meta">{cert.cert_no} · {fmtDate(cert.issued_date)}<span className="lx-activity-cert-tag">{cert.certificate_type || 'completion'}</span></div></div><button className="lx-activity-icon-btn" onClick={() => setPreviewCert(cert)} title="View & download" aria-label={`View certificate for ${participant?.name || 'participant'}`}><Eye size={16} /></button></div>;
+              }) : <div className="lx-activity-empty">No certificates issued yet.</div>}
+            </section>
           </div>
         </div>
       )}
-      {/* Edit dialog */}
+
+      {tab === 'Report' && (
+        <div className="lx-activity-tab-panel">
+          <Suspense fallback={<div className="lx-activity-empty">Opening living report…</div>}><ActivityReportWorkspace activity={activity} /></Suspense>
+        </div>
+      )}
+
       {showEdit && editForm && (
-        <div onClick={() => setShowEdit(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.25)',
-          zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-raised)', padding: '28px 32px',
-            width: 520, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto',
-          }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>Edit activity</h3>
-            <form onSubmit={saveEdit} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="Title" required style={_input} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))} style={_input}>
-                  {['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(t =>
-                    <option key={t} value={t}>{t}</option>
-                  )}
-                </select>
-                <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} style={_input}>
-                  {['Upcoming', 'Ongoing', 'Completed'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+        <div className="lx-activity-modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setShowEdit(false)}>
+          <div className="lx-dialog lx-activity-edit-dialog">
+            <h2>Edit activity</h2>
+            <form className="lx-form" onSubmit={saveEdit}>
+              <input className="lx-field" value={editForm.title} onChange={e => setEditForm(form => ({ ...form, title: e.target.value }))} placeholder="Title" required />
+              <div className="lx-activity-form-grid">
+                <select className="lx-field" value={editForm.type} onChange={e => setEditForm(form => ({ ...form, type: e.target.value }))}>{['Training', 'Workshop', 'Meeting', 'Seminar', 'Conference', 'Community engagement'].map(type => <option key={type} value={type}>{type}</option>)}</select>
+                <select className="lx-field" value={editForm.status} onChange={e => setEditForm(form => ({ ...form, status: e.target.value }))}>{['Upcoming', 'Ongoing', 'Completed'].map(state => <option key={state} value={state}>{state}</option>)}</select>
               </div>
-              <input value={editForm.venue} onChange={e => setEditForm(f => ({ ...f, venue: e.target.value }))}
-                placeholder="Venue" style={_input} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} style={_input} />
-                <input type="date" value={editForm.end_date} onChange={e => setEditForm(f => ({ ...f, end_date: e.target.value }))} style={_input} />
+              <input className="lx-field" value={editForm.venue} onChange={e => setEditForm(form => ({ ...form, venue: e.target.value }))} placeholder="Venue" />
+              <div className="lx-activity-form-grid">
+                <input className="lx-field" type="date" value={editForm.start_date} onChange={e => setEditForm(form => ({ ...form, start_date: e.target.value }))} />
+                <input className="lx-field" type="date" value={editForm.end_date} onChange={e => setEditForm(form => ({ ...form, end_date: e.target.value }))} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input value={editForm.facilitator} onChange={e => setEditForm(f => ({ ...f, facilitator: e.target.value }))}
-                  placeholder="Facilitator" style={_input} />
-                <input type="number" min={1} value={editForm.sessions} onChange={e => setEditForm(f => ({ ...f, sessions: +e.target.value }))}
-                  placeholder="Sessions" style={_input} />
+              <div className="lx-activity-form-grid">
+                <input className="lx-field" value={editForm.facilitator} onChange={e => setEditForm(form => ({ ...form, facilitator: e.target.value }))} placeholder="Facilitator" />
+                <input className="lx-field" type="number" min={1} value={editForm.sessions} onChange={e => setEditForm(form => ({ ...form, sessions: +e.target.value }))} placeholder="Sessions" />
               </div>
-              <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Description" rows={3} style={{ ..._input, resize: 'vertical' }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-                <input type="checkbox" checked={editForm.reg_open} onChange={e => setEditForm(f => ({ ...f, reg_open: e.target.checked }))} />
-                Registration open
-              </label>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-                <button type="button" onClick={() => setShowEdit(false)} style={{
-                  padding: '10px 20px', fontSize: 14, fontWeight: 600,
-                  background: 'transparent', border: '1.5px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', cursor: 'pointer',
-                }}>Cancel</button>
-                <button type="submit" disabled={saving} style={{
-                  padding: '10px 20px', fontSize: 14, fontWeight: 600,
-                  background: 'var(--color-navy-900)', color: '#FFFFFF',
-                  border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                  opacity: saving ? 0.7 : 1,
-                }}>{saving ? 'Saving...' : 'Save changes'}</button>
-              </div>
+              <textarea className="lx-field" value={editForm.description} onChange={e => setEditForm(form => ({ ...form, description: e.target.value }))} placeholder="Description" rows={3} />
+              <label className="lx-activity-form-check"><input type="checkbox" checked={editForm.reg_open} onChange={e => setEditForm(form => ({ ...form, reg_open: e.target.checked }))} /> Registration open</label>
+              <div className="lx-activity-dialog-actions"><button type="button" className="lx-btn lx-btn-secondary" onClick={() => setShowEdit(false)}>Cancel</button><button type="submit" className="lx-btn lx-btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Delete confirmation */}
       {showDelete && (
-        <div onClick={() => setShowDelete(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,43,84,0.25)',
-          zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-raised)', padding: '28px 32px', width: 420, maxWidth: '95vw',
-          }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-danger)' }}>
-              Delete activity
-            </h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.6 }}>
-              This will permanently delete <strong>{activity.title}</strong> and all associated registrations,
-              attendance records, and certificates. This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button onClick={() => setShowDelete(false)} style={{
-                padding: '10px 20px', fontSize: 14, fontWeight: 600,
-                background: 'transparent', border: '1.5px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', cursor: 'pointer',
-              }}>Cancel</button>
-              <button onClick={confirmDelete} style={{
-                padding: '10px 20px', fontSize: 14, fontWeight: 600,
-                background: 'var(--color-danger)', color: '#FFFFFF',
-                border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-              }}>Delete</button>
-            </div>
+        <div className="lx-activity-modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setShowDelete(false)}>
+          <div className="lx-dialog lx-activity-delete-dialog">
+            <h2 className="lx-activity-danger-title">Delete activity</h2>
+            <p className="lx-activity-section-copy">This will permanently delete <strong>{activity.title}</strong> and all associated registrations, attendance records, and certificates. This action cannot be undone.</p>
+            <div className="lx-activity-dialog-actions"><button className="lx-btn lx-btn-secondary" onClick={() => setShowDelete(false)}>Cancel</button><button className="lx-btn lx-btn-danger" onClick={confirmDelete}>Delete</button></div>
           </div>
         </div>
       )}
 
-      {/* Certificate preview */}
-      {previewCert && (
-        <CertificatePreview
-          cert={previewCert}
-          participant={getParticipant(previewCert.participant_id)}
-          activity={activity}
-          orgName={profile?.org_name || 'Organization'}
-          logoUrl={profile?.logo_url}
-          onClose={() => setPreviewCert(null)}
-        />
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 26, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--color-navy-900)', color: '#FFFFFF', fontSize: 13, fontWeight: 500,
-          padding: '11px 20px', borderRadius: 999, boxShadow: 'var(--shadow-raised)', zIndex: 300,
-        }}>{toast}</div>
-      )}
+      {previewCert && <CertificatePreview cert={previewCert} participant={getParticipant(previewCert.participant_id)} activity={activity} orgName={profile?.org_name || 'Organization'} logoUrl={profile?.logo_url} onClose={() => setPreviewCert(null)} />}
+      {toast && <div className="lx-toast">{toast}</div>}
     </div>
   );
 }
-
-const _input = {
-  width: '100%', padding: '10px 14px', fontSize: 14,
-  border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
-  background: 'var(--surface-card)', outline: 'none', color: 'var(--text-primary)',
-  fontFamily: 'var(--font-body)',
-};

@@ -3,7 +3,7 @@ name: LexAMS v2 CI
 on:
   push:
     branches:
-      - '**'
+      - main
   pull_request:
     branches:
       - main
