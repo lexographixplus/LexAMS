@@ -3,7 +3,7 @@ set -euo pipefail
 
 LEXAMS_PREVIEW_HOST="deploy-preview-999--lexams.netlify.app"
 PORT="4173"
-BASE_URL="http://${LEXAMS_PREVIEW_HOST}:${PORT}"
+BASE_URL="https://${LEXAMS_PREVIEW_HOST}:${PORT}"
 
 BROWSER_BIN="${BROWSER_BIN:-}"
 if [[ -z "$BROWSER_BIN" ]]; then
@@ -13,26 +13,49 @@ if [[ -z "$BROWSER_BIN" ]]; then
   echo "A Chromium/Chrome browser is required for the browser smoke test." >&2
   exit 1
 fi
+if ! command -v openssl >/dev/null 2>&1; then
+  echo "OpenSSL is required for the browser smoke test." >&2
+  exit 1
+fi
+
+if [[ ! -f dist/index.html ]]; then
+  npm run build >/tmp/lexams-browser-build.log 2>&1
+fi
 
 if ! grep -q "${LEXAMS_PREVIEW_HOST}" /etc/hosts; then
   echo "127.0.0.1 ${LEXAMS_PREVIEW_HOST}" | sudo tee -a /etc/hosts >/dev/null
 fi
 
-# Vite normally rejects non-local Host headers. Allow only this synthetic
-# Netlify-style hostname for the test process so production host policy is not
-# widened in vite.config.js.
-__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS="$LEXAMS_PREVIEW_HOST" \
-  npm run preview -- --host 0.0.0.0 --port "$PORT" >/tmp/lexams-browser-preview.log 2>&1 &
+CERT_DIR="$(mktemp -d)"
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout "${CERT_DIR}/key.pem" \
+  -out "${CERT_DIR}/cert.pem" \
+  -days 1 \
+  -subj "/CN=${LEXAMS_PREVIEW_HOST}" \
+  -addext "subjectAltName=DNS:${LEXAMS_PREVIEW_HOST}" \
+  >/dev/null 2>&1
+
+LEXAMS_PREVIEW_CERT="${CERT_DIR}/cert.pem" \
+LEXAMS_PREVIEW_KEY="${CERT_DIR}/key.pem" \
+LEXAMS_PREVIEW_PORT="$PORT" \
+  node scripts/https-preview.mjs >/tmp/lexams-browser-preview.log 2>&1 &
 SERVER_PID=$!
-trap 'kill "$SERVER_PID" >/dev/null 2>&1 || true' EXIT
+cleanup() {
+  kill "$SERVER_PID" >/dev/null 2>&1 || true
+  rm -rf "$CERT_DIR"
+}
+trap cleanup EXIT
 
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null; then
+  if curl -kfsS "https://127.0.0.1:${PORT}/" >/dev/null; then
     break
   fi
   sleep 1
 done
-curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
+if ! curl -kfsS "https://127.0.0.1:${PORT}/" >/dev/null; then
+  cat /tmp/lexams-browser-preview.log >&2
+  exit 1
+fi
 
 render() {
   local path="$1"
@@ -43,6 +66,7 @@ render() {
     --disable-gpu \
     --disable-dev-shm-usage \
     --no-proxy-server \
+    --ignore-certificate-errors \
     --virtual-time-budget=5000 \
     --dump-dom "${BASE_URL}${path}" >"$output" 2>/tmp/lexams-browser-errors.log
 }
@@ -89,8 +113,9 @@ assert_page "/" "LexAMS"
 assert_page "/login" "LexAMS"
 assert_page "/contact" "LexAMS"
 
-# Deploy-preview host activates the safe synthetic owner workspace. These checks
-# render the real React routes in Chromium rather than testing source strings.
+# The Netlify-style hostname activates the existing safe synthetic owner
+# workspace. A local HTTPS server is used because Chrome correctly upgrades
+# netlify.app hosts to HTTPS via HSTS.
 assert_app_page "/app" "dashboard"
 assert_app_page "/app/activities" "activities"
 assert_app_page "/app/activities/-8101" "activity-detail"
