@@ -70,10 +70,10 @@ assert_app_page() {
   local output
   output="$(mktemp)"
   render "$path" "$output"
-  # Phase 3 contains both historical `lexams-ui-*` and newer `lexams-ui-*`
-  # page markers. Require the route-specific suffix while accepting either
-  # established prefix so this regression test validates rendering, not naming.
-  if ! grep -Eq "(lexams|lexams)-ui-${suffix}" "$output"; then
+  # Every protected workspace route is wrapped by App.jsx with the canonical
+  # `lexams-ui-${name}` marker. Checking that wrapper confirms the requested
+  # route rendered, independent of page-internal styling class names.
+  if ! grep -q "lexams-ui-${suffix}" "$output"; then
     echo "Browser smoke failed for ${path}: route marker ${suffix} was not rendered." >&2
     cat "$output" >&2
     exit 1
