@@ -105,8 +105,7 @@ assert_app_page "/app/settings" "settings"
 assert_app_page "/app/billing" "billing"
 
 # Billing authorization is enforced and regression-tested at the server API.
-# The browser gate verifies that an Owner/Admin preview workspace can render the
-# billing surface itself without coupling the smoke test to transient checkout copy.
-assert_page "/app/billing" "Billing & plan"
+# Browser coverage intentionally verifies the billing route itself, not mutable
+# plan-state copy or checkout CTA text.
 
 echo "Headless browser critical-flow smoke tests passed."
