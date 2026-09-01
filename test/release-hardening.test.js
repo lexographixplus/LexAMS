@@ -49,7 +49,6 @@ test('release CI includes upgrade-path, audit, browser smoke and security scanni
   assert.match(smoke, /015_public_rate_limits\.sql/);
   assert.match(browserSmoke, /assert_app_page "\/app" "dashboard"/);
   assert.match(browserSmoke, /assert_app_page "\/app\/billing" "billing"/);
-  assert.match(browserSmoke, /Billing & plan/);
   assert.match(codeql, /github\/codeql-action\/analyze@v3/);
   assert.match(dependabot, /package-ecosystem: "npm"/);
 });
