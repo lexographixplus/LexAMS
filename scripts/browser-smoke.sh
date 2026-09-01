@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOSTNAME="deploy-preview-999--lexams.netlify.app"
+LEXAMS_PREVIEW_HOST="deploy-preview-999--lexams.netlify.app"
 PORT="4173"
-BASE_URL="http://${HOSTNAME}:${PORT}"
+BASE_URL="http://${LEXAMS_PREVIEW_HOST}:${PORT}"
 
 BROWSER_BIN="${BROWSER_BIN:-}"
 if [[ -z "$BROWSER_BIN" ]]; then
@@ -14,11 +14,15 @@ if [[ -z "$BROWSER_BIN" ]]; then
   exit 1
 fi
 
-if ! grep -q "${HOSTNAME}" /etc/hosts; then
-  echo "127.0.0.1 ${HOSTNAME}" | sudo tee -a /etc/hosts >/dev/null
+if ! grep -q "${LEXAMS_PREVIEW_HOST}" /etc/hosts; then
+  echo "127.0.0.1 ${LEXAMS_PREVIEW_HOST}" | sudo tee -a /etc/hosts >/dev/null
 fi
 
-npm run preview -- --host 0.0.0.0 --port "$PORT" >/tmp/lexams-browser-preview.log 2>&1 &
+# Vite normally rejects non-local Host headers. Allow only this synthetic
+# Netlify-style hostname for the test process so production host policy is not
+# widened in vite.config.js.
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS="$LEXAMS_PREVIEW_HOST" \
+  npm run preview -- --host 0.0.0.0 --port "$PORT" >/tmp/lexams-browser-preview.log 2>&1 &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" >/dev/null 2>&1 || true' EXIT
 
@@ -38,6 +42,7 @@ render() {
     --no-sandbox \
     --disable-gpu \
     --disable-dev-shm-usage \
+    --no-proxy-server \
     --virtual-time-budget=5000 \
     --dump-dom "${BASE_URL}${path}" >"$output" 2>/tmp/lexams-browser-errors.log
 }
