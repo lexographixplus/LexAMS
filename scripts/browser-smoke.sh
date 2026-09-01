@@ -119,6 +119,13 @@ assert_page "/contact" "LexAMS"
 assert_app_page "/app" "dashboard"
 assert_app_page "/app/activities" "activities"
 assert_app_page "/app/activities/-8101" "activity-detail"
+
+# Selected-activity tabs can be deep-linked for deterministic release checks.
+# These markers protect the shorter workspace structure introduced by the
+# activity UX refactor without depending on mutable activity data values.
+assert_page "/app/activities/-8101?view=participants" "Participant outcomes"
+assert_page "/app/activities/-8101?view=attendance" "Attendance ledger"
+
 assert_app_page "/app/participants" "participants"
 assert_app_page "/app/reports" "reports"
 assert_app_page "/app/assessments" "assessments"
