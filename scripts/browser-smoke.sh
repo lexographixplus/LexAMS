@@ -64,6 +64,26 @@ assert_page() {
   fi
 }
 
+assert_app_page() {
+  local path="$1"
+  local suffix="$2"
+  local output
+  output="$(mktemp)"
+  render "$path" "$output"
+  # Phase 3 contains both historical `lexams-ui-*` and newer `lexams-ui-*`
+  # page markers. Require the route-specific suffix while accepting either
+  # established prefix so this regression test validates rendering, not naming.
+  if ! grep -Eq "(lexams|lexams)-ui-${suffix}" "$output"; then
+    echo "Browser smoke failed for ${path}: route marker ${suffix} was not rendered." >&2
+    cat "$output" >&2
+    exit 1
+  fi
+  if grep -qi "We could not load your workspace" "$output"; then
+    echo "Browser smoke failed for ${path}: workspace session error rendered." >&2
+    exit 1
+  fi
+}
+
 # Marketing/auth surfaces remain reachable.
 assert_page "/" "LexAMS"
 assert_page "/login" "LexAMS"
@@ -71,18 +91,18 @@ assert_page "/contact" "LexAMS"
 
 # Deploy-preview host activates the safe synthetic owner workspace. These checks
 # render the real React routes in Chromium rather than testing source strings.
-assert_page "/app" "lexams-ui-dashboard"
-assert_page "/app/activities" "lexams-ui-activities"
-assert_page "/app/activities/-8101" "lexams-ui-activity-detail"
-assert_page "/app/participants" "lexams-ui-participants"
-assert_page "/app/reports" "lexams-ui-reports"
-assert_page "/app/assessments" "lexams-ui-assessments"
-assert_page "/app/surveys" "lexams-ui-surveys"
-assert_page "/app/certificates" "lexams-ui-certificates"
-assert_page "/app/communications" "lexams-ui-communications"
-assert_page "/app/team" "lexams-ui-team"
-assert_page "/app/settings" "lexams-ui-settings"
-assert_page "/app/billing" "lexams-ui-billing"
+assert_app_page "/app" "dashboard"
+assert_app_page "/app/activities" "activities"
+assert_app_page "/app/activities/-8101" "activity-detail"
+assert_app_page "/app/participants" "participants"
+assert_app_page "/app/reports" "reports"
+assert_app_page "/app/assessments" "assessments"
+assert_app_page "/app/surveys" "surveys"
+assert_app_page "/app/certificates" "certificates"
+assert_app_page "/app/communications" "communications"
+assert_app_page "/app/team" "team"
+assert_app_page "/app/settings" "settings"
+assert_app_page "/app/billing" "billing"
 
 # The synthetic workspace is an owner; billing UI must expose the owner/admin
 # order-review action while the server remains the authoritative permission gate.
