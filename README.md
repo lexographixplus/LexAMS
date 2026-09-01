@@ -34,6 +34,7 @@ npm run db:validate
 npm test
 npm run lint
 npm run build
+npm run browser:smoke
 ```
 
 CI also runs a PostgreSQL-backed migration smoke test and `npm audit --audit-level=high`.
@@ -46,6 +47,10 @@ CI also runs a PostgreSQL-backed migration smoke test and `npm audit --audit-lev
 2. builds a representative pre-release database through migration 013, seeds existing organisation/activity/participant/registration data, applies later migrations, and verifies the existing records survive.
 
 This is the release gate for additive/backward-compatible schema work.
+
+### Browser critical-flow smoke test
+
+`npm run browser:smoke` uses installed Chrome/Chromium to render the built app on a local Netlify-style deploy-preview hostname. That hostname activates LexAMS' existing synthetic preview workspace without adding a production bypass. The suite verifies the marketing/auth surfaces and the primary workspace routes, including activities, participants, reports, assessments, surveys, certificates, communications, team, settings and billing. It also verifies that the synthetic Owner/Admin workspace exposes the billing order-review action.
 
 ## Database migrations
 
@@ -97,6 +102,7 @@ GitHub automation includes:
 
 - CI tests, lint and build;
 - full-chain and upgrade-path database migration tests;
+- headless-browser critical-workspace route smoke tests;
 - high-severity npm dependency audit;
 - CodeQL JavaScript/TypeScript analysis;
 - Dependabot for npm and GitHub Actions.
@@ -109,13 +115,14 @@ Before a production release:
 
 1. confirm CI and CodeQL are green;
 2. confirm migrations pass the empty-database and representative-upgrade smoke tests;
-3. verify the Netlify deploy preview and key public flows;
-4. verify owner/admin billing checkout permissions;
-5. verify Modem Pay signed webhook processing using a test payment when billing code changed;
-6. verify Resend delivery/webhook handling when communication code changed;
-7. confirm required Netlify production environment variables are present;
-8. confirm Neon recovery/branch readiness for schema changes;
-9. merge only after review, then verify the production deploy and scheduled functions.
+3. confirm the headless browser critical-flow smoke test passes;
+4. verify the Netlify deploy preview and key public flows;
+5. verify owner/admin billing checkout permissions;
+6. verify Modem Pay signed webhook processing using a test payment when billing code changed;
+7. verify Resend delivery/webhook handling when communication code changed;
+8. confirm required Netlify production environment variables are present;
+9. confirm Neon recovery/branch readiness for schema changes;
+10. merge only after review, then verify the production deploy and scheduled functions.
 
 ## Recovery guidance
 
