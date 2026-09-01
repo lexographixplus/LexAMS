@@ -36,15 +36,19 @@ test('migration baseline cannot silently expand with new migrations', async () =
   assert.doesNotMatch(migrate, /migrations\.slice\(0, -1\)/);
 });
 
-test('release CI includes upgrade-path, audit and security scanning configuration', async () => {
+test('release CI includes upgrade-path, audit, browser smoke and security scanning', async () => {
   const ci = await source('.github/workflows/lexams-v2-ci.yml');
   const smoke = await source('scripts/ci-db-smoke.sh');
+  const browserSmoke = await source('scripts/browser-smoke.sh');
   const codeql = await source('.github/workflows/codeql.yml');
   const dependabot = await source('.github/dependabot.yml');
   assert.match(ci, /npm run db:smoke/);
   assert.match(ci, /npm audit --audit-level=high/);
+  assert.match(ci, /npm run browser:smoke/);
   assert.match(smoke, /Existing Training/);
   assert.match(smoke, /015_public_rate_limits\.sql/);
+  assert.match(browserSmoke, /assert_app_page "\/app" "dashboard"/);
+  assert.match(browserSmoke, /assert_app_page "\/app\/billing" "billing"/);
   assert.match(codeql, /github\/codeql-action\/analyze@v3/);
   assert.match(dependabot, /package-ecosystem: "npm"/);
 });

@@ -65,3 +65,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Headless browser critical-flow smoke
+        run: npm run browser:smoke
