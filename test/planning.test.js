@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   calculatePlanningSummary,
   canUpdatePlanningTask,
+  normalizeFacilitator,
   normalizePlanningTask,
   normalizeSessionPlan,
   planningPermissions,
@@ -60,16 +61,21 @@ test('task input is bounded and normalized for the API', () => {
   assert.throws(() => normalizePlanningTask({ title: '', due_date: 'tomorrow' }), /title is required/i);
 });
 
-test('session planning validates timing and lead facilitator membership', () => {
+test('session planning validates timing and facilitator selection', () => {
   const session = normalizeSessionPlan({
     title: 'Opening session',
     session_date: '2026-08-12',
     starts_at: '09:00',
     ends_at: '11:00',
-    facilitator_ids: ['one', 'one', 'two'],
-    lead_facilitator_id: 'two',
+    facilitator_id: '42',
   });
-  assert.deepEqual(session.facilitator_ids, ['one', 'two']);
-  assert.equal(session.lead_facilitator_id, 'two');
+  assert.equal(session.facilitator_id, 42);
   assert.throws(() => normalizeSessionPlan({ title: 'Invalid', session_date: '2026-08-12', starts_at: '12:00', ends_at: '11:00' }), /after its start time/i);
+});
+
+test('facilitator directory input normalizes name, role and email', () => {
+  assert.deepEqual(normalizeFacilitator({ name: '  Awa Ceesay ', role: '', email: ' AWA@EXAMPLE.ORG ' }), {
+    name: 'Awa Ceesay', role: 'Facilitator', email: 'awa@example.org',
+  });
+  assert.throws(() => normalizeFacilitator({ name: 'Awa', email: 'not-an-email' }), /email must be valid/i);
 });

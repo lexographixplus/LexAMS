@@ -7,8 +7,8 @@ import {
   BUDGET_CURRENCIES,
   canEditJournalEntry,
   canUpdatePlanningTask,
-  filterSessionFacilitatorsToTeam,
   normalizeBudgetItem,
+  normalizeFacilitator,
   normalizeJournalEntry,
   normalizePlanningTask,
   normalizeSessionImportRow,
@@ -79,7 +79,7 @@ async function snapshot(
   const activity = await activityExists(db, organizationId, activityId);
   if (!activity) return null;
 
-  const [tasks, sessions, members, budgetItems, journalEntries] = await Promise.all([
+  const [tasks, sessions, members, facilitators, budgetItems, journalEntries] = await Promise.all([
     db.query(
       `select t.id, t.title, t.description, t.stage, t.assignee_user_id, t.due_date,
               t.priority, t.status, t.completed_at, t.sort_order, t.created_at, t.updated_at,
@@ -95,23 +95,15 @@ async function snapshot(
     db.query(
       `select s.id, s.title, s.session_date, s.starts_at, s.ends_at, s.status,
               s.description, s.learning_objectives, s.venue, s.planning_status,
-              s.sort_order, s.updated_at, coalesce(f.facilitators,'[]'::jsonb) as facilitators
+              s.facilitator_id, f.name as facilitator_name, f.role as facilitator_role,
+              f.email as facilitator_email, s.sort_order, s.updated_at,
+              case when f.id is null then '[]'::jsonb else jsonb_build_array(jsonb_build_object(
+                'id', f.id, 'user_id', linked_user.id, 'name', f.name, 'email', f.email,
+                'is_lead', true, 'role_label', f.role
+              )) end as facilitators
        from activity_sessions s
-       left join lateral (
-         select jsonb_agg(jsonb_build_object(
-           'user_id', sf.user_id,
-           'name', coalesce(nullif(p.full_name,''), nullif(u.name,''), u.email),
-           'email', u.email,
-           'is_lead', sf.is_lead,
-           'role_label', sf.role_label
-         ) order by sf.is_lead desc, coalesce(p.full_name,u.name,u.email)) as facilitators
-         from session_facilitators sf
-         join users u on u.id=sf.user_id
-         left join profiles p on p.user_id=sf.user_id
-         where sf.organization_id=s.organization_id
-           and sf.activity_id=s.activity_id
-           and sf.session_id=s.id
-       ) f on true
+       left join facilitators f on f.id=s.facilitator_id and f.organization_id=s.organization_id
+       left join users linked_user on lower(btrim(linked_user.email))=lower(btrim(f.email))
        where s.organization_id=$1 and s.activity_id=$2
        order by s.session_date, s.sort_order, s.id`,
       [organizationId, activityId],
@@ -124,6 +116,12 @@ async function snapshot(
        left join profiles p on p.user_id=om.user_id
        where om.organization_id=$1 and om.role <> 'viewer'
        order by coalesce(p.full_name,u.name,u.email), om.user_id`,
+      [organizationId],
+    ),
+    db.query(
+      `select id,name,role,email,created_at,updated_at
+       from facilitators where organization_id=$1
+       order by lower(name),id`,
       [organizationId],
     ),
     db.query(
@@ -169,6 +167,7 @@ async function snapshot(
     tasks: tasks.rows,
     sessions: sessions.rows,
     members: members.rows,
+    facilitators: facilitators.rows,
     budgetItems: budgetItems.rows,
     journalEntries: journalEntries.rows,
     permissions: { ...planningPermissions(role), currentUserId: userId, role },
@@ -316,6 +315,37 @@ export default async (request: Request, context: Context) => {
       return json({ removed: taskId });
     }
 
+    if (action === 'save_facilitator') {
+      if (!permissions.canManagePlanning) return json({ error: 'Planning manager permission is required.' }, 403);
+      const facilitatorId = body.facilitator?.id ? numberId(body.facilitator.id) : null;
+      if (body.facilitator?.id && !facilitatorId) return json({ error: 'Invalid facilitator.' }, 400);
+      const facilitator = normalizeFacilitator(body.facilitator);
+      const duplicate = await db.query(
+        `select id from facilitators
+         where organization_id=$1 and lower(btrim(email))=lower(btrim($2))
+           and ($3::bigint is null or id<>$3)
+         limit 1`,
+        [organizationId, facilitator.email, facilitatorId],
+      );
+      if (duplicate.rowCount) return json({ error: 'A facilitator with this email already exists.' }, 409);
+      const result = facilitatorId
+        ? await db.query(
+          `update facilitators set name=$3,role=$4,email=$5,updated_at=now()
+           where id=$1 and organization_id=$2 returning *`,
+          [facilitatorId, organizationId, facilitator.name, facilitator.role, facilitator.email],
+        )
+        : await db.query(
+          `insert into facilitators (organization_id,name,role,email,created_by)
+           values ($1,$2,$3,$4,$5) returning *`,
+          [organizationId, facilitator.name, facilitator.role, facilitator.email, userId],
+        );
+      if (!result.rowCount) return json({ error: 'Facilitator not found.' }, 404);
+      await audit(db, organizationId, userId,
+        facilitatorId ? 'planning.facilitator_updated' : 'planning.facilitator_created',
+        'facilitator', result.rows[0].id, { name: facilitator.name, role: facilitator.role });
+      return json({ facilitator: result.rows[0] }, facilitatorId ? 200 : 201);
+    }
+
     if (action === 'save_session') {
       if (!permissions.canManagePlanning) return json({ error: 'Planning manager permission is required.' }, 403);
       const sessionId = body.session?.id ? numberId(body.session.id) : null;
@@ -335,13 +365,12 @@ export default async (request: Request, context: Context) => {
       );
       if (duplicateTitle.rowCount) return json({ error: 'Session titles must be unique within an activity.' }, 409);
 
-      if (session.facilitator_ids.length) {
-        const validMembers = await db.query(
-          `select user_id::text from organization_members
-           where organization_id=$1 and user_id=any($2::uuid[]) and role <> 'viewer'`,
-          [organizationId, session.facilitator_ids],
+      if (session.facilitator_id) {
+        const validFacilitator = await db.query(
+          `select 1 from facilitators where organization_id=$1 and id=$2 limit 1`,
+          [organizationId, session.facilitator_id],
         );
-        if (validMembers.rowCount !== session.facilitator_ids.length) return json({ error: 'One or more facilitators are not current team members.' }, 400);
+        if (!validFacilitator.rowCount) return json({ error: 'Choose a facilitator from this workspace.' }, 400);
       }
 
       const client = await db.connect();
@@ -351,10 +380,11 @@ export default async (request: Request, context: Context) => {
         if (sessionId) {
           const result = await client.query(
             `update activity_sessions set title=$4,session_date=$5,starts_at=$6,ends_at=$7,venue=$8,
-                 description=$9,learning_objectives=$10,planning_status=$11,updated_at=now()
+                 description=$9,learning_objectives=$10,planning_status=$11,facilitator_id=$12,updated_at=now()
              where id=$1 and activity_id=$2 and organization_id=$3 returning *`,
             [sessionId, activityId, organizationId, session.title, session.session_date, session.starts_at,
-              session.ends_at, session.venue, session.description, session.learning_objectives, session.planning_status],
+              session.ends_at, session.venue, session.description, session.learning_objectives, session.planning_status,
+              session.facilitator_id],
           );
           if (!result.rowCount) {
             await client.query('rollback');
@@ -369,28 +399,17 @@ export default async (request: Request, context: Context) => {
         } else {
           const result = await client.query(
             `insert into activity_sessions
-               (organization_id,activity_id,title,session_date,starts_at,ends_at,venue,description,learning_objectives,planning_status,sort_order)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+               (organization_id,activity_id,title,session_date,starts_at,ends_at,venue,description,learning_objectives,planning_status,facilitator_id,sort_order)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
                      coalesce((select max(sort_order)+1 from activity_sessions where organization_id=$1 and activity_id=$2),0))
              returning *`,
             [organizationId, activityId, session.title, session.session_date, session.starts_at,
-              session.ends_at, session.venue, session.description, session.learning_objectives, session.planning_status],
+              session.ends_at, session.venue, session.description, session.learning_objectives, session.planning_status,
+              session.facilitator_id],
           );
           saved = result.rows[0];
         }
 
-        await client.query(`delete from session_facilitators where session_id=$1 and activity_id=$2 and organization_id=$3`, [saved.id, activityId, organizationId]);
-        if (session.facilitator_ids.length) {
-          await client.query(
-            `insert into session_facilitators
-               (organization_id,activity_id,session_id,user_id,is_lead,role_label,assigned_by)
-             select $1,$2,$3,om.user_id,om.user_id=$5,
-                    case when om.user_id=$5 then 'Lead facilitator' else 'Facilitator' end,$6
-             from organization_members om
-             where om.organization_id=$1 and om.user_id=any($4::uuid[]) and om.role <> 'viewer'`,
-            [organizationId, activityId, saved.id, session.facilitator_ids, session.lead_facilitator_id, userId],
-          );
-        }
         await client.query(
           `update activities set sessions=(select count(*)::int from activity_sessions where organization_id=$1 and activity_id=$2),updated_at=now()
            where organization_id=$1 and id=$2`,
@@ -398,7 +417,7 @@ export default async (request: Request, context: Context) => {
         );
         await audit(client as ReturnType<typeof getPool>, organizationId, userId,
           sessionId ? 'planning.session_updated' : 'planning.session_created', 'activity_session', saved.id,
-          { activityId, facilitatorCount: session.facilitator_ids.length, planningStatus: session.planning_status });
+          { activityId, facilitatorId: session.facilitator_id, planningStatus: session.planning_status });
         await client.query('commit');
         return json({ session: saved }, sessionId ? 200 : 201);
       } catch (error) {
@@ -444,17 +463,14 @@ export default async (request: Request, context: Context) => {
       }
       rows = uniqueRows;
 
-      const membersResult = await db.query(
-        `select om.user_id::text as id,lower(u.email) as email
-         from organization_members om join users u on u.id=om.user_id
-         where om.organization_id=$1 and om.role <> 'viewer'`,
+      const facilitatorsResult = await db.query(
+        `select id,name,role,lower(btrim(email)) as email
+         from facilitators where organization_id=$1`,
         [organizationId],
       );
-      const memberByEmail = new Map(membersResult.rows.map(member => [String(member.email), String(member.id)]));
-      rows = rows.map(row => ({
-        ...row,
-        ...filterSessionFacilitatorsToTeam(row, memberByEmail.keys()),
-      }));
+      const facilitatorByEmail = new Map(facilitatorsResult.rows.map(facilitator => [String(facilitator.email), facilitator]));
+      const missingName = rows.find(row => row.facilitator_email && !facilitatorByEmail.has(row.facilitator_email) && !row.facilitator_name);
+      if (missingName) return json({ error: `Row ${missingName.rowNumber}: facilitator name is required for a new facilitator email.` }, 400);
 
       const existingResult = await db.query(
         `select * from activity_sessions where organization_id=$1 and activity_id=$2 order by sort_order,id`,
@@ -467,7 +483,7 @@ export default async (request: Request, context: Context) => {
         updated: 0,
         skipped: duplicateRowsSkipped,
         facilitatorsAssigned: 0,
-        facilitatorsSkipped: rows.reduce((total, row) => total + row.skipped_facilitator_emails.length, 0),
+        facilitatorsCreated: 0,
       };
       const client = await db.connect();
       try {
@@ -476,24 +492,40 @@ export default async (request: Request, context: Context) => {
           const key = sessionImportIdentity(row);
           const existing = existingBySession.get(key);
           if (existing && duplicateMode === 'skip') { summary.skipped += 1; continue; }
+          let facilitatorId = null;
+          if (row.facilitator_email) {
+            let facilitator = facilitatorByEmail.get(row.facilitator_email);
+            if (!facilitator) {
+              const created = await client.query(
+                `insert into facilitators (organization_id,name,role,email,created_by)
+                 values ($1,$2,'Facilitator',$3,$4) returning id,name,role,email`,
+                [organizationId, row.facilitator_name, row.facilitator_email, userId],
+              );
+              facilitator = created.rows[0];
+              facilitatorByEmail.set(row.facilitator_email, facilitator);
+              summary.facilitatorsCreated += 1;
+            }
+            facilitatorId = Number(facilitator.id);
+            summary.facilitatorsAssigned += 1;
+          }
           let saved;
           if (existing) {
             const result = await client.query(
               `update activity_sessions set session_date=$4,starts_at=$5,ends_at=$6,venue=$7,
-                   description=$8,learning_objectives=$9,planning_status=$10,updated_at=now()
+                   planning_status=$8,facilitator_id=$9,updated_at=now()
                where id=$1 and activity_id=$2 and organization_id=$3 returning *`,
               [existing.id, activityId, organizationId, row.session_date, row.starts_at, row.ends_at,
-                row.venue, row.description, row.learning_objectives, row.planning_status],
+                row.venue, row.planning_status, facilitatorId],
             );
             saved = result.rows[0];
             summary.updated += 1;
           } else {
             const result = await client.query(
               `insert into activity_sessions
-                 (organization_id,activity_id,title,session_date,starts_at,ends_at,venue,description,learning_objectives,planning_status,sort_order)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
+                 (organization_id,activity_id,title,session_date,starts_at,ends_at,venue,description,learning_objectives,planning_status,facilitator_id,sort_order)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
               [organizationId, activityId, row.title, row.session_date, row.starts_at, row.ends_at,
-                row.venue, row.description, row.learning_objectives, row.planning_status, nextSortOrder],
+                row.venue, row.description, row.learning_objectives, row.planning_status, facilitatorId, nextSortOrder],
             );
             saved = result.rows[0];
             existingBySession.set(key, saved);
@@ -501,23 +533,6 @@ export default async (request: Request, context: Context) => {
             summary.created += 1;
           }
 
-          const facilitatorIds = [...new Set(row.facilitator_emails.map(email => memberByEmail.get(email)).filter(Boolean))];
-          const leadId = row.lead_facilitator_email ? memberByEmail.get(row.lead_facilitator_email) : facilitatorIds[0] || null;
-          await client.query(
-            `delete from session_facilitators where organization_id=$1 and activity_id=$2 and session_id=$3`,
-            [organizationId, activityId, saved.id],
-          );
-          if (facilitatorIds.length) {
-            await client.query(
-              `insert into session_facilitators
-                 (organization_id,activity_id,session_id,user_id,is_lead,role_label,assigned_by)
-               select $1,$2,$3,member_id,member_id=$5,
-                      case when member_id=$5 then 'Lead facilitator' else 'Facilitator' end,$6
-               from unnest($4::uuid[]) as imported(member_id)`,
-              [organizationId, activityId, saved.id, facilitatorIds, leadId, userId],
-            );
-            summary.facilitatorsAssigned += facilitatorIds.length;
-          }
         }
         await client.query(
           `update activities set sessions=(select count(*)::int from activity_sessions where organization_id=$1 and activity_id=$2),updated_at=now()
@@ -669,8 +684,11 @@ export default async (request: Request, context: Context) => {
       let allowed = permissions.canManagePlanning;
       if (!allowed && ['facilitator', 'me_officer'].includes(tenant.role)) {
         const assignment = await db.query(
-          `select 1 from session_facilitators
-           where organization_id=$1 and activity_id=$2 and session_id=$3 and user_id=$4 limit 1`,
+          `select 1
+           from activity_sessions s
+           join facilitators f on f.id=s.facilitator_id and f.organization_id=s.organization_id
+           join users u on u.id=$4 and lower(btrim(u.email))=lower(btrim(f.email))
+           where s.organization_id=$1 and s.activity_id=$2 and s.id=$3 limit 1`,
           [organizationId, activityId, sessionId, userId],
         );
         allowed = Boolean(assignment.rowCount);
