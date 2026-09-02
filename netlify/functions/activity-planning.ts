@@ -7,6 +7,7 @@ import {
   BUDGET_CURRENCIES,
   canEditJournalEntry,
   canUpdatePlanningTask,
+  dateOnly,
   normalizeBudgetItem,
   normalizeFacilitator,
   normalizeJournalEntry,
@@ -35,7 +36,8 @@ function numberId(value: unknown) {
 
 async function activityExists(db: ReturnType<typeof getPool>, organizationId: string, activityId: number) {
   const result = await db.query(
-    `select id, title, status, start_date, end_date, venue, description, budget_currency
+    `select id, title, status, start_date::text as start_date, end_date::text as end_date,
+            venue, description, budget_currency
      from activities where id=$1 and organization_id=$2 limit 1`,
     [activityId, organizationId],
   );
@@ -351,8 +353,9 @@ export default async (request: Request, context: Context) => {
       const sessionId = body.session?.id ? numberId(body.session.id) : null;
       if (body.session?.id && !sessionId) return json({ error: 'Invalid session.' }, 400);
       const session = normalizeSessionPlan(body.session);
-      const activityStart = String(activity.start_date).slice(0, 10);
-      const activityEnd = String(activity.end_date).slice(0, 10);
+      const activityStart = dateOnly(activity.start_date);
+      const activityEnd = dateOnly(activity.end_date);
+      if (!activityStart || !activityEnd) return json({ error: 'The activity dates are invalid.' }, 500);
       if (session.session_date < activityStart || session.session_date > activityEnd) {
         return json({ error: 'Session date must fall within the activity dates.' }, 400);
       }
@@ -434,8 +437,9 @@ export default async (request: Request, context: Context) => {
       const sourceRows = Array.isArray(body.rows) ? body.rows : [];
       if (!sourceRows.length || sourceRows.length > 200) return json({ error: 'Import between 1 and 200 sessions at a time.' }, 400);
       const duplicateMode = body.duplicateMode === 'update' ? 'update' : 'skip';
-      const activityStart = String(activity.start_date).slice(0, 10);
-      const activityEnd = String(activity.end_date).slice(0, 10);
+      const activityStart = dateOnly(activity.start_date);
+      const activityEnd = dateOnly(activity.end_date);
+      if (!activityStart || !activityEnd) return json({ error: 'The activity dates are invalid.' }, 500);
       let rows;
       try {
         rows = sourceRows.map((row, index) => ({

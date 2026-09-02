@@ -5,6 +5,7 @@ import {
   calculateBudgetSummary,
   calculateJournalSummary,
   canEditJournalEntry,
+  dateOnly,
   inferSpreadsheetDateOrder,
   normalizeBudgetItem,
   normalizeJournalEntry,
@@ -102,6 +103,24 @@ test('session CSV accepts spreadsheet date formats and resolves them against the
 
   const normalized = normalizeSessionImportRow({ title: 'Opening session', session_date: '9/1/2026' }, activityPeriod);
   assert.equal(normalized.session_date, '2026-09-01');
+});
+
+test('database activity dates remain ISO calendar dates during session import validation', () => {
+  const activityPeriod = {
+    minDate: dateOnly(new Date(2026, 7, 30)),
+    maxDate: dateOnly(new Date(2026, 9, 10)),
+    dateOrder: 'dmy',
+  };
+  assert.deepEqual(activityPeriod, {
+    minDate: '2026-08-30',
+    maxDate: '2026-10-10',
+    dateOrder: 'dmy',
+  });
+  assert.equal(
+    normalizeSessionImportRow({ title: 'Teambuilding Activities', session_date: '31/08/2026' }, activityPeriod).session_date,
+    '2026-08-31',
+  );
+  assert.equal(dateOnly('2026-08-30T00:00:00.000Z'), '2026-08-30');
 });
 
 test('session CSV detects one date order and resolves otherwise ambiguous dates consistently', () => {

@@ -48,6 +48,18 @@ function isoDateFromParts(year, month, day) {
   return date.toISOString().slice(0, 10);
 }
 
+export function dateOnly(value) {
+  if (value === null || value === undefined || value === '') return '';
+
+  const raw = typeof value === 'string' ? value.trim() : '';
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/);
+  if (isoMatch) return isoDateFromParts(isoMatch[1], isoMatch[2], isoMatch[3]) || '';
+
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return '';
+  return isoDateFromParts(date.getFullYear(), date.getMonth() + 1, date.getDate()) || '';
+}
+
 export function inferSpreadsheetDateOrder(values = []) {
   let dayFirst = false;
   let monthFirst = false;
