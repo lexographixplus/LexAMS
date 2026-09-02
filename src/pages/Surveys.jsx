@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
+import { apiClient } from '../lib/api';
 import { useData } from '../contexts/DataContext';
 import { fmtDate } from '../lib/format';
 import { Plus, Link as LinkIcon, Eye, Trash2, Copy } from 'lucide-react';
@@ -14,7 +13,6 @@ const QUESTION_TYPES = [
 
 export default function Surveys() {
   const { activities, surveys, setSurveys } = useData();
-  const navigate = useNavigate();
   const [view, setView] = useState('list'); // list | create | detail
   const [selectedSurvey, setSelectedSurvey] = useState(null);
   const [responses, setResponses] = useState([]);
@@ -53,7 +51,7 @@ export default function Surveys() {
     if (!form.title.trim() || editQuestions.length === 0) return;
     setSaving(true);
     try {
-      const { data: survey, error } = await supabase.from('surveys').insert({
+      const { data: survey, error } = await apiClient.from('surveys').insert({
         title: form.title.trim(),
         description: form.description.trim(),
         activity_id: form.activity_id ? +form.activity_id : null,
@@ -70,7 +68,7 @@ export default function Surveys() {
         required: q.required,
         sort_order: i,
       }));
-      await supabase.from('survey_questions').insert(qs);
+      await apiClient.from('survey_questions').insert(qs);
 
       setSurveys(prev => [survey, ...prev]);
       setForm({ title: '', description: '', activity_id: '', allow_anonymous: false });
@@ -86,8 +84,8 @@ export default function Surveys() {
   async function openDetail(survey) {
     setSelectedSurvey(survey);
     const [{ data: qs }, { data: resps }] = await Promise.all([
-      supabase.from('survey_questions').select('*').eq('survey_id', survey.id).order('sort_order'),
-      supabase.from('survey_responses').select('*').eq('survey_id', survey.id).order('submitted_at', { ascending: false }),
+      apiClient.from('survey_questions').select('*').eq('survey_id', survey.id).order('sort_order'),
+      apiClient.from('survey_responses').select('*').eq('survey_id', survey.id).order('submitted_at', { ascending: false }),
     ]);
     setQuestions(qs || []);
     setResponses(resps || []);
@@ -96,7 +94,7 @@ export default function Surveys() {
 
   async function toggleStatus(survey) {
     const newStatus = survey.status === 'active' ? 'closed' : 'active';
-    const { data } = await supabase.from('surveys').update({ status: newStatus }).eq('id', survey.id).select().single();
+    const { data } = await apiClient.from('surveys').update({ status: newStatus }).eq('id', survey.id).select().single();
     if (data) {
       setSurveys(prev => prev.map(s => s.id === survey.id ? data : s));
       if (selectedSurvey?.id === survey.id) setSelectedSurvey(data);
@@ -105,7 +103,7 @@ export default function Surveys() {
   }
 
   async function deleteSurvey(id) {
-    await supabase.from('surveys').delete().eq('id', id);
+    await apiClient.from('surveys').delete().eq('id', id);
     setSurveys(prev => prev.filter(s => s.id !== id));
     if (selectedSurvey?.id === id) { setView('list'); setSelectedSurvey(null); }
     showToast('Survey deleted');

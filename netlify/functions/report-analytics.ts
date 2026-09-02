@@ -89,25 +89,6 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function addActivityFilters(
-  where: string[],
-  values: any[],
-  filters: ReportFilters,
-  activityAlias: string,
-  dateAlias: string,
-  dateColumn: string,
-) {
-  const add = (value: any) => {
-    values.push(value);
-    return `$${values.length}`;
-  };
-
-  if (filters.activityId) where.push(`${activityAlias}.id = ${add(filters.activityId)}::bigint`);
-  if (filters.activityType) where.push(`${activityAlias}.type = ${add(filters.activityType)}`);
-  if (filters.from) where.push(`${dateAlias}.${dateColumn} >= ${add(filters.from)}::date`);
-  if (filters.to) where.push(`${dateAlias}.${dateColumn} < (${add(filters.to)}::date + interval '1 day')`);
-}
-
 function addParticipantFilters(
   where: string[],
   values: any[],

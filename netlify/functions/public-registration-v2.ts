@@ -152,6 +152,8 @@ async function registrationCounts(db: ReturnType<typeof getPool>, activityId: nu
 
 export default async (request: Request, context: Context) => {
   if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (request.method === 'POST' && contentLength > 200_000) return json({ error: 'Request body is too large.' }, 413);
   const token = context.params.token;
   if (!token) return json({ error: 'Invalid registration link.' }, 400);
   const db = getPool();

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/api';
 import { useData } from '../contexts/DataContext';
-import { fmtDate } from '../lib/format';
 import { Plus, Link as LinkIcon, Eye, Trash2, Copy } from 'lucide-react';
 
 const QUESTION_TYPES = [
@@ -54,7 +53,7 @@ export default function Assessments() {
     if (!form.title.trim() || editQuestions.length === 0) return;
     setSaving(true);
     try {
-      const { data: assess, error } = await supabase.from('assessments').insert({
+      const { data: assess, error } = await apiClient.from('assessments').insert({
         title: form.title.trim(),
         description: form.description.trim(),
         activity_id: form.activity_id ? +form.activity_id : null,
@@ -74,7 +73,7 @@ export default function Assessments() {
         points: q.points,
         sort_order: i,
       }));
-      await supabase.from('assessment_questions').insert(qs);
+      await apiClient.from('assessment_questions').insert(qs);
 
       setAssessments(prev => [assess, ...prev]);
       setForm({ title: '', description: '', activity_id: '', assessment_type: 'standalone', passing_score: 70, time_limit_minutes: '' });
@@ -90,8 +89,8 @@ export default function Assessments() {
   async function openDetail(assess) {
     setSelectedAssessment(assess);
     const [{ data: qs }, { data: subs }] = await Promise.all([
-      supabase.from('assessment_questions').select('*').eq('assessment_id', assess.id).order('sort_order'),
-      supabase.from('assessment_submissions').select('*').eq('assessment_id', assess.id).order('submitted_at', { ascending: false }),
+      apiClient.from('assessment_questions').select('*').eq('assessment_id', assess.id).order('sort_order'),
+      apiClient.from('assessment_submissions').select('*').eq('assessment_id', assess.id).order('submitted_at', { ascending: false }),
     ]);
     setQuestions(qs || []);
     setSubmissions(subs || []);
@@ -100,7 +99,7 @@ export default function Assessments() {
 
   async function toggleStatus(assess) {
     const newStatus = assess.status === 'active' ? 'closed' : 'active';
-    const { data } = await supabase.from('assessments').update({ status: newStatus }).eq('id', assess.id).select().single();
+    const { data } = await apiClient.from('assessments').update({ status: newStatus }).eq('id', assess.id).select().single();
     if (data) {
       setAssessments(prev => prev.map(a => a.id === assess.id ? data : a));
       if (selectedAssessment?.id === assess.id) setSelectedAssessment(data);
@@ -109,7 +108,7 @@ export default function Assessments() {
   }
 
   async function deleteAssessment(id) {
-    await supabase.from('assessments').delete().eq('id', id);
+    await apiClient.from('assessments').delete().eq('id', id);
     setAssessments(prev => prev.filter(a => a.id !== id));
     if (selectedAssessment?.id === id) { setView('list'); setSelectedAssessment(null); }
     showToast('Assessment deleted');

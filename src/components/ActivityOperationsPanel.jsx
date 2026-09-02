@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, Clock3, Copy, Edit3, Link2, Plus, Printer, QrCode as QrIcon, RotateCcw, Search, Settings2, UserCheck, WifiOff, X } from 'lucide-react';
 import QrCode from './QrCode';
@@ -185,7 +185,7 @@ export default function ActivityOperationsPanel({ mode = 'all' }) {
   const queueKey = `lexams-checkin-queue:${id}`;
   const registrationLink = data ? `${window.location.origin}/register/${data.activity.reg_token}` : '';
 
-  async function refresh(silent = false) {
+  const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const next = await api(id);
@@ -194,9 +194,9 @@ export default function ActivityOperationsPanel({ mode = 'all' }) {
       setError('');
     } catch (e) { setError(e.message); }
     finally { if (!silent) setLoading(false); }
-  }
+  }, [id]);
 
-  useEffect(() => { refresh(); }, [id]);
+  useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     try { setQueue(JSON.parse(localStorage.getItem(queueKey) || '[]')); } catch { setQueue([]); }
   }, [queueKey]);

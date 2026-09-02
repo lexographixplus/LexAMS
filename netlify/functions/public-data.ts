@@ -1,6 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { getPool } from './_shared/db';
 import { isPreviewDeployment, previewReadOnlyResponse } from './_shared/preview';
+import { consumePublicRateLimit } from './_shared/rate-limit';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
@@ -8,6 +9,23 @@ function json(data: unknown, status = 200) {
 
 function filtersMap(filters: any[] = []) {
   return Object.fromEntries(filters.filter(f => f?.operator === 'eq').map(f => [String(f.column), f.value]));
+}
+
+function normalizeAnswers(value: unknown) {
+  if (value == null) value = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { answers: null, error: 'Answers must be an object.' };
+  const entries = Object.entries(value);
+  if (entries.length > 200) return { answers: null, error: 'Too many answers.' };
+  const answers: Record<string, unknown> = {};
+  for (const [rawKey, rawValue] of entries) {
+    const key = rawKey.trim().slice(0, 120);
+    if (!key) continue;
+    if (Array.isArray(rawValue)) answers[key] = rawValue.slice(0, 25).map(item => String(item ?? '').slice(0, 500));
+    else if (typeof rawValue === 'number' || typeof rawValue === 'boolean') answers[key] = rawValue;
+    else answers[key] = String(rawValue ?? '').slice(0, 4000);
+  }
+  if (JSON.stringify(answers).length > 100_000) return { answers: null, error: 'Answers are too large.' };
+  return { answers, error: null };
 }
 
 const ACTIVITY_PUBLIC = 'id,title,type,status,venue,organizer,facilitator,start_date,end_date,sessions,reg_open,description';
@@ -77,8 +95,17 @@ async function validateParticipant(db: ReturnType<typeof getPool>, participantId
 export default async (request: Request) => {
   if (request.method === 'POST' && isPreviewDeployment(request)) return previewReadOnlyResponse();
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > 200_000) return json({ error: 'Request body is too large.' }, 413);
   const body = await request.json().catch(() => null) as any;
   if (!body?.table || !body?.operation) return json({ error: 'Invalid request' }, 400);
+
+  const throttle = await consumePublicRateLimit(request, {
+    scope: `public-data-${String(body.scopeToken || 'unscoped')}`,
+    limit: 20,
+    windowSeconds: 60,
+  });
+  if (!throttle.allowed) return json({ error: 'Too many public requests. Please try again shortly.' }, 429);
 
   const table = String(body.table);
   const operation = String(body.operation);
@@ -120,7 +147,7 @@ export default async (request: Request) => {
         const result = await db.query(
           `insert into participants (organization_id,name,email,phone,org,category)
            values ($1,$2,$3,$4,$5,$6) returning ${PARTICIPANT_PUBLIC}`,
-          [scope.organizationId, String(p.name).trim(), email, p.phone || '', p.org || '', p.category || 'Community member']
+          [scope.organizationId, String(p.name).trim().slice(0, 180), email.slice(0, 254), String(p.phone || '').trim().slice(0, 80), String(p.org || '').trim().slice(0, 180), String(p.category || 'Community member').trim().slice(0, 80)]
         );
         return json({ data: result.rows[0], scopeToken: body.scopeToken });
       }
@@ -204,7 +231,7 @@ export default async (request: Request) => {
           `insert into attendance (organization_id,activity_id,participant_id,session_label,status)
            values ($1,$2,$3,$4,'present')
            on conflict (activity_id,participant_id,session_label) do nothing returning ${ATTENDANCE_PUBLIC}`,
-          [scope.organizationId, scope.activity.id, p.participant_id, p.session_label || 'Day 1']
+          [scope.organizationId, scope.activity.id, p.participant_id, String(p.session_label || 'Day 1').trim().slice(0, 160)]
         );
         return json({ data: result.rows[0] || null, scopeToken: body.scopeToken });
       }
@@ -228,11 +255,13 @@ export default async (request: Request) => {
         if (!scope.survey.allow_anonymous && !String(p.respondent_email || '').trim()) {
           return json({ error: 'Email is required for this survey' }, 400);
         }
+        const parsedAnswers = normalizeAnswers(p.answers);
+        if (parsedAnswers.error) return json({ error: parsedAnswers.error }, 400);
         if (!(await validateParticipant(db, p.participant_id, scope.organizationId))) return json({ error: 'Participant not found' }, 404);
         const result = await db.query(
           `insert into survey_responses (survey_id,participant_id,respondent_name,respondent_email,answers)
-           values ($1,$2,$3,$4,$5) returning id,survey_id,participant_id,submitted_at`,
-          [scope.survey.id, p.participant_id || null, p.respondent_name || '', p.respondent_email || '', p.answers || {}]
+           values ($1,$2,$3,$4,$5::jsonb) returning id,survey_id,participant_id,submitted_at`,
+          [scope.survey.id, p.participant_id || null, String(p.respondent_name || '').trim().slice(0, 180), String(p.respondent_email || '').trim().toLowerCase().slice(0, 254), JSON.stringify(parsedAnswers.answers)]
         );
         return json({ data: result.rows[0], scopeToken: body.scopeToken });
       }
@@ -259,26 +288,31 @@ export default async (request: Request) => {
           'select id, question_type, correct_answer, points from assessment_questions where assessment_id = $1',
           [scope.assessment.id]
         );
-        const answers = p.answers && typeof p.answers === 'object' ? p.answers : {};
+        const parsedAnswers = normalizeAnswers(p.answers);
+        if (parsedAnswers.error) return json({ error: parsedAnswers.error }, 400);
+        const answers = parsedAnswers.answers as Record<string, unknown>;
         let score = 0;
         let totalPoints = 0;
         for (const q of questionResult.rows) {
           if (q.question_type !== 'multiple_choice' && q.question_type !== 'true_false') continue;
-          const points = Number(q.points || 0);
+          const points = Math.max(0, Number(q.points || 0));
           totalPoints += points;
           const answer = answers[q.id] ?? answers[String(q.id)];
           if (q.correct_answer != null && String(answer ?? '').trim() === String(q.correct_answer).trim()) score += points;
         }
         const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 10000) / 100 : 0;
-        const passingScore = Number(scope.assessment.passing_score ?? 70);
+        const configuredPassingScore = Number(scope.assessment.passing_score);
+        const passingScore = Number.isFinite(configuredPassingScore)
+          ? Math.min(100, Math.max(0, configuredPassingScore))
+          : 70;
         const passed = totalPoints > 0 && percentage >= passingScore;
 
         const result = await db.query(
           `insert into assessment_submissions
            (assessment_id,participant_id,respondent_name,respondent_email,answers,score,total_points,percentage,passed,started_at,submitted_at)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,coalesce($10,now()),now())
+           values ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,coalesce($10,now()),now())
            returning id,assessment_id,score,total_points,percentage,passed,submitted_at`,
-          [scope.assessment.id, p.participant_id || null, p.respondent_name || '', p.respondent_email || '', answers, score, totalPoints, percentage, passed, p.started_at || null]
+          [scope.assessment.id, p.participant_id || null, String(p.respondent_name || '').trim().slice(0, 180), String(p.respondent_email || '').trim().toLowerCase().slice(0, 254), JSON.stringify(answers), score, totalPoints, percentage, passed, p.started_at || null]
         );
         return json({ data: result.rows[0], scopeToken: body.scopeToken });
       }

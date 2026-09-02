@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/api';
 import { Upload, X } from 'lucide-react';
 import CertificateSignatoriesSettings from '../components/CertificateSignatoriesSettings';
 
@@ -32,21 +32,15 @@ export default function Settings() {
 
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${profile.id}/logo.${ext}`;
+      const { data: uploadData, error: uploadErr } = await apiClient.storage.upload(file);
 
-      const { error: uploadErr } = await supabase.storage
-        .from('logos')
-        .upload(path, file, { upsert: true });
-
-      if (uploadErr) {
-        showToast('Upload failed: ' + uploadErr.message);
+      if (uploadErr || !uploadData?.publicUrl) {
+        showToast('Upload failed: ' + (uploadErr?.message || 'No public logo URL was returned.'));
         return;
       }
 
-      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
-      const url = urlData.publicUrl + '?t=' + Date.now();
-      const { error: profileError } = await supabase.from('profiles').update({ logo_url: url }).eq('id', profile.id);
+      const url = `${uploadData.publicUrl}?t=${Date.now()}`;
+      const { error: profileError } = await apiClient.from('profiles').update({ logo_url: url }).eq('id', profile.id);
       if (profileError) {
         showToast('Could not save logo: ' + profileError.message);
         return;
@@ -63,7 +57,7 @@ export default function Settings() {
 
   async function removeLogo() {
     if (!isPro) return;
-    const { error } = await supabase.from('profiles').update({ logo_url: null }).eq('id', profile.id);
+    const { error } = await apiClient.from('profiles').update({ logo_url: null }).eq('id', profile.id);
     if (error) {
       showToast('Could not remove logo: ' + error.message);
       return;
@@ -77,7 +71,7 @@ export default function Settings() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase.from('profiles').update({
+      const { error } = await apiClient.from('profiles').update({
         org_name: orgName.trim(),
       }).eq('id', profile.id);
       if (error) {

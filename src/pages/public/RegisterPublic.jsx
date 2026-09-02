@@ -80,7 +80,7 @@ export default function RegisterPublic() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const counts = activity?.registration_counts || {};
+  const counts = useMemo(() => activity?.registration_counts || {}, [activity]);
   const capacityText = useMemo(() => {
     const capacity = Number(activity?.registration_capacity || 0);
     if (!capacity) return null;

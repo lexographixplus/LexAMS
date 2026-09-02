@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Clock3, Copy, Edit3, Printer, QrCode as QrIcon, X } from 'lucide-react';
 import QrCode from './QrCode';
@@ -98,7 +98,7 @@ export default function ActivityWideCheckinPanel() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const result = await api(id);
@@ -106,9 +106,9 @@ export default function ActivityWideCheckinPanel() {
       setError('');
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-  }
+  }, [id]);
 
-  useEffect(() => { refresh(); }, [id]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   function notify(message) {
     setToast(message);
