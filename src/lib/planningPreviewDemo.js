@@ -7,6 +7,12 @@ const members = [
   { id: 'preview-me', name: 'Mariama Sanyang', email: 'mariama@example.invalid', role: 'me_officer' },
 ];
 
+const facilitatorDirectory = [
+  { id: 9001, name: 'Ebrima Njie', role: 'Lead facilitator', email: 'ebrima@example.invalid' },
+  { id: 9002, name: 'Awa Ceesay', role: 'Facilitator', email: 'awa@example.invalid' },
+  { id: 9003, name: 'Mariama Sanyang', role: 'M&E facilitator', email: 'mariama@example.invalid' },
+];
+
 const tasks = [
   { id: -9201, title: 'Confirm venue and accessibility', description: 'Complete the venue checklist and confirm room layout.', stage: 'pre', assignee_user_id: 'preview-manager', assignee_name: 'Neneh Sowe', due_date: '2026-08-01', priority: 'high', status: 'done', sort_order: 0 },
   { id: -9202, title: 'Prepare participant workbooks', description: 'Print and pack one workbook for every confirmed participant.', stage: 'pre', assignee_user_id: 'preview-facilitator-1', assignee_name: 'Ebrima Njie', due_date: '2026-08-02', priority: 'medium', status: 'done', sort_order: 1 },
@@ -40,6 +46,18 @@ const journalEntries = [
 
 export function getPlanningPreview(activity = {}) {
   const commercialPlan = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === 'free' ? 'free' : 'pro';
+  const previewSessions = sessions.map(session => {
+    const legacy = session.facilitators.find(person => person.is_lead) || session.facilitators[0];
+    const facilitator = legacy ? facilitatorDirectory.find(item => item.email === legacy.email) : null;
+    return {
+      ...session,
+      facilitator_id: facilitator?.id || null,
+      facilitator_name: facilitator?.name || null,
+      facilitator_role: facilitator?.role || null,
+      facilitator_email: facilitator?.email || null,
+      facilitators: facilitator ? [{ ...facilitator, user_id: legacy.user_id, is_lead: true, role_label: facilitator.role }] : [],
+    };
+  });
   return {
     activity: {
       id: activity.id,
@@ -52,8 +70,9 @@ export function getPlanningPreview(activity = {}) {
       budget_currency: activity.budget_currency || 'GMD',
     },
     tasks: tasks.map(task => ({ ...task })),
-    sessions: sessions.map(session => ({ ...session, facilitators: session.facilitators.map(person => ({ ...person })) })),
+    sessions: previewSessions,
     members: members.map(member => ({ ...member })),
+    facilitators: facilitatorDirectory.map(facilitator => ({ ...facilitator })),
     budgetItems: budgetItems.map(item => ({ ...item })),
     journalEntries: journalEntries.map(entry => ({ ...entry, linked_sessions: entry.linked_sessions.map(session => ({ ...session })), linked_tasks: entry.linked_tasks.map(task => ({ ...task })) })),
     permissions: {

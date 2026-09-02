@@ -171,11 +171,7 @@ export function normalizeSessionPlan(input = {}) {
   const planningStatus = SESSION_PLANNING_STATUSES.includes(String(input.planning_status))
     ? String(input.planning_status)
     : 'draft';
-  const facilitatorIds = [...new Set((Array.isArray(input.facilitator_ids) ? input.facilitator_ids : [])
-    .map(value => String(value || '').trim()).filter(Boolean))].slice(0, 30);
-  const leadFacilitatorId = input.lead_facilitator_id && facilitatorIds.includes(String(input.lead_facilitator_id))
-    ? String(input.lead_facilitator_id)
-    : facilitatorIds[0] || null;
+  const facilitatorId = Number(input.facilitator_id);
   return {
     title,
     session_date: sessionDate,
@@ -185,8 +181,7 @@ export function normalizeSessionPlan(input = {}) {
     description: cleanText(input.description, 3000),
     learning_objectives: cleanText(input.learning_objectives, 3000),
     planning_status: planningStatus,
-    facilitator_ids: facilitatorIds,
-    lead_facilitator_id: leadFacilitatorId,
+    facilitator_id: Number.isSafeInteger(facilitatorId) && facilitatorId > 0 ? facilitatorId : null,
   };
 }
 
@@ -244,6 +239,15 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
+export function normalizeFacilitator(input = {}) {
+  const name = cleanText(input.name, 180);
+  const role = cleanText(input.role, 120) || 'Facilitator';
+  const email = cleanText(input.email, 320).toLowerCase();
+  if (!name) throw new Error('Facilitator name is required.');
+  if (!email || !validEmail(email)) throw new Error('Facilitator email must be valid.');
+  return { name, role, email };
+}
+
 export function normalizeEmailList(value) {
   const source = Array.isArray(value) ? value : String(value || '').split(/[;,|]/);
   const emails = [...new Set(source.map(item => String(item || '').trim().toLowerCase()).filter(Boolean))].slice(0, 30);
@@ -253,17 +257,20 @@ export function normalizeEmailList(value) {
 }
 
 export function normalizeSessionImportRow(input = {}, dateRange = {}) {
-  const facilitatorEmails = normalizeEmailList(input.facilitator_emails)
+  const legacyEmails = normalizeEmailList(input.facilitator_emails)
     .filter(email => !LEGACY_SESSION_TEMPLATE_EMAILS.has(email));
-  const requestedLeadEmail = cleanText(input.lead_facilitator_email, 320).toLowerCase();
-  const leadEmail = LEGACY_SESSION_TEMPLATE_EMAILS.has(requestedLeadEmail) ? '' : requestedLeadEmail;
-  if (leadEmail && !validEmail(leadEmail)) throw new Error(`Invalid lead facilitator email: ${leadEmail}.`);
-  const emails = leadEmail && !facilitatorEmails.includes(leadEmail) ? [leadEmail, ...facilitatorEmails] : facilitatorEmails;
+  const requestedEmail = cleanText(
+    input.facilitator_email || input.lead_facilitator_email || legacyEmails[0],
+    320,
+  ).toLowerCase();
+  const facilitatorEmail = LEGACY_SESSION_TEMPLATE_EMAILS.has(requestedEmail) ? '' : requestedEmail;
+  if (facilitatorEmail && !validEmail(facilitatorEmail)) throw new Error(`Invalid facilitator email: ${facilitatorEmail}.`);
+  const facilitatorName = cleanText(input.facilitator_name || input.facilitator, 180);
   const sessionDate = normalizeSpreadsheetDate(input.session_date, 'Session date', dateRange);
   return {
-    ...normalizeSessionPlan({ ...input, session_date: sessionDate, facilitator_ids: [] }),
-    facilitator_emails: emails,
-    lead_facilitator_email: leadEmail || emails[0] || null,
+    ...normalizeSessionPlan({ ...input, session_date: sessionDate, facilitator_id: null }),
+    facilitator_name: facilitatorName,
+    facilitator_email: facilitatorEmail || null,
   };
 }
 
@@ -273,23 +280,6 @@ export function sessionImportIdentity(input = {}) {
     String(input.session_date || '').slice(0, 10),
     String(input.starts_at || '').slice(0, 5),
   ].join('|');
-}
-
-export function filterSessionFacilitatorsToTeam(input = {}, allowedEmails = []) {
-  const allowed = new Set(Array.from(allowedEmails, email => String(email || '').trim().toLowerCase()).filter(Boolean));
-  const requestedEmails = (Array.isArray(input.facilitator_emails) ? input.facilitator_emails : [])
-    .map(email => String(email || '').trim().toLowerCase()).filter(Boolean);
-  const facilitatorEmails = requestedEmails.filter(email => allowed.has(email));
-  const skippedFacilitatorEmails = requestedEmails.filter(email => !allowed.has(email));
-  const requestedLeadEmail = String(input.lead_facilitator_email || '').trim().toLowerCase();
-  const leadFacilitatorEmail = requestedLeadEmail && facilitatorEmails.includes(requestedLeadEmail)
-    ? requestedLeadEmail
-    : facilitatorEmails[0] || null;
-  return {
-    facilitator_emails: facilitatorEmails,
-    lead_facilitator_email: leadFacilitatorEmail,
-    skipped_facilitator_emails: skippedFacilitatorEmails,
-  };
 }
 
 function percent(value, total) {

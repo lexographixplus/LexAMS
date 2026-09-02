@@ -5,7 +5,6 @@ import {
   calculateBudgetSummary,
   calculateJournalSummary,
   canEditJournalEntry,
-  filterSessionFacilitatorsToTeam,
   inferSpreadsheetDateOrder,
   normalizeBudgetItem,
   normalizeJournalEntry,
@@ -75,19 +74,19 @@ test('multi-week activities are split into seven-day planning windows', () => {
   ]);
 });
 
-test('session CSV supports quoted cells, automatic mapping and facilitator lists', () => {
-  const rows = parseCsv('session_title,date,lead_facilitator_email,facilitator_emails\r\n"Data, tools",2026-08-12,LEAD@workspace.org,"one@example.org; two@example.org"\r\n');
+test('session CSV supports quoted cells, automatic mapping and facilitator details', () => {
+  const rows = parseCsv('session_name,date,facilitator,facilitator_email\r\n"Data, tools",2026-08-12,"Awa Ceesay",AWA@workspace.org\r\n');
   assert.equal(rows[1][0], 'Data, tools');
   const fields = [
-    { key: 'title', aliases: ['sessiontitle'] },
+    { key: 'title', aliases: ['sessionname'] },
     { key: 'session_date', aliases: ['date'] },
   ];
   assert.deepEqual(autoMapCsvHeaders(rows[0], fields), { title: '0', session_date: '1' });
   const normalized = normalizeSessionImportRow({
-    title: rows[1][0], session_date: rows[1][1], lead_facilitator_email: rows[1][2], facilitator_emails: rows[1][3],
+    title: rows[1][0], session_date: rows[1][1], facilitator_name: rows[1][2], facilitator_email: rows[1][3],
   });
-  assert.deepEqual(normalized.facilitator_emails, ['lead@workspace.org', 'one@example.org', 'two@example.org']);
-  assert.equal(normalized.lead_facilitator_email, 'lead@workspace.org');
+  assert.equal(normalized.facilitator_name, 'Awa Ceesay');
+  assert.equal(normalized.facilitator_email, 'awa@workspace.org');
 });
 
 test('session CSV accepts spreadsheet date formats and resolves them against the activity period', () => {
@@ -137,8 +136,8 @@ test('legacy downloaded session templates do not block imports with placeholder 
     lead_facilitator_email: 'lead@example.org',
     facilitator_emails: 'cofacilitator@example.org',
   }, { minDate: '2026-08-31', maxDate: '2026-10-09' });
-  assert.deepEqual(normalized.facilitator_emails, []);
-  assert.equal(normalized.lead_facilitator_email, null);
+  assert.equal(normalized.facilitator_name, '');
+  assert.equal(normalized.facilitator_email, null);
 });
 
 test('session CSV accepts title and date while leaving every optional field blank', () => {
@@ -155,21 +154,16 @@ test('session CSV accepts title and date while leaving every optional field blan
     description: '',
     learning_objectives: '',
     planning_status: 'draft',
-    facilitator_ids: [],
-    lead_facilitator_id: null,
-    facilitator_emails: [],
-    lead_facilitator_email: null,
+    facilitator_id: null,
+    facilitator_name: '',
+    facilitator_email: null,
   });
 });
 
-test('unavailable facilitator emails are skipped without rejecting the session', () => {
-  const filtered = filterSessionFacilitatorsToTeam({
-    facilitator_emails: ['lead@workspace.org', 'later@example.org', 'second@workspace.org'],
-    lead_facilitator_email: 'later@example.org',
-  }, ['lead@workspace.org', 'second@workspace.org']);
-  assert.deepEqual(filtered, {
-    facilitator_emails: ['lead@workspace.org', 'second@workspace.org'],
-    lead_facilitator_email: 'lead@workspace.org',
-    skipped_facilitator_emails: ['later@example.org'],
+test('new facilitator details remain attached to imported sessions', () => {
+  const normalized = normalizeSessionImportRow({
+    title: 'Applied lab', session_date: '2026-09-03', facilitator_name: 'Ebrima Njie', facilitator_email: 'EBRIMA@example.org',
   });
+  assert.equal(normalized.facilitator_name, 'Ebrima Njie');
+  assert.equal(normalized.facilitator_email, 'ebrima@example.org');
 });

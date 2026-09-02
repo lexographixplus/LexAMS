@@ -2,23 +2,20 @@ import { useMemo, useRef, useState } from 'react';
 import { Download, FileSpreadsheet, Upload, X } from 'lucide-react';
 import { autoMapCsvHeaders, parseCsv } from '../../../shared/csv.js';
 import {
-  filterSessionFacilitatorsToTeam,
   inferSpreadsheetDateOrder,
   normalizeSessionImportRow,
   sessionImportIdentity,
 } from '../../../shared/planning.js';
 
 const FIELDS = [
-  { key: 'title', label: 'Session title', required: true, aliases: ['title', 'sessiontitle', 'session', 'topic'] },
+  { key: 'title', label: 'Session name', required: true, aliases: ['title', 'sessiontitle', 'sessionname', 'session', 'topic'] },
   { key: 'session_date', label: 'Date', required: true, aliases: ['date', 'sessiondate', 'deliverydate'] },
-  { key: 'starts_at', label: 'Start time', aliases: ['start', 'starttime', 'starts', 'startsat'] },
+  { key: 'starts_at', label: 'Start time', aliases: ['time', 'start', 'starttime', 'starts', 'startsat'] },
   { key: 'ends_at', label: 'End time', aliases: ['end', 'endtime', 'ends', 'endsat'] },
   { key: 'venue', label: 'Venue', aliases: ['venue', 'room', 'location'] },
-  { key: 'description', label: 'Outline', aliases: ['description', 'outline', 'sessionoutline'] },
-  { key: 'learning_objectives', label: 'Objectives', aliases: ['objectives', 'learningobjectives', 'outcomes'] },
+  { key: 'facilitator_name', label: 'Facilitator', aliases: ['facilitator', 'facilitatorname', 'trainer', 'trainername'] },
+  { key: 'facilitator_email', label: 'Facilitator email', aliases: ['facilitatoremail', 'email', 'traineremail', 'leademail', 'leadfacilitatoremail'] },
   { key: 'planning_status', label: 'Planning status', aliases: ['status', 'planningstatus', 'preparationstatus'] },
-  { key: 'lead_facilitator_email', label: 'Lead email', aliases: ['leademail', 'leadfacilitatoremail', 'leadfacilitator'] },
-  { key: 'facilitator_emails', label: 'Other facilitator emails', aliases: ['facilitatoremails', 'facilitators', 'cofacilitators'] },
 ];
 
 function mappedValue(cells, mapping, key) {
@@ -26,7 +23,12 @@ function mappedValue(cells, mapping, key) {
   return column === '' || column === undefined ? '' : String(cells[Number(column)] || '').trim();
 }
 
-export default function PlanningSessionCsvImport({ activity, members, saving, onMutate, preview = false }) {
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+export default function PlanningSessionCsvImport({ activity, facilitators, saving, onMutate, preview = false }) {
   const inputRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -39,7 +41,7 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
   const activityStart = String(activity.start_date || '').slice(0, 10);
   const activityEnd = String(activity.end_date || activityStart).slice(0, 10);
 
-  const teamEmails = useMemo(() => new Set(members.map(member => String(member.email || '').toLowerCase())), [members]);
+  const facilitatorByEmail = useMemo(() => new Map(facilitators.map(facilitator => [String(facilitator.email || '').toLowerCase(), facilitator])), [facilitators]);
   const dateOrder = useMemo(() => inferSpreadsheetDateOrder(
     rows.map(cells => mappedValue(cells, mapping, 'session_date')),
   ), [mapping, rows]);
@@ -49,21 +51,24 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
       const problems = [];
       const warnings = [];
       let data = raw;
-      let displayFacilitatorEmails = [];
+      let displayFacilitator = '';
       try {
         data = normalizeSessionImportRow(raw, { minDate: activityStart, maxDate: activityEnd, dateOrder });
         if (data.session_date < activityStart || data.session_date > activityEnd) {
           problems.push(`Date ${data.session_date} is outside the activity period (${activityStart} to ${activityEnd})`);
         }
-        const facilitatorMatch = filterSessionFacilitatorsToTeam(data, teamEmails);
-        displayFacilitatorEmails = facilitatorMatch.facilitator_emails;
-        if (facilitatorMatch.skipped_facilitator_emails.length) {
-          warnings.push(`${facilitatorMatch.skipped_facilitator_emails.join(', ')} not on the team and will be skipped; session will still import`);
+        if (data.facilitator_name && !data.facilitator_email) {
+          problems.push('Facilitator email is required when a facilitator name is provided');
+        } else if (data.facilitator_email) {
+          const existing = facilitatorByEmail.get(data.facilitator_email);
+          if (!existing && !data.facilitator_name) problems.push('Facilitator name is required for a new facilitator email');
+          if (!existing && data.facilitator_name) warnings.push('New facilitator will be added to the facilitator directory');
+          displayFacilitator = `${existing?.name || data.facilitator_name || 'Facilitator'} · ${data.facilitator_email}`;
         }
       } catch (rowError) {
         problems.push(rowError.message);
       }
-      return { rowNumber: index + 2, data, displayFacilitatorEmails, problems, warnings, duplicate: false };
+      return { rowNumber: index + 2, data, displayFacilitator, problems, warnings, duplicate: false };
     });
     const seenSessions = new Set();
     for (const row of prepared) {
@@ -77,15 +82,15 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
       }
     }
     return prepared;
-  }, [activityEnd, activityStart, dateOrder, mapping, rows, teamEmails]);
+  }, [activityEnd, activityStart, dateOrder, facilitatorByEmail, mapping, rows]);
 
   const validRows = preparedRows.filter(row => !row.problems.length);
   const invalidCount = preparedRows.length - validRows.length;
   const warningCount = preparedRows.filter(row => row.warnings.length).length;
   const duplicateCount = preparedRows.filter(row => row.duplicate).length;
-  const skippedFacilitatorCount = new Set(preparedRows.flatMap(row => Array.isArray(row.data.facilitator_emails)
-    ? row.data.facilitator_emails.filter(email => !teamEmails.has(email))
-    : [])).size;
+  const newFacilitatorCount = new Set(preparedRows
+    .filter(row => row.data.facilitator_email && !facilitatorByEmail.has(row.data.facilitator_email) && row.data.facilitator_name)
+    .map(row => row.data.facilitator_email)).size;
   const previewRows = [...preparedRows]
     .sort((first, second) => Number(Boolean(second.problems.length)) - Number(Boolean(first.problems.length))
       || Number(Boolean(second.warnings.length)) - Number(Boolean(first.warnings.length))
@@ -123,21 +128,18 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
     const secondDateValue = new Date(`${activityStart}T00:00:00Z`);
     secondDateValue.setUTCDate(secondDateValue.getUTCDate() + 7);
     const secondDate = secondDateValue.toISOString().slice(0, 10) > activityEnd ? activityEnd : secondDateValue.toISOString().slice(0, 10);
-    const facilitatorEmails = members.map(member => String(member.email || '').trim().toLowerCase()).filter(Boolean);
-    const leadEmail = facilitatorEmails[0] || '';
-    const coFacilitatorEmail = facilitatorEmails[1] || '';
-    const secondLeadEmail = coFacilitatorEmail || leadEmail;
-    const secondFacilitatorEmail = coFacilitatorEmail ? leadEmail : '';
+    const firstFacilitator = facilitators[0] || { name: '', email: '' };
+    const secondFacilitator = facilitators[1] || facilitators[0] || { name: '', email: '' };
     const csv = [
-      'session_title,date,start_time,end_time,venue,objectives,outline,planning_status,lead_facilitator_email,facilitator_emails',
-      `Opening and orientation,${activityStart},09:00,12:00,Training room A,Agree expectations and baseline skills,Welcome and practical orientation,ready,${leadEmail},${coFacilitatorEmail}`,
-      `Applied practice lab,${secondDate},09:00,15:00,Innovation lab,Apply the learning in a practical task,Facilitated group project,draft,${secondLeadEmail},${secondFacilitatorEmail}`,
-    ].join('\r\n');
+      ['session_name', 'date', 'start_time', 'end_time', 'venue', 'facilitator', 'facilitator_email'],
+      ['Opening and orientation', activityStart, '09:00', '12:00', 'Training room A', firstFacilitator.name, firstFacilitator.email],
+      ['Applied practice lab', secondDate, '09:00', '15:00', 'Innovation lab', secondFacilitator.name, secondFacilitator.email],
+    ].map(row => row.map(csvCell).join(',')).join('\r\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'lexams-session-facilitator-import-template.csv';
+    link.download = 'lexams-session-import-template.csv';
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -154,7 +156,7 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
     <button className="planning-secondary-button" onClick={() => { reset(); setOpen(true); }}><Upload size={15}/>Import CSV</button>
     {open && <div className="planning-modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !saving && setOpen(false)}>
       <section className="planning-modal planning-import-modal" role="dialog" aria-modal="true" aria-labelledby="planning-import-title">
-        <header><div><span className="planning-kicker">Bulk schedule setup</span><h4 id="planning-import-title">Import sessions & facilitators</h4><p>Map your spreadsheet, review every row, then add the schedule in one step.</p></div><button className="planning-icon-button" onClick={() => setOpen(false)} aria-label="Close"><X size={18}/></button></header>
+        <header><div><span className="planning-kicker">Bulk schedule setup</span><h4 id="planning-import-title">Import sessions</h4><p>Import session names, facilitators, venues and times. New facilitator records are created from complete name and email pairs.</p></div><button className="planning-icon-button" onClick={() => setOpen(false)} aria-label="Close"><X size={18}/></button></header>
         <div className="planning-import-body">
           {preview && <div className="planning-message neutral">The importer is available for review in this preview. Production imports require an authenticated planning manager.</div>}
           <div className="planning-import-actions">
@@ -162,20 +164,20 @@ export default function PlanningSessionCsvImport({ activity, members, saving, on
             <button className="planning-secondary-button" onClick={downloadTemplate}><Download size={15}/>Download template</button>
             <input ref={inputRef} hidden type="file" accept=".csv,text/csv" onChange={event => loadFile(event.target.files?.[0])}/>
           </div>
-          <p className="planning-import-help">Only <strong>Session title</strong> and <strong>Date</strong> are required. All other columns may be blank and completed later. Activity period: <strong>{activityStart} to {activityEnd}</strong>. Use YYYY-MM-DD where possible; dates saved by Excel in DD/MM/YYYY, MM/DD/YYYY, or serial form are also accepted. Use semicolons between multiple facilitator emails.</p>
+          <p className="planning-import-help">Only <strong>Session name</strong> and <strong>Date</strong> are required. To assign a facilitator, include both facilitator name and email. Activity period: <strong>{activityStart} to {activityEnd}</strong>. Use YYYY-MM-DD where possible; Excel dates in DD/MM/YYYY, MM/DD/YYYY, or serial form are also accepted.</p>
           {dateOrder && headers.length > 0 && <div className="planning-message neutral"><span><strong>{dateOrder === 'dmy' ? 'DD/MM/YYYY' : 'MM/DD/YYYY'} detected.</strong> Ambiguous dates in this file will follow that same date order.</span></div>}
           {error && <div className="planning-message error">{error}</div>}
           {headers.length > 0 && <>
             <section className="planning-import-section"><div className="planning-import-section-heading"><div><span className="planning-kicker">Step 1</span><h5>Map spreadsheet columns</h5></div><label><span>Existing schedule rows</span><select value={duplicateMode} onChange={event => setDuplicateMode(event.target.value)}><option value="skip">Skip existing</option><option value="update">Update existing</option></select></label></div>
               <div className="planning-import-map">{FIELDS.map(field => <label key={field.key}><span>{field.label}{field.required ? ' *' : ''}</span><select value={mapping[field.key] ?? ''} onChange={event => setMapping(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Not mapped</option>{headers.map((header, index) => <option key={`${header}-${index}`} value={String(index)}>{header || `Column ${index + 1}`}</option>)}</select></label>)}</div>
             </section>
-            <div className="planning-import-summary"><div><strong>{preparedRows.length}</strong><span>Rows</span></div><div><strong>{validRows.length}</strong><span>Ready</span></div><div><strong>{invalidCount}</strong><span>Needs fixing</span></div><div><strong>{new Set(validRows.flatMap(row => row.data.facilitator_emails)).size}</strong><span>Facilitators</span></div></div>
+            <div className="planning-import-summary"><div><strong>{preparedRows.length}</strong><span>Rows</span></div><div><strong>{validRows.length}</strong><span>Ready</span></div><div><strong>{invalidCount}</strong><span>Needs fixing</span></div><div><strong>{new Set(validRows.map(row => row.data.facilitator_email).filter(Boolean)).size}</strong><span>Facilitators</span></div></div>
             {invalidCount > 0 && <div id="planning-import-blocker" className="planning-message error"><span><strong>Import is paused.</strong> {invalidCount} row{invalidCount === 1 ? '' : 's'} need fixing. Check the Status column below for the exact date, mapping, or facilitator issue.</span></div>}
-            {warningCount > 0 && <div className="planning-message warning"><span><strong>{warningCount} row{warningCount === 1 ? '' : 's'} have non-blocking warnings.</strong>{duplicateCount ? ` ${duplicateCount} exact duplicate ${duplicateCount === 1 ? 'row will' : 'rows will'} be skipped.` : ''}{skippedFacilitatorCount ? ` ${skippedFacilitatorCount} unavailable facilitator ${skippedFacilitatorCount === 1 ? 'email will' : 'emails will'} be left unassigned.` : ''}</span></div>}
-            <section className="planning-import-preview"><div className="planning-import-row planning-import-row-head"><span>Row</span><span>Session</span><span>Date & time</span><span>Facilitators</span><span>Status</span></div>{previewRows.map(row => <div className="planning-import-row" key={row.rowNumber}><span>{row.rowNumber}</span><span><strong>{row.data.title || '—'}</strong><small>{row.data.venue || 'Venue not set'}</small></span><span>{row.data.session_date || '—'}<small>{row.data.starts_at || 'Time not set'}{row.data.ends_at ? `–${row.data.ends_at}` : ''}</small></span><span>{row.displayFacilitatorEmails.join(', ') || 'Unassigned'}</span><span className={row.problems.length ? 'planning-import-invalid' : row.warnings.length ? 'planning-import-warning' : 'planning-import-valid'}>{row.problems.length ? row.problems.join(' · ') : row.warnings.length ? row.warnings.join(' · ') : 'Ready'}</span></div>)}</section>
+            {warningCount > 0 && <div className="planning-message warning"><span><strong>{warningCount} row{warningCount === 1 ? '' : 's'} have non-blocking warnings.</strong>{duplicateCount ? ` ${duplicateCount} exact duplicate ${duplicateCount === 1 ? 'row will' : 'rows will'} be skipped.` : ''}{newFacilitatorCount ? ` ${newFacilitatorCount} new facilitator ${newFacilitatorCount === 1 ? 'record will' : 'records will'} be created.` : ''}</span></div>}
+            <section className="planning-import-preview"><div className="planning-import-row planning-import-row-head"><span>Row</span><span>Session</span><span>Date & time</span><span>Facilitator</span><span>Status</span></div>{previewRows.map(row => <div className="planning-import-row" key={row.rowNumber}><span>{row.rowNumber}</span><span><strong>{row.data.title || '—'}</strong><small>{row.data.venue || 'Venue not set'}</small></span><span>{row.data.session_date || '—'}<small>{row.data.starts_at || 'Time not set'}{row.data.ends_at ? `–${row.data.ends_at}` : ''}</small></span><span>{row.displayFacilitator || 'Unassigned'}</span><span className={row.problems.length ? 'planning-import-invalid' : row.warnings.length ? 'planning-import-warning' : 'planning-import-valid'}>{row.problems.length ? row.problems.join(' · ') : row.warnings.length ? row.warnings.join(' · ') : 'Ready'}</span></div>)}</section>
             {preparedRows.length > 10 && <p className="planning-import-help">Showing the 10 rows that need the most attention out of {preparedRows.length} total rows.</p>}
           </>}
-          {result && <div className="planning-message success"><span><strong>Import complete.</strong> {result.created || 0} created, {result.updated || 0} updated, {result.skipped || 0} skipped, {result.facilitatorsAssigned || 0} facilitator assignments{result.facilitatorsSkipped ? `, ${result.facilitatorsSkipped} unavailable facilitator ${result.facilitatorsSkipped === 1 ? 'email' : 'emails'} left unassigned` : ''}.</span></div>}
+          {result && <div className="planning-message success"><span><strong>Import complete.</strong> {result.created || 0} created, {result.updated || 0} updated, {result.skipped || 0} skipped, {result.facilitatorsAssigned || 0} facilitator assignments{result.facilitatorsCreated ? `, ${result.facilitatorsCreated} new facilitator ${result.facilitatorsCreated === 1 ? 'record' : 'records'}` : ''}.</span></div>}
         </div>
         <footer><button className="planning-secondary-button" onClick={() => setOpen(false)} disabled={saving}>Close</button><button className="planning-primary-button" onClick={runImport} disabled={saving || !validRows.length || Boolean(invalidCount) || preview} aria-describedby={invalidCount ? 'planning-import-blocker' : undefined}>{importButtonLabel}</button></footer>
       </section>

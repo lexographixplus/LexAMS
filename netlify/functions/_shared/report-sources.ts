@@ -47,18 +47,11 @@ export async function loadActivityReportSourceBundle(db: any, organizationId: st
     db.query(
       `select s.id,s.title,s.session_date,s.starts_at,s.ends_at,s.venue,s.description,
               s.learning_objectives,s.planning_status,
-              coalesce(f.facilitators,'[]'::jsonb) as facilitators
+              case when f.id is null then '[]'::jsonb else jsonb_build_array(jsonb_build_object(
+                'id',f.id,'name',f.name,'email',f.email,'role',f.role,'is_lead',true
+              )) end as facilitators
        from activity_sessions s
-       left join lateral (
-         select jsonb_agg(jsonb_build_object(
-           'user_id',sf.user_id,'name',coalesce(nullif(p.full_name,''),nullif(u.name,''),u.email),
-           'is_lead',sf.is_lead
-         ) order by sf.is_lead desc,coalesce(p.full_name,u.name,u.email)) as facilitators
-         from session_facilitators sf
-         join users u on u.id=sf.user_id
-         left join profiles p on p.user_id=sf.user_id
-         where sf.organization_id=s.organization_id and sf.activity_id=s.activity_id and sf.session_id=s.id
-       ) f on true
+       left join facilitators f on f.id=s.facilitator_id and f.organization_id=s.organization_id
        where s.organization_id=$1 and s.activity_id=$2
        order by s.session_date,s.sort_order,s.id`,
       [organizationId, activityId],
@@ -144,10 +137,10 @@ export async function loadActivityReportSourceBundle(db: any, organizationId: st
   const late = attendance.filter((row: any) => row.status === 'late').reduce((sum: number, row: any) => sum + row.count, 0);
   const absent = attendance.filter((row: any) => row.status === 'absent').reduce((sum: number, row: any) => sum + row.count, 0);
   const attendanceRate = attendanceTotal ? Math.round(((present + late) / attendanceTotal) * 100) : null;
-  const facilitatorMap = new Map<string, { user_id: string; name: string; sessions: number }>();
+  const facilitatorMap = new Map<string, { id: string; name: string; email: string; role: string; sessions: number }>();
   sessions.forEach((session: any) => (session.facilitators || []).forEach((person: any) => {
-    const key = String(person.user_id);
-    const current = facilitatorMap.get(key) || { user_id: key, name: person.name, sessions: 0 };
+    const key = String(person.id);
+    const current = facilitatorMap.get(key) || { id: key, name: person.name, email: person.email, role: person.role, sessions: 0 };
     current.sessions += 1;
     facilitatorMap.set(key, current);
   }));

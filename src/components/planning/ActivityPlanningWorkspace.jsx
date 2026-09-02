@@ -6,6 +6,7 @@ import { isReportingPreviewDemo } from '../../lib/reportPreviewDemo';
 import { getPlanningPreview } from '../../lib/planningPreviewDemo';
 import PlanningTasks from './PlanningTasks';
 import PlanningSessions from './PlanningSessions';
+import PlanningFacilitators from './PlanningFacilitators';
 import PlanningBudget from './PlanningBudget';
 import PlanningJournal from './PlanningJournal';
 import './activity-planning.css';
@@ -80,22 +81,6 @@ function PlanSummary({ data, summary, budgetSummary, journalSummary, onOpen }) {
   </div>;
 }
 
-function FacilitatorOverview({ sessions, members, onOpen }) {
-  const rows = members.map(member => ({
-    ...member,
-    sessions: sessions.filter(session => session.facilitators?.some(person => String(person.user_id) === String(member.id))),
-  })).filter(member => member.sessions.length || member.role === 'facilitator');
-  return <section className="planning-card planning-facilitator-overview">
-    <div className="planning-card-heading"><div><span className="planning-kicker">Delivery team</span><h4>Facilitator workload</h4></div><button className="planning-secondary-button" onClick={() => onOpen('sessions')}>Manage assignments</button></div>
-    {rows.length ? <div className="planning-facilitator-list">{rows.map(member => <article key={member.id}>
-      <div className="planning-avatar">{member.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
-      <div><strong>{member.name}</strong><small>{member.role.replaceAll('_', ' ')}</small></div>
-      <span>{member.sessions.length} session{member.sessions.length === 1 ? '' : 's'}</span>
-      <div className="planning-facilitator-sessions">{member.sessions.map(session => <small key={session.id}>{session.title}</small>)}</div>
-    </article>)}</div> : <div className="planning-empty"><Users size={24}/><strong>No facilitator assignments yet</strong><p>Invite facilitators to the team, then assign them from a session plan.</p></div>}
-  </section>;
-}
-
 export default function ActivityPlanningWorkspace({ activity }) {
   const preview = isReportingPreviewDemo();
   const navigate = useNavigate();
@@ -164,7 +149,7 @@ export default function ActivityPlanningWorkspace({ activity }) {
     {view === 'summary' && <PlanSummary data={data} summary={summary} budgetSummary={budgetSummary} journalSummary={journalSummary} onOpen={setView}/>}
     {view === 'tasks' && <PlanningTasks data={data} saving={saving} onMutate={mutate}/>}
     {view === 'sessions' && <PlanningSessions data={data} saving={saving} onMutate={mutate} onUpgrade={() => navigate('/app/checkout?feature=session-import')}/>}
-    {view === 'facilitators' && <FacilitatorOverview sessions={data.sessions} members={data.members} onOpen={setView}/>}
+    {view === 'facilitators' && <PlanningFacilitators data={data} saving={saving} onMutate={mutate} onOpenSessions={() => setView('sessions')}/>}
     {view === 'budget' && <PlanningBudget data={data} saving={saving} onMutate={mutate}/>}
     {view === 'journal' && <PlanningJournal data={data} saving={saving} onMutate={mutate}/>}
   </section>;

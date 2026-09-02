@@ -292,6 +292,13 @@
 .planning-facilitator-list article > span { color: var(--planning-blue); font-size: 12px; font-weight: 800; }
 .planning-facilitator-sessions { display: flex; flex-wrap: wrap; gap: 4px; }
 .planning-facilitator-sessions small { margin: 0; padding: 4px 7px; border-radius: 999px; background: var(--surface-muted); text-transform: none; }
+.planning-facilitator-directory { margin-top: 14px; overflow: hidden; border: 1px solid var(--border-default); border-radius: 14px; background: var(--surface-card); }
+.planning-facilitator-row { display: grid; grid-template-columns: minmax(170px,1.25fr) minmax(130px,.8fr) minmax(210px,1.4fr) 80px 70px; align-items: center; gap: 13px; min-height: 58px; padding: 11px 15px; border-top: 1px solid var(--border-default); font-size: 12px; }
+.planning-facilitator-row:first-child { border-top: 0; }
+.planning-facilitator-head { min-height: 42px; background: var(--surface-muted); color: var(--text-tertiary); font-size: 12px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.planning-facilitator-name { display: flex; align-items: center; gap: 9px; }
+.planning-facilitator-name i { display: inline-grid; place-items: center; width: 31px; height: 31px; flex: none; border-radius: 999px; background: #eef5fb; color: var(--planning-blue); }
+.planning-facilitator-row a { display: inline-flex; align-items: center; gap: 5px; color: var(--planning-blue); overflow-wrap: anywhere; }
 
 .planning-modal-backdrop { position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 24, 48, .48); backdrop-filter: blur(4px); }
 .planning-modal { width: min(610px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; border-radius: 17px; background: var(--surface-card); box-shadow: var(--shadow-raised); }
@@ -319,6 +326,7 @@
   .planning-task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .planning-facilitator-list article { grid-template-columns: auto 1fr auto; }
   .planning-facilitator-sessions { grid-column: 2 / -1; }
+  .planning-facilitator-row { grid-template-columns: minmax(155px,1fr) minmax(110px,.7fr) minmax(190px,1.2fr) 70px 55px; gap: 8px; }
 }
 
 @media (max-width: 680px) {
@@ -343,6 +351,11 @@
   .planning-form-grid label.wide { grid-column: auto; }
   .planning-modal-backdrop { align-items: flex-end; padding: 0; }
   .planning-modal, .planning-modal-large { width: 100%; max-height: 92vh; border-radius: 17px 17px 0 0; }
+  .planning-facilitator-head { display: none; }
+  .planning-facilitator-row { grid-template-columns: 1fr auto; gap: 7px 13px; padding: 15px; }
+  .planning-facilitator-row > span[data-label] { grid-column: 1; }
+  .planning-facilitator-row > span[data-label]::before { margin-right: 5px; color: var(--text-tertiary); content: attr(data-label) ':'; font-weight: 800; }
+  .planning-facilitator-row .planning-row-actions { grid-column: 2; grid-row: 1 / span 4; align-self: start; }
 }
 
 @media (max-width: 440px) {
